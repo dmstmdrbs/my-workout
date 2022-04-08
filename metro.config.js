@@ -16,6 +16,6 @@ module.exports = {
     },
     resolver: {
         // javascript 사용시 jsx 사용 가능하도록 metro config 수정
-        sourceExts: ['jsx', 'js'],
+        sourceExts: ['jsx', 'js', 'ts', 'tsx'],
     },
 };

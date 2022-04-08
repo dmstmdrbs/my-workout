@@ -1,29 +1,38 @@
 import React from 'react';
 import { StatusBar } from 'react-native';
-import { RecoilRoot } from 'recoil';
+import { useRecoilValue } from 'recoil';
 import styled from '@emotion/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-const WelcomeContainer = styled.SafeAreaView`
+import Enter from './views/Enter';
+import Workout from './views/Workout';
+import { authState } from './store';
+
+const Container = styled.SafeAreaView`
   flex: 1;
   align-items: center;
   justify-content: center;
   background-color: #f5f5f5;
 `;
 
-const WelcomeText = styled.Text`
-  font-size: 28px;
+const Stack = createNativeStackNavigator();
 
-  font-weight: 700;
-  color: #222;
-`;
 const App = () => {
+  const auth = useRecoilValue(authState);
+
   return (
-    <RecoilRoot>
-      <WelcomeContainer>
-        <StatusBar />
-        <WelcomeText>새 애플리케이션</WelcomeText>
-      </WelcomeContainer>
-    </RecoilRoot>
+    <Stack.Navigator initialRouteName="Enter">
+      <Stack.Screen
+        name="Enter"
+        component={Enter}
+        options={{ title: 'Enter' }}
+      />
+      <Stack.Screen
+        name="Workout"
+        component={Workout}
+        options={{ title: 'Workout' }}
+      />
+    </Stack.Navigator>
   );
 };
 
