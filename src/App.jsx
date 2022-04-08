@@ -1,5 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'react-native';
+import { RecoilRoot } from 'recoil';
 import styled from '@emotion/native';
 
 const WelcomeContainer = styled.SafeAreaView`
@@ -17,10 +18,12 @@ const WelcomeText = styled.Text`
 `;
 const App = () => {
   return (
-    <WelcomeContainer>
-      <StatusBar />
-      <WelcomeText>새 애플리케이션</WelcomeText>
-    </WelcomeContainer>
+    <RecoilRoot>
+      <WelcomeContainer>
+        <StatusBar />
+        <WelcomeText>새 애플리케이션</WelcomeText>
+      </WelcomeContainer>
+    </RecoilRoot>
   );
 };
 
