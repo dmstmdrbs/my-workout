@@ -1,8 +1,8 @@
 import { atom } from 'recoil';
 
-const authState = atom({
-    key: 'auth',
-    default: false,
+const currentTimeState = atom({
+    key: 'currentTime',
+    default: 0,
 });
 
-export { authState };
+export { currentTimeState };

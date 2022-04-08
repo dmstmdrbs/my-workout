@@ -1,36 +1,23 @@
 import React from 'react';
-import { StatusBar } from 'react-native';
-import { useRecoilValue } from 'recoil';
-import styled from '@emotion/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import Enter from './views/Enter';
+import AddWorkout from './views/AddWorkout';
 import Workout from './views/Workout';
-import { authState } from './store';
-
-const Container = styled.SafeAreaView`
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  background-color: #f5f5f5;
-`;
 
 const Stack = createNativeStackNavigator();
 
 const App = () => {
-  const auth = useRecoilValue(authState);
-
   return (
-    <Stack.Navigator initialRouteName="Enter">
+    <Stack.Navigator initialRouteName="Workout">
       <Stack.Screen
-        name="Enter"
-        component={Enter}
-        options={{ title: 'Enter' }}
+        name="AddWorkout"
+        component={AddWorkout}
+        options={{ title: '운동추가' }}
       />
       <Stack.Screen
         name="Workout"
         component={Workout}
-        options={{ title: 'Workout' }}
+        options={{ title: '운동기록' }}
       />
     </Stack.Navigator>
   );

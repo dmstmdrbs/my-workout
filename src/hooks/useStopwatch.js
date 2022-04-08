@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react';
+import { useRecoilState } from 'recoil';
+import { currentTimeState } from '../store';
 
 export default useStopwatch = () => {
     const timerRef = useRef(null); // setInterval
-    const [timer, setTimer] = useState(0);
+    const [currentTime, setCurrentTime] = useRecoilState(currentTimeState);
+
     const [isWorking, setIsWorking] = useState(false); // 스톱워치가 동작 중인지
     const [isPaused, setIsPaused] = useState(false); // 스톱워치가 실행 중인지
 
@@ -11,7 +14,7 @@ export default useStopwatch = () => {
         setIsPaused(true); // start count time
 
         timerRef.current = setInterval(() => {
-            setTimer((prev) => prev + 1);
+            setCurrentTime((prev) => prev + 1);
         }, 1000);
     };
     const handlePause = () => {
@@ -21,20 +24,21 @@ export default useStopwatch = () => {
     const handleResume = () => {
         setIsPaused(true);
         timerRef.current = setInterval(() => {
-            setTimer((prev) => prev + 1);
+            setCurrentTime((prev) => prev + 1);
         }, 1000);
     };
     const handleReset = () => {
         clearInterval(timerRef.current);
         setIsWorking(false);
         setIsPaused(false);
-        setTimer(0);
+        setCurrentTime(0);
     };
-    const formatTime = () => {
-        const getSeconds = `0${timer % 60}`.slice(-2);
-        const minutes = `${Math.floor(timer / 60)}`;
+
+    const formatCurrentTime = () => {
+        const getSeconds = `0${currentTime % 60}`.slice(-2);
+        const minutes = `${Math.floor(currentTime / 60)}`;
         const getMinutes = `0${minutes % 60}`.slice(-2);
-        const getHours = `0${Math.floor(timer / 3600)}`.slice(-2);
+        const getHours = `0${Math.floor(currentTime / 3600)}`.slice(-2);
 
         return `${getHours} : ${getMinutes} : ${getSeconds}`;
     };
@@ -43,10 +47,10 @@ export default useStopwatch = () => {
         isWorking,
         isPaused,
         setIsWorking,
-        formatTime,
         handleStart,
         handlePause,
         handleReset,
         handleResume,
+        formatCurrentTime,
     };
 };

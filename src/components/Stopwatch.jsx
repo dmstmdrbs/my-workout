@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import styled from '@emotion/native';
 
@@ -11,6 +11,7 @@ const Container = styled.SafeAreaView`
   justify-content: center;
   flex: 1;
   padding-vertical: 10px;
+  max-height: 200px;
 `;
 const BtnContainer = styled.View`
   display: flex;
@@ -38,13 +39,18 @@ export default Timer = ({ startTitle, endTitle }) => {
   const {
     isWorking,
     isPaused,
-    formatTime,
+    formatCurrentTime,
     handleStart,
     handlePause,
     handleReset,
     handleResume,
   } = useStopwatch();
 
+  useEffect(() => {
+    return () => {
+      handleReset();
+    };
+  }, []);
   const handleBtnPress = () => {
     if (!isWorking) handleStart(); // 정지 -> 시작
     if (isWorking && !isPaused) handleResume(); // 일시정지 -> 진행
@@ -54,7 +60,7 @@ export default Timer = ({ startTitle, endTitle }) => {
   return (
     <Container>
       <View style={{ alignItems: 'center', padding: 10, marginTop: 10 }}>
-        <StopwatchTimer> {formatTime()} </StopwatchTimer>
+        <StopwatchTimer> {formatCurrentTime()} </StopwatchTimer>
       </View>
       <BtnContainer>
         <StopwatchBtn onPress={handleBtnPress}>
