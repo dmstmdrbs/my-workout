@@ -8,9 +8,9 @@ const Container = styled.View`
   padding: 5px 16px;
   align-self: center;
   border-radius: 8px;
-  border: 1px solid lightgray;
+  border: 1px solid ${({ theme }) => theme.mainColors['100']};
   margin: 8px 0;
-  background: #f5f5f5;
+  background: #fefefe;
 `;
 
 const FlexRow = styled.View`
@@ -60,7 +60,7 @@ const WorkoutSetBtn = styled.TouchableOpacity`
   padding-vertical: 8px;
   padding-horizontal: 24px;
   background-color: ${(props) =>
-    props.dark ? props.theme.mainColors['500'] : props.theme.mainColors['300']};
+    props.dark ? props.theme.mainColors['600'] : props.theme.mainColors['300']};
 `;
 
 export default WorkoutCard = ({ id, name, sets, memo, editMemo }) => {

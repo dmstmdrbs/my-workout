@@ -6,7 +6,7 @@ import useStopwatch from '../hooks/useStopwatch';
 
 const Container = styled.SafeAreaView`
   border-bottom: 1px solid #1b1a17;
-  background-color: #efefef;
+  background-color: white;
   align-items: center;
   justify-content: center;
   flex: 1;
@@ -20,7 +20,8 @@ const BtnContainer = styled.View`
   padding: 20px;
 `;
 const StopwatchBtn = styled.TouchableOpacity`
-  background-color: #3a3845;
+  background-color: ${(props) =>
+    props.dark ? props.theme.mainColors['200'] : props.theme.mainColors['400']};
   padding: 10px;
   border-radius: 5px;
 `;
@@ -63,14 +64,11 @@ export default Timer = ({ startTitle, endTitle }) => {
         <StopwatchTimer> {formatCurrentTime()} </StopwatchTimer>
       </View>
       <BtnContainer>
-        <StopwatchBtn onPress={handleBtnPress}>
+        <StopwatchBtn dark={true} onPress={handleBtnPress}>
           <BtnText>{isPaused ? endTitle : startTitle}</BtnText>
         </StopwatchBtn>
         {isWorking && (
-          <StopwatchBtn
-            onPress={handleReset}
-            style={{ backgroundColor: '#8D8DAA' }}
-          >
+          <StopwatchBtn dark={false} onPress={handleReset}>
             <BtnText style={{ color: '#DFDFDE' }}>운동 끝내기</BtnText>
           </StopwatchBtn>
         )}
