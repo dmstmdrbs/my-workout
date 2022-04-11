@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import styled from '@emotion/native';
-import { ScrollView, View, Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { Dimensions } from 'react-native';
 
+import WorkoutCard from '../components/WorkoutCard';
 import Stopwatch from '../components/Stopwatch';
+import { useRecoilState } from 'recoil';
+import { workoutListState } from '../store';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Width = Dimensions.get('window').width; //스크린 너비 초기화
 const Height = Dimensions.get('window').height; //스크린 높이 초기화
@@ -22,10 +26,31 @@ const AddBtn = styled.TouchableOpacity`
   border-radius: 5px;
   background: #8675a9;
 `;
-
 const Workout = ({ navigation }) => {
+  const [workoutList, setWorkoutList] = useRecoilState(workoutListState);
+
+  useEffect(() => {
+    console.log(workoutList);
+  }, []);
+
+  const handleMemo = (id, value) => {
+    setWorkoutList((prev) => {
+      const currentWorkoutIdx = prev.findIndex((w) => w.id === id);
+      const currentWorkout = prev.find((w) => w.id === id);
+      const newWorkout = { ...currentWorkout, memo: value };
+
+      return [
+        ...prev.slice(0, currentWorkoutIdx),
+        newWorkout,
+        ...prev.slice(currentWorkoutIdx + 1),
+      ];
+    });
+  };
+
   return (
-    <View style={{ width: Width, height: Height }}>
+    <SafeAreaView
+      style={{ width: Width, height: Height, alignItems: 'center', flex: 1 }}
+    >
       <Stopwatch startTitle="운동 시작하기" endTitle="운동 멈추기" />
       <BtnWrapper>
         <AddBtn onPress={() => navigation.navigate('AddWorkout')}>
@@ -34,9 +59,16 @@ const Workout = ({ navigation }) => {
       </BtnWrapper>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        style={{ flex: 1, backgroundColor: '#f5f5f5', width: Width }}
-      ></ScrollView>
-    </View>
+        style={{
+          backgroundColor: '#f5f5f5',
+          width: Width,
+        }}
+      >
+        {workoutList.map((workout) => (
+          <WorkoutCard key={workout.id} {...workout} editMemo={handleMemo} />
+        ))}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
