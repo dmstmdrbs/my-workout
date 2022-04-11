@@ -58,7 +58,6 @@ const Workout = ({ navigation }) => {
         reps: reps,
       };
       const newSets = [...currentWorkout.sets, newSet];
-      console.log('add set');
       console.log([
         ...prev.slice(0, currentWorkoutIdx),
         { ...currentWorkout, sets: newSets },
@@ -71,6 +70,23 @@ const Workout = ({ navigation }) => {
       ];
     });
   };
+  const handleRemoveSet = (id, idx) => {
+    setWorkoutList((prev) => {
+      const [currentWorkoutIdx, currentWorkout] = findWorkout(id, prev);
+      const currentSet = currentWorkout.sets;
+      const newSets = [
+        ...currentSet.slice(0, idx),
+        ...currentSet.slice(idx + 1),
+      ];
+
+      return [
+        ...prev.slice(0, currentWorkoutIdx),
+        { ...currentWorkout, sets: newSets },
+        ...prev.slice(currentWorkoutIdx + 1),
+      ];
+    });
+  };
+
   return (
     <SafeAreaView
       style={{
@@ -100,6 +116,7 @@ const Workout = ({ navigation }) => {
             {...workout}
             editMemo={handleMemo}
             addSet={handleAddSet}
+            removeSet={handleRemoveSet}
           />
         ))}
       </ScrollView>

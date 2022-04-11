@@ -7,6 +7,7 @@ import {
   TextInput,
 } from 'react-native';
 import styled from '@emotion/native';
+import { currentTimeState } from '../store';
 
 const Container = styled.View`
   width: 95%;
@@ -69,10 +70,19 @@ const WorkoutSetBtn = styled.TouchableOpacity`
     props.dark ? props.theme.mainColors['600'] : props.theme.mainColors['300']};
 `;
 
-export default WorkoutCard = ({ id, name, sets, memo, editMemo, addSet }) => {
+export default WorkoutCard = ({
+  id,
+  name,
+  sets,
+  memo,
+  editMemo,
+  addSet,
+  removeSet,
+}) => {
   const [memoInput, setMemoInput] = useState(memo);
 
   const [addMode, setAddMode] = useState(false);
+  const [removeMode, setRemoveMode] = useState(false);
   const [weight, setWeight] = useState(null);
   const [reps, setReps] = useState(null);
 
@@ -102,7 +112,14 @@ export default WorkoutCard = ({ id, name, sets, memo, editMemo, addSet }) => {
           </TouchableOpacity>
         </WorkoutDescription>
         <WorkoutDescription style={{ paddingVertical: 0 }}>
-          <WorkoutVolume>총 볼륨 2800kg</WorkoutVolume>
+          <WorkoutVolume>
+            총 볼륨{' '}
+            {sets.reduce((acc, cur) => {
+              acc += cur.weight * cur.reps;
+              return acc;
+            }, 0)}
+            kg
+          </WorkoutVolume>
         </WorkoutDescription>
         <WorkoutDescription>
           <MemoInput
@@ -117,11 +134,19 @@ export default WorkoutCard = ({ id, name, sets, memo, editMemo, addSet }) => {
           return (
             <WorkoutSetItem key={v.setId}>
               <View style={{ flexDirection: 'row' }}>
-                <WorkoutSetItemText
-                  style={{ paddingLeft: 10, color: 'lightgray' }}
-                >
-                  {idx + 1}
-                </WorkoutSetItemText>
+                {removeMode ? (
+                  <TouchableOpacity onPress={() => removeSet(id, idx)}>
+                    <WorkoutSetItemText style={{ color: 'red' }}>
+                      {'-'}
+                    </WorkoutSetItemText>
+                  </TouchableOpacity>
+                ) : (
+                  <WorkoutSetItemText
+                    style={{ paddingLeft: 10, color: 'lightgray' }}
+                  >
+                    {idx + 1}
+                  </WorkoutSetItemText>
+                )}
                 <WorkoutSetItemText>{v.weight}kg</WorkoutSetItemText>
                 <WorkoutSetItemText>{v.reps}회</WorkoutSetItemText>
               </View>
@@ -182,13 +207,24 @@ export default WorkoutCard = ({ id, name, sets, memo, editMemo, addSet }) => {
         </View>
       )}
       <WorkoutSetBtnContainer>
-        <WorkoutSetBtn dark={true}>
-          <Text style={{ color: 'white' }}> - 세트 삭제</Text>
-        </WorkoutSetBtn>
-        <WorkoutSetBtn>
-          <Text style={{ color: 'white' }} onPress={() => setAddMode(true)}>
-            + 세트 추가
+        <WorkoutSetBtn
+          dark={true}
+          onPress={() => {
+            setAddMode(false);
+            setRemoveMode((prev) => !prev);
+          }}
+        >
+          <Text style={{ color: 'white' }}>
+            {removeMode ? '취소' : '- 세트 삭제'}
           </Text>
+        </WorkoutSetBtn>
+        <WorkoutSetBtn
+          onPress={() => {
+            setRemoveMode(false);
+            setAddMode(true);
+          }}
+        >
+          <Text style={{ color: 'white' }}>+ 세트 추가</Text>
         </WorkoutSetBtn>
       </WorkoutSetBtnContainer>
     </Container>
