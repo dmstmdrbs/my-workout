@@ -11,7 +11,7 @@ const Container = styled.SafeAreaView`
   justify-content: center;
   flex: 1;
   padding-vertical: 10px;
-  max-height: 200px;
+  min-height: 150px;
 `;
 const BtnContainer = styled.View`
   display: flex;
