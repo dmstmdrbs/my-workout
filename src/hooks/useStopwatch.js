@@ -1,9 +1,22 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRecoilState } from 'recoil';
 import { currentTimeState } from '../store';
+import BackgroundTimer from 'react-native-background-timer';
 
+/**
+    android/src/~~~/BackgroundTimerModule.java
+    
+    @ReactMethod
+    public void addListener(String eventName) {
+        // Keep: Required for RN built in Event Emitter Calls.
+    }
+
+    @ReactMethod
+    public void removeListeners(Integer count) {
+        // Keep: Required for RN built in Event Emitter Calls.
+    }
+*/
 export default useStopwatch = () => {
-    const timerRef = useRef(null); // setInterval
     const [currentTime, setCurrentTime] = useRecoilState(currentTimeState);
 
     const [isWorking, setIsWorking] = useState(false); // 스톱워치가 동작 중인지
@@ -13,22 +26,21 @@ export default useStopwatch = () => {
         setIsWorking(true); // activate stopwatch
         setIsPaused(true); // start count time
 
-        timerRef.current = setInterval(() => {
+        BackgroundTimer.runBackgroundTimer(() => {
             setCurrentTime((prev) => prev + 1);
         }, 1000);
     };
     const handlePause = () => {
-        clearInterval(timerRef.current);
+        BackgroundTimer.stopBackgroundTimer();
         setIsPaused(false);
     };
     const handleResume = () => {
         setIsPaused(true);
-        timerRef.current = setInterval(() => {
+        BackgroundTimer.runBackgroundTimer(() => {
             setCurrentTime((prev) => prev + 1);
         }, 1000);
     };
     const handleReset = () => {
-        clearInterval(timerRef.current);
         setIsWorking(false);
         setIsPaused(false);
         setCurrentTime(0);

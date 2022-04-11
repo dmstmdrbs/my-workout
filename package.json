@@ -14,8 +14,11 @@
         "@emotion/react": "^11.9.0",
         "@react-navigation/native": "^6.0.10",
         "@react-navigation/native-stack": "^6.6.1",
+        "@types/react": "^18.0.1",
+        "moment": "^2.29.2",
         "react": "17.0.2",
         "react-native": "0.68.0",
+        "react-native-background-timer": "^2.4.1",
         "react-native-safe-area-context": "^4.2.4",
         "react-native-screens": "^3.13.1",
         "recoil": "^0.7.0"
