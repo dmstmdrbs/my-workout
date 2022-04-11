@@ -31,14 +31,14 @@ const AddBtn = styled.TouchableOpacity`
 const Workout = ({ navigation }) => {
   const [workoutList, setWorkoutList] = useRecoilState(workoutListState);
 
-  useEffect(() => {
-    console.log(workoutList);
-  }, []);
+  const findWorkout = (id, list) => [
+    list.findIndex((w) => w.id === id),
+    list.find((w) => w.id === id),
+  ];
 
   const handleMemo = (id, value) => {
     setWorkoutList((prev) => {
-      const currentWorkoutIdx = prev.findIndex((w) => w.id === id);
-      const currentWorkout = prev.find((w) => w.id === id);
+      const [currentWorkoutIdx, currentWorkout] = findWorkout(id, prev);
       const newWorkout = { ...currentWorkout, memo: value };
 
       return [
@@ -49,6 +49,28 @@ const Workout = ({ navigation }) => {
     });
   };
 
+  const handleAddSet = (id, weight, reps) => {
+    setWorkoutList((prev) => {
+      const [currentWorkoutIdx, currentWorkout] = findWorkout(id, prev);
+      const newSet = {
+        setId: Math.random().toString(36).substring(2, 11),
+        weight: weight,
+        reps: reps,
+      };
+      const newSets = [...currentWorkout.sets, newSet];
+      console.log('add set');
+      console.log([
+        ...prev.slice(0, currentWorkoutIdx),
+        { ...currentWorkout, sets: newSets },
+        ...prev.slice(currentWorkoutIdx + 1),
+      ]);
+      return [
+        ...prev.slice(0, currentWorkoutIdx),
+        { ...currentWorkout, sets: newSets },
+        ...prev.slice(currentWorkoutIdx + 1),
+      ];
+    });
+  };
   return (
     <SafeAreaView
       style={{
@@ -73,7 +95,12 @@ const Workout = ({ navigation }) => {
         }}
       >
         {workoutList.map((workout) => (
-          <WorkoutCard key={workout.id} {...workout} editMemo={handleMemo} />
+          <WorkoutCard
+            key={workout.id}
+            {...workout}
+            editMemo={handleMemo}
+            addSet={handleAddSet}
+          />
         ))}
       </ScrollView>
     </SafeAreaView>

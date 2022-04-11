@@ -11,7 +11,25 @@ export class Workout {
 const bench = {
     id: Math.random().toString(36).substring(2, 11),
     name: '벤치프레스',
-    sets: [],
+    sets: [{
+            setId: Math.random().toString(36).substring(2, 11),
+            weight: 60,
+            reps: 15,
+            done: false,
+        },
+        {
+            setId: Math.random().toString(36).substring(2, 11),
+            weight: 70,
+            reps: 12,
+            done: false,
+        },
+        {
+            setId: Math.random().toString(36).substring(2, 11),
+            weight: 75,
+            reps: 9,
+            done: false,
+        },
+    ],
     memo: 'rir 3',
 };
 const squat = {
