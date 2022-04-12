@@ -1,4 +1,5 @@
-import { atom } from 'recoil';
+import { bench, squat, deadlift, allWorkout } from '../constants/workout';
+import { atom, selector } from 'recoil';
 
 export class Workout {
     constructor(name) {
@@ -8,42 +9,7 @@ export class Workout {
         this.memo = '';
     }
 }
-const bench = {
-    id: Math.random().toString(36).substring(2, 11),
-    name: '벤치프레스',
-    sets: [{
-            setId: Math.random().toString(36).substring(2, 11),
-            weight: 60,
-            reps: 15,
-            done: false,
-        },
-        {
-            setId: Math.random().toString(36).substring(2, 11),
-            weight: 70,
-            reps: 12,
-            done: false,
-        },
-        {
-            setId: Math.random().toString(36).substring(2, 11),
-            weight: 75,
-            reps: 9,
-            done: false,
-        },
-    ],
-    memo: 'rir 3',
-};
-const squat = {
-    id: Math.random().toString(36).substring(2, 11),
-    name: '스쿼트',
-    sets: [],
-    memo: '',
-};
-const deadlift = {
-    id: Math.random().toString(36).substring(2, 11),
-    name: '데드리프트',
-    sets: [],
-    memo: '',
-};
+
 const dummyWorkoutList = [bench, squat, deadlift];
 
 const currentTimeState = atom({
@@ -56,4 +22,49 @@ const workoutListState = atom({
     default: [...dummyWorkoutList],
 });
 
-export { currentTimeState, workoutListState };
+const workoutSearchState = atom({
+    key: 'workoutSearchValue',
+    default: '',
+});
+const workoutCategoryState = atom({
+    key: 'workoutCategoryValue',
+    default: 'likes',
+});
+
+const allWorkoutState = atom({
+    key: 'allWorkoutList',
+    default: [...allWorkout],
+});
+
+const searchWorkoutSelector = selector({
+    key: 'searchWorkoutList',
+    get: ({get }) => {
+        const workouts = get(allWorkoutState);
+        const searchValue = get(workoutSearchState);
+
+        return [
+            ...workouts.filter((workout) => workout.name.includes(searchValue)),
+        ];
+    },
+});
+const categoryWorkoutSelector = selector({
+    key: 'categoryWorkoutList',
+    get: ({get }) => {
+        const workouts = get(allWorkoutState);
+        const selectedCategory = get(workoutCategoryState);
+        const likes = [];
+        if (selectedCategory === 'likes') return likes;
+
+        return workouts.filter((workout) => workout.category === selectedCategory);
+    },
+});
+
+export {
+    currentTimeState,
+    workoutListState,
+    workoutCategoryState,
+    workoutSearchState,
+    allWorkoutState,
+    searchWorkoutSelector,
+    categoryWorkoutSelector,
+};
