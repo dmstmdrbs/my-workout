@@ -39,7 +39,7 @@ const StopwatchTimer = styled.Text`
 export default Timer = ({ startTitle, endTitle }) => {
   const {
     isWorking,
-    isPaused,
+    isRunning,
     formatCurrentTime,
     handleStart,
     handlePause,
@@ -54,8 +54,8 @@ export default Timer = ({ startTitle, endTitle }) => {
   }, []);
   const handleBtnPress = () => {
     if (!isWorking) handleStart(); // 정지 -> 시작
-    if (isWorking && !isPaused) handleResume(); // 일시정지 -> 진행
-    if (isWorking && isPaused) handlePause(); // 징행 -> 일시정지
+    if (isWorking && !isRunning) handleResume(); // 일시정지 -> 진행
+    if (isWorking && isRunning) handlePause(); // 징행 -> 일시정지
   };
 
   return (
@@ -65,7 +65,7 @@ export default Timer = ({ startTitle, endTitle }) => {
       </View>
       <BtnContainer>
         <StopwatchBtn dark={true} onPress={handleBtnPress}>
-          <BtnText>{isPaused ? endTitle : startTitle}</BtnText>
+          <BtnText>{isRunning ? endTitle : startTitle}</BtnText>
         </StopwatchBtn>
         {isWorking && (
           <StopwatchBtn dark={false} onPress={handleReset}>

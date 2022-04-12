@@ -9,7 +9,7 @@ const Container = styled.View`
   background-color: #f5f5f5;
   width: ${Width};
   align-items: center;
-  justify-content: space-around;
+  justify-content: space-between;
   padding-vertical: 18px;
   flex: 1;
 `;

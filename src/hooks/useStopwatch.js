@@ -20,11 +20,11 @@ export default useStopwatch = () => {
     const [currentTime, setCurrentTime] = useRecoilState(currentTimeState);
 
     const [isWorking, setIsWorking] = useState(false); // 스톱워치가 동작 중인지
-    const [isPaused, setIsPaused] = useState(false); // 스톱워치가 실행 중인지
+    const [isRunning, setIsRunning] = useState(false); // 스톱워치가 실행 중인지
 
     const handleStart = () => {
         setIsWorking(true); // activate stopwatch
-        setIsPaused(true); // start count time
+        setIsRunning(true); // start count time
 
         BackgroundTimer.runBackgroundTimer(() => {
             setCurrentTime((prev) => prev + 1);
@@ -32,17 +32,18 @@ export default useStopwatch = () => {
     };
     const handlePause = () => {
         BackgroundTimer.stopBackgroundTimer();
-        setIsPaused(false);
+        setIsRunning(false);
     };
     const handleResume = () => {
-        setIsPaused(true);
+        setIsRunning(true);
         BackgroundTimer.runBackgroundTimer(() => {
             setCurrentTime((prev) => prev + 1);
         }, 1000);
     };
     const handleReset = () => {
+        BackgroundTimer.stopBackgroundTimer();
         setIsWorking(false);
-        setIsPaused(false);
+        setIsRunning(false);
         setCurrentTime(0);
     };
 
@@ -57,7 +58,7 @@ export default useStopwatch = () => {
 
     return {
         isWorking,
-        isPaused,
+        isRunning,
         setIsWorking,
         handleStart,
         handlePause,

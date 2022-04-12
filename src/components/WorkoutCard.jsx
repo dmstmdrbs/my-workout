@@ -7,7 +7,6 @@ import {
   TextInput,
 } from 'react-native';
 import styled from '@emotion/native';
-import { currentTimeState } from '../store';
 
 const Container = styled.View`
   width: 95%;
@@ -215,7 +214,7 @@ export default WorkoutCard = ({
           }}
         >
           <Text style={{ color: 'white' }}>
-            {removeMode ? '취소' : '- 세트 삭제'}
+            {removeMode ? '돌아가기' : '세트삭제'}
           </Text>
         </WorkoutSetBtn>
         <WorkoutSetBtn
