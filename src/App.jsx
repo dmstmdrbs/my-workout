@@ -1,25 +1,34 @@
 import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-import AddWorkout from './screens/AddWorkout';
-import Workout from './screens/Workout';
+import WorkoutNavigation from './navigations/WorkoutNavigation';
 
-const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
 const App = () => {
   return (
-    <Stack.Navigator initialRouteName="Workout">
-      <Stack.Screen
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Tab.Screen
+        name="운동기록"
+        component={WorkoutNavigation}
+        options={{
+          tabBarActiveTintColor: '#171E46',
+          tabBarInactiveTintColor: '#8E91A2',
+        }}
+      />
+      {/* <Tab.Screen
         name="AddWorkout"
         component={AddWorkout}
-        options={{ title: '운동추가' }}
-      />
-      <Stack.Screen
-        name="Workout"
-        component={Workout}
-        options={{ title: '운동기록' }}
-      />
-    </Stack.Navigator>
+        options={{
+          tabBarActiveTintColor: '#171E46',
+          tabBarInactiveTintColor: '#8E91A2',
+        }}
+      /> */}
+    </Tab.Navigator>
   );
 };
 

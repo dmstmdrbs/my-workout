@@ -9,13 +9,17 @@ import {
   TouchableOpacity,
   Text,
 } from 'react-native';
-import { useRecoilState, useRecoilValue } from 'recoil';
+import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
 import {
   categoryWorkoutSelector,
   searchWorkoutSelector,
+  Workout,
   workoutCategoryState,
   workoutSearchState,
-} from '../store';
+} from '../../store';
+
+import { storeData, getData } from '../../hooks/useAsyncStorage';
+import { currentDateState, storedWorkoutState } from '../../store/workout';
 
 const Width = Dimensions.get('window').width; //스크린 너비 초기화
 const Height = Dimensions.get('window').height; //스크린 높이 초기화
@@ -77,8 +81,10 @@ const useWorkoutList = () => {
   };
 };
 
-const useSelectedWorkout = () => {
+const useSelectedWorkout = (navigation) => {
+  const [currentDate, setCurrentDate] = useRecoilState(currentDateState);
   const [selectedWorkoutList, setSelectedWorkoutList] = useState([]);
+  const storedWorkout = useRecoilValue(storedWorkoutState);
 
   const addWorkout = (workout) => {
     setSelectedWorkoutList((prev) => {
@@ -86,9 +92,43 @@ const useSelectedWorkout = () => {
       return [workout, ...prev];
     });
   };
+  const removeWorkout = (workoutId) => {
+    setSelectedWorkoutList((prev) =>
+      prev.filter((workout) => workout.id !== workoutId)
+    );
+  };
 
-  return { selectedWorkoutList, addWorkout };
+  const handleAddWorkoutList = async () => {
+    if (selectedWorkoutList.length === 0) return;
+
+    const newWorkout = selectedWorkoutList.map(
+      (workout) => new Workout(workout.name, workout.category, currentDate)
+    );
+    const data = await getData('@stored_workout');
+    const storedWorkout = data ? data : [];
+
+    const newWorkoutList = [
+      ...storedWorkout,
+      ...newWorkout
+        .filter((v) => !storedWorkout.find((x) => x.name === v.name))
+        .map((v) => new Workout(v.name, v.category, currentDate)),
+    ];
+    console.log('storedWorkoutState setter, value ', newWorkout);
+    console.log('saved', newWorkoutList);
+
+    await storeData('@stored_workout', newWorkoutList);
+    // console.log(storedWorkout);
+    navigation.goBack();
+  };
+  return {
+    storedWorkout,
+    selectedWorkoutList,
+    addWorkout,
+    removeWorkout,
+    handleAddWorkoutList,
+  };
 };
+
 const AddWorkout = ({ navigation }) => {
   const {
     category,
@@ -99,7 +139,13 @@ const AddWorkout = ({ navigation }) => {
     searchSelectedWorkout,
   } = useWorkoutList();
 
-  const { selectedWorkoutList, addWorkout } = useSelectedWorkout();
+  const {
+    storedWorkout,
+    selectedWorkoutList,
+    addWorkout,
+    removeWorkout,
+    handleAddWorkoutList,
+  } = useSelectedWorkout(navigation);
 
   return (
     <Container>
@@ -170,6 +216,7 @@ const AddWorkout = ({ navigation }) => {
       >
         {categorySelectedWorkout.map((workout) => (
           <TouchableOpacity
+            key={workout.id}
             style={{
               width: '100%',
               paddingVertical: 10,
@@ -180,9 +227,7 @@ const AddWorkout = ({ navigation }) => {
             }}
             onPress={() => addWorkout(workout)}
           >
-            <Text key={workout.id} style={{ color: '#f5f5f5' }}>
-              {workout.name}
-            </Text>
+            <Text style={{ color: '#f5f5f5' }}>{workout.name}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -216,14 +261,14 @@ const AddWorkout = ({ navigation }) => {
           }}
         >
           {selectedWorkoutList.map((workout) => (
-            <Chip content={workout.name} key={workout.id} onPress={() => {}} />
+            <Chip
+              content={workout.name}
+              key={workout.id}
+              onPress={() => removeWorkout(workout.id)}
+            />
           ))}
         </ScrollView>
-        <AddWorkoutBtn
-          onPress={() => {
-            Alert.alert('운동 추가', '운동을 추가합니다.');
-          }}
-        >
+        <AddWorkoutBtn onPress={handleAddWorkoutList}>
           <BtnText>추가하기</BtnText>
         </AddWorkoutBtn>
       </View>

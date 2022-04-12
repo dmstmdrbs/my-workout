@@ -9,15 +9,12 @@ const Container = styled.SafeAreaView`
   background-color: white;
   align-items: center;
   justify-content: center;
-  flex: 1;
   padding-vertical: 10px;
-  min-height: 150px;
 `;
 const BtnContainer = styled.View`
   display: flex;
   flex-direction: row;
   justify-content: center;
-  padding: 20px;
 `;
 const StopwatchBtn = styled.TouchableOpacity`
   background-color: ${(props) =>
