@@ -45,12 +45,12 @@ const Chip = ({ content, style, onPress }) => (
       minWidth: 80,
       paddingHorizontal: 10,
       height: 25,
-      backgroundColor: '#474C65',
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 14,
       marginHorizontal: 1,
       textOverflow: 'elipse',
+      backgroundColor: '#474C65',
       ...style,
     }}
     onPress={() => onPress(content)}
@@ -148,7 +148,14 @@ const AddWorkout = ({ navigation }) => {
             }}
           >
             {['하체', '가슴', '등', '어깨', '팔', '코어'].map((item, idx) => (
-              <Chip content={item} key={idx} onPress={(v) => setCategory(v)} />
+              <Chip
+                content={item}
+                key={idx}
+                onPress={(v) => setCategory(v)}
+                style={{
+                  backgroundColor: category === item ? '#8E91A2' : '#474C65',
+                }}
+              />
             ))}
           </ScrollView>
         </View>
