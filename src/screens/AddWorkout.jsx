@@ -42,7 +42,6 @@ const BtnText = styled.Text`
 const Chip = ({ content, style, onPress }) => (
   <TouchableOpacity
     style={{
-      maxWidth: 140,
       minWidth: 80,
       paddingHorizontal: 10,
       height: 25,
