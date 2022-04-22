@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { ScrollView, Text, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useRecoilState,
-  useRecoilStateLoadable,
   useRecoilValueLoadable,
+  useSetRecoilState,
 } from 'recoil';
 
 import WorkoutCard from '../../components/WorkoutCard';
@@ -13,7 +13,13 @@ import Stopwatch from '../../components/Stopwatch';
 import { BtnWrapper, AddBtn } from '../../styles/screens/Workout.style';
 
 import { workoutListState } from '../../store';
-import { currentDateState, storedWorkoutState } from '../../store/workout';
+import {
+  currentDateState,
+  storedWorkoutState,
+  forceUpdateWorkoutState,
+} from '../../store/workout';
+
+import { storeData } from '../../hooks/useAsyncStorage';
 
 const Width = Dimensions.get('window').width; //스크린 너비 초기화
 const Height = Dimensions.get('window').height; //스크린 높이 초기화
@@ -87,9 +93,10 @@ const useWorkoutDetail = (storedWorkoutLoadable) => {
   };
 };
 
-const Workout = ({ navigation }) => {
+const Workout = ({ route, navigation }) => {
   const storedWorkoutLoadable = useRecoilValueLoadable(storedWorkoutState);
   const [selectedDate, setSelectedDate] = useRecoilState(currentDateState);
+  const setIsNew = useSetRecoilState(forceUpdateWorkoutState);
 
   const {
     workoutList,
@@ -99,50 +106,47 @@ const Workout = ({ navigation }) => {
     handleRemoveSet,
   } = useWorkoutDetail(storedWorkoutLoadable);
 
-  switch (storedWorkoutLoadable.state) {
-    case 'hasError':
-      return (
-        <SafeAreaView>
-          <Text>Error occurred!</Text>
-        </SafeAreaView>
-      );
-    case 'loading':
-      return (
-        <SafeAreaView>
-          <Text>Loading...</Text>
-        </SafeAreaView>
-      );
-    case 'hasValue':
-      return (
-        <SafeAreaView
-          style={{
-            width: Width,
-            height: Height,
-            alignItems: 'center',
-            flex: 1,
-            backgroundColor: 'white',
-          }}
-        >
-          <Stopwatch startTitle="운동 시작하기" endTitle="운동 멈추기" />
-          <BtnWrapper>
-            <AddBtn
-              onPress={() =>
-                navigation.navigate('AddWorkout', {
-                  setWorkoutList,
-                })
-              }
-            >
-              <Text style={{ color: 'white', fontSize: 18 }}>운동 추가</Text>
-            </AddBtn>
-          </BtnWrapper>
-          <ScrollView
-            contentInsetAdjustmentBehavior="automatic"
-            style={{
-              backgroundColor: 'white',
-              width: Width,
-            }}
-          >
-            {workoutList.map((workout) => (
+  useEffect(() => {
+    if (route.params?.newWorkoutList) {
+      const { newWorkoutList } = route.params;
+      const newWorkout = JSON.parse(newWorkoutList);
+      console.log(newWorkout);
+      (async () => {
+        await storeData('@stored_workout', newWorkoutList);
+        setIsNew((prev) => prev + 1); // 새로 저장된 운동 목록을 불러오기 위함
+      })();
+    }
+  }, [route.params]);
+
+  return (
+    <SafeAreaView
+      style={{
+        width: Width,
+        height: Height,
+        alignItems: 'center',
+        flex: 1,
+        backgroundColor: 'white',
+      }}
+    >
+      <Stopwatch startTitle="운동 시작하기" endTitle="운동 멈추기" />
+      <BtnWrapper>
+        <AddBtn onPress={() => navigation.navigate('AddWorkout')}>
+          <Text style={{ color: 'white', fontSize: 18 }}>운동 추가</Text>
+        </AddBtn>
+      </BtnWrapper>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        style={{
+          backgroundColor: 'white',
+          width: Width,
+        }}
+      >
+        {storedWorkoutLoadable.state === 'hasError' && (
+          <Text>Error occurred</Text>
+        )}
+        {storedWorkoutLoadable.state === 'loading' && <Text>Loading...</Text>}
+        {storedWorkoutLoadable.state === 'hasValue' && workoutList.length > 0
+          ? workoutList.map((workout) => (
               <WorkoutCard
                 key={workout.id}
                 {...workout}
@@ -150,11 +154,11 @@ const Workout = ({ navigation }) => {
                 addSet={handleAddSet}
                 removeSet={handleRemoveSet}
               />
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-      );
-  }
+            ))
+          : null}
+      </ScrollView>
+    </SafeAreaView>
+  );
 };
 
 export default Workout;

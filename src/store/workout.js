@@ -1,15 +1,19 @@
 import { atom, selector } from 'recoil';
-import { Workout } from '.';
-import { storeData, getData } from '../hooks/useAsyncStorage';
+import { getData } from '../hooks/useAsyncStorage';
 
 const currentDateState = atom({
     key: 'currentDate',
     default: new Date(),
 });
 
+const forceUpdateWorkoutState = atom({
+    key: 'forceUpdateWorkout',
+    default: 0,
+});
 const storedWorkoutState = selector({
     key: 'storedWorkout',
     get: async({get }) => {
+        get(forceUpdateWorkoutState); // 운동 추가하면 강제 업데이트
         const selectedDate = get(currentDateState);
         try {
             const data = await getData('@stored_workout');
@@ -27,4 +31,4 @@ const storedWorkoutState = selector({
     },
 });
 
-export { currentDateState, storedWorkoutState };
+export { currentDateState, storedWorkoutState, forceUpdateWorkoutState };

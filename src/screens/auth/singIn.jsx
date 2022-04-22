@@ -68,7 +68,10 @@ const SignIn = () => {
       .post('http://10.0.2.2:5000/api/user', {
         name: userValue,
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        console.error(err);
+        return;
+      });
 
     const { message, status } = data;
     Alert.alert('회원가입', message);
@@ -81,12 +84,13 @@ const SignIn = () => {
       .post('http://10.0.2.2:5000/api/user/signIn', {
         name: userValue,
       })
-      .catch((err) =>
+      .catch((err) => {
         Alert.alert(
           '에러',
           '인증 과정에서 에러가 발생하였습니다. 고객센터에 문의해주세요.'
-        )
-      );
+        );
+        return;
+      });
     const { message, status } = data;
     if (status === 'FAIL') {
       Alert.alert('로그인 실패', message);
@@ -109,7 +113,7 @@ const SignIn = () => {
           ></Input>
         </InputContainer>
         <InputLabel>{userValue}</InputLabel>
-        <SignInBtn onPress={() => setUser('admin')}>
+        <SignInBtn onPress={onPressSignIn}>
           <SignInText>로그인</SignInText>
         </SignInBtn>
         <SignUpBtn onPress={onPressSignUp}>

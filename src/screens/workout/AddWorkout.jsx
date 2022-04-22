@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import styled from '@emotion/native';
 import {
   Dimensions,
-  Alert,
   View,
   TextInput,
   ScrollView,
   TouchableOpacity,
   Text,
 } from 'react-native';
-import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
+import { useRecoilState, useRecoilValue } from 'recoil';
 import {
   categoryWorkoutSelector,
   searchWorkoutSelector,
@@ -18,9 +17,8 @@ import {
   workoutSearchState,
 } from '../../store';
 
-import { storeData, getData } from '../../hooks/useAsyncStorage';
+import { getData } from '../../hooks/useAsyncStorage';
 import { currentDateState, storedWorkoutState } from '../../store/workout';
-import { CommonActions } from '@react-navigation/native';
 
 const Width = Dimensions.get('window').width; //스크린 너비 초기화
 const Height = Dimensions.get('window').height; //스크린 높이 초기화
@@ -87,10 +85,6 @@ const useSelectedWorkout = (navigation) => {
   const [selectedWorkoutList, setSelectedWorkoutList] = useState([]);
   const storedWorkout = useRecoilValue(storedWorkoutState);
 
-  useEffect(() => {
-    console.log(navigation);
-  }, []);
-
   const addWorkout = (workout) => {
     setSelectedWorkoutList((prev) => {
       if (prev.find((v) => v.id === workout.id)) return prev;
@@ -119,10 +113,9 @@ const useSelectedWorkout = (navigation) => {
         .map((v) => new Workout(v.name, v.category, currentDate)),
     ];
 
-    await storeData('@stored_workout', newWorkoutList);
-    // console.log(storedWorkout);
-    // navigation.goBack();
-    navigation.dispatch(CommonActions.goBack());
+    navigation.navigate('Workout', {
+      newWorkoutList: JSON.stringify(newWorkoutList),
+    });
   };
   return {
     storedWorkout,
