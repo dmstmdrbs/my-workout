@@ -1,35 +1,9 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-import WorkoutNavigation from './navigations/WorkoutNavigation';
-
-const Tab = createBottomTabNavigator();
+import AuthNavigation from './navigations/AuthNavigation';
 
 const App = () => {
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Tab.Screen
-        name="운동기록"
-        component={WorkoutNavigation}
-        options={{
-          tabBarActiveTintColor: '#171E46',
-          tabBarInactiveTintColor: '#8E91A2',
-        }}
-      />
-      {/* <Tab.Screen
-        name="AddWorkout"
-        component={AddWorkout}
-        options={{
-          tabBarActiveTintColor: '#171E46',
-          tabBarInactiveTintColor: '#8E91A2',
-        }}
-      /> */}
-    </Tab.Navigator>
-  );
+  return <AuthNavigation />;
 };
 
 export default App;

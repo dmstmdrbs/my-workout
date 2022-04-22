@@ -20,6 +20,7 @@ import {
 
 import { storeData, getData } from '../../hooks/useAsyncStorage';
 import { currentDateState, storedWorkoutState } from '../../store/workout';
+import { CommonActions } from '@react-navigation/native';
 
 const Width = Dimensions.get('window').width; //스크린 너비 초기화
 const Height = Dimensions.get('window').height; //스크린 높이 초기화
@@ -86,6 +87,10 @@ const useSelectedWorkout = (navigation) => {
   const [selectedWorkoutList, setSelectedWorkoutList] = useState([]);
   const storedWorkout = useRecoilValue(storedWorkoutState);
 
+  useEffect(() => {
+    console.log(navigation);
+  }, []);
+
   const addWorkout = (workout) => {
     setSelectedWorkoutList((prev) => {
       if (prev.find((v) => v.id === workout.id)) return prev;
@@ -113,12 +118,11 @@ const useSelectedWorkout = (navigation) => {
         .filter((v) => !storedWorkout.find((x) => x.name === v.name))
         .map((v) => new Workout(v.name, v.category, currentDate)),
     ];
-    console.log('storedWorkoutState setter, value ', newWorkout);
-    console.log('saved', newWorkoutList);
 
     await storeData('@stored_workout', newWorkoutList);
     // console.log(storedWorkout);
-    navigation.goBack();
+    // navigation.goBack();
+    navigation.dispatch(CommonActions.goBack());
   };
   return {
     storedWorkout,

@@ -78,15 +78,26 @@ const useWorkoutDetail = (storedWorkoutLoadable) => {
       ];
     });
   };
-  return { workoutList, handleAddSet, handleRemoveSet, handleMemo };
+  return {
+    workoutList,
+    setWorkoutList,
+    handleAddSet,
+    handleRemoveSet,
+    handleMemo,
+  };
 };
 
 const Workout = ({ navigation }) => {
   const storedWorkoutLoadable = useRecoilValueLoadable(storedWorkoutState);
   const [selectedDate, setSelectedDate] = useRecoilState(currentDateState);
 
-  const { workoutList, handleAddSet, handleMemo, handleRemoveSet } =
-    useWorkoutDetail(storedWorkoutLoadable);
+  const {
+    workoutList,
+    setWorkoutList,
+    handleAddSet,
+    handleMemo,
+    handleRemoveSet,
+  } = useWorkoutDetail(storedWorkoutLoadable);
 
   switch (storedWorkoutLoadable.state) {
     case 'hasError':
@@ -114,7 +125,13 @@ const Workout = ({ navigation }) => {
         >
           <Stopwatch startTitle="운동 시작하기" endTitle="운동 멈추기" />
           <BtnWrapper>
-            <AddBtn onPress={() => navigation.navigate('AddWorkout')}>
+            <AddBtn
+              onPress={() =>
+                navigation.navigate('AddWorkout', {
+                  setWorkoutList,
+                })
+              }
+            >
               <Text style={{ color: 'white', fontSize: 18 }}>운동 추가</Text>
             </AddBtn>
           </BtnWrapper>
