@@ -64,17 +64,37 @@ const SignIn = () => {
   const [user, setUser] = useRecoilState(userState);
   const [userValue, setUserValue] = useState();
   const onPressSignUp = async () => {
-    const result = await axios
+    const { data } = await axios
       .post('http://10.0.2.2:5000/api/user', {
         name: userValue,
       })
       .catch((err) => console.error(err));
 
-    const { message, status } = result.data;
+    const { message, status } = data;
     Alert.alert('회원가입', message);
     if (status === 'FAIL') {
       setUserValue('');
     }
+  };
+  const onPressSignIn = async () => {
+    const { data } = await axios
+      .post('http://10.0.2.2:5000/api/user/signIn', {
+        name: userValue,
+      })
+      .catch((err) =>
+        Alert.alert(
+          '에러',
+          '인증 과정에서 에러가 발생하였습니다. 고객센터에 문의해주세요.'
+        )
+      );
+    const { message, status } = data;
+    if (status === 'FAIL') {
+      Alert.alert('로그인 실패', message);
+      return;
+    }
+
+    setUser(userValue);
+    setUserValue('');
   };
   return (
     <Container>
