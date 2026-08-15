@@ -1,0 +1,370 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { MemoryRouter, Navigate, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams } from 'react-router-dom'
+import {
+  BarChart3,
+  CalendarDays,
+  Clock3,
+  Dumbbell,
+  Home,
+  Layers3,
+  Menu,
+  MoreHorizontal,
+  Settings2,
+} from 'lucide-react'
+import { Dashboard } from './features/dashboard/Dashboard'
+import { Records } from './features/records/Records'
+import { RoutineManager } from './features/routines/RoutineManager'
+import { WorkoutRunner } from './features/workout/WorkoutRunner'
+import { formatElapsedTime, readStoredWorkoutDraft, workoutDraftStorageKey, type StoredWorkoutDraft } from './features/workout/activeWorkoutDraft'
+import { useAppServices } from './services'
+import type { AuthSession } from './services'
+import './App.css'
+
+type PageId = 'dashboard' | 'workout' | 'routines' | 'records' | 'stats' | 'settings'
+
+const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
+  { id: 'dashboard', label: '대시보드', icon: Home },
+  { id: 'workout', label: '운동 시작', icon: Dumbbell },
+  { id: 'routines', label: '루틴', icon: Layers3 },
+  { id: 'records', label: '기록', icon: CalendarDays },
+  { id: 'stats', label: '통계', icon: BarChart3 },
+  { id: 'settings', label: '설정', icon: Settings2 },
+]
+
+const pagePaths: Record<PageId, string> = {
+  dashboard: '/',
+  workout: '/workout',
+  routines: '/routines',
+  records: '/records',
+  stats: '/stats',
+  settings: '/settings',
+}
+
+function App() {
+  const isInsideRouter = useInRouterContext()
+
+  // App is also rendered directly by the component tests. The production entry
+  // point supplies BrowserRouter, while this fallback keeps the component usable
+  // in isolation without changing the test harness.
+  return isInsideRouter ? <AppShell /> : <MemoryRouter><AppShell /></MemoryRouter>
+}
+
+function AppShell() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { auth } = useAppServices()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false)
+  const [activeWorkoutDraft, setActiveWorkoutDraft] = useState<StoredWorkoutDraft | null>(() => readStoredWorkoutDraft())
+  const [activeWorkoutClock, setActiveWorkoutClock] = useState(Date.now())
+  const [authState, setAuthState] = useState<{ isLoading: boolean; session: AuthSession | null; error: string | null }>({
+    isLoading: true,
+    session: null,
+    error: null,
+  })
+  const moreMenuRef = useRef<HTMLDivElement>(null)
+  const moreMenuButtonRef = useRef<HTMLButtonElement>(null)
+
+  const activePage = getActivePage(location.pathname)
+
+  useEffect(() => {
+    let isMounted = true
+    const applySession = (session: AuthSession | null) => {
+      if (isMounted) setAuthState({ isLoading: false, session, error: null })
+    }
+    const unsubscribe = auth.onAuthStateChange(applySession)
+    void auth.getSession().then(applySession).catch((error: unknown) => {
+      if (isMounted) setAuthState({ isLoading: false, session: null, error: error instanceof Error ? error.message : '로그인 상태를 확인하지 못했어요.' })
+    })
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
+  }, [auth])
+
+  useEffect(() => {
+    if (!isMoreMenuOpen) return
+
+    moreMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!moreMenuRef.current?.contains(event.target as Node)) setIsMoreMenuOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setIsMoreMenuOpen(false)
+      moreMenuButtonRef.current?.focus()
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [isMoreMenuOpen])
+
+  useEffect(() => {
+    if (!activeWorkoutDraft) return
+    const protectDraftOnUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', protectDraftOnUnload)
+    return () => window.removeEventListener('beforeunload', protectDraftOnUnload)
+  }, [activeWorkoutDraft])
+
+  useEffect(() => {
+    const restoreExternalDraft = (event: StorageEvent) => {
+      if (event.key === workoutDraftStorageKey) {
+        setActiveWorkoutDraft(readStoredWorkoutDraft())
+        setActiveWorkoutClock(Date.now())
+      }
+    }
+    window.addEventListener('storage', restoreExternalDraft)
+    return () => window.removeEventListener('storage', restoreExternalDraft)
+  }, [])
+
+  useEffect(() => {
+    if (!activeWorkoutDraft || location.pathname === '/workout') return
+    setActiveWorkoutClock(Date.now())
+    const interval = window.setInterval(() => setActiveWorkoutClock(Date.now()), 1_000)
+    return () => window.clearInterval(interval)
+  }, [activeWorkoutDraft, location.pathname])
+
+  const moveMoreMenuFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+    if (!items.length) return
+    event.preventDefault()
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement)
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? items.length - 1
+        : event.key === 'ArrowUp'
+          ? (currentIndex - 1 + items.length) % items.length
+          : (currentIndex + 1) % items.length
+    items[nextIndex]?.focus()
+  }
+
+  const navigateTo = (to: string) => {
+    if (activePage === 'workout' && to !== pagePaths.workout && activeWorkoutDraft) {
+      const shouldLeave = window.confirm('진행 중인 운동이 있습니다. 초안은 이 기기에 임시 저장되며, 다시 운동 시작 메뉴에서 이어서 할 수 있습니다. 나갈까요?')
+      if (!shouldLeave) return
+    }
+    navigate(to)
+    setIsMobileMenuOpen(false)
+    setIsMoreMenuOpen(false)
+  }
+
+  const selectPage = (page: PageId) => navigateTo(pagePaths[page])
+
+  const handleDraftStateChange = useCallback((draft: StoredWorkoutDraft | null) => {
+    setActiveWorkoutDraft(draft)
+    setActiveWorkoutClock(Date.now())
+  }, [])
+
+  const startGoogleSignIn = async () => {
+    setAuthState((current) => ({ ...current, error: null }))
+    try {
+      await auth.signInWithGoogle({ redirectTo: window.location.href })
+    } catch (error) {
+      setAuthState((current) => ({ ...current, error: error instanceof Error ? error.message : 'Google 로그인을 시작하지 못했어요.' }))
+    }
+  }
+
+  if (authState.isLoading) return <AuthLoading />
+  if (!authState.session) return <SignInGate error={authState.error} onSignIn={() => void startGoogleSignIn()} />
+
+  return (
+    <div className="app-shell">
+      <aside className={`side-nav ${isMobileMenuOpen ? 'is-open' : ''}`} aria-label="주 메뉴">
+        <div className="brand-mark" aria-label="Trainlog 홈">
+          <BrandIcon />
+          <span>trainlog</span>
+        </div>
+        <nav className="side-nav-links">
+          {navigation.slice(0, 5).map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                className={`nav-link ${activePage === item.id ? 'is-active' : ''}`}
+                key={item.id}
+                onClick={() => selectPage(item.id)}
+                type="button"
+              >
+                <Icon size={19} aria-hidden="true" />
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+        <div className="side-nav-footer">
+          <button
+            className={`nav-link ${activePage === 'settings' ? 'is-active' : ''}`}
+            onClick={() => selectPage('settings')}
+            type="button"
+          >
+            <Settings2 size={19} aria-hidden="true" />
+            <span>설정</span>
+          </button>
+        </div>
+      </aside>
+
+      <div className="app-content">
+        <header className="top-bar">
+          <button
+            className="icon-button mobile-menu-button"
+            onClick={() => setIsMobileMenuOpen((isOpen) => !isOpen)}
+            type="button"
+            aria-label="메뉴 열기"
+            aria-expanded={isMobileMenuOpen}
+          >
+            <Menu size={21} aria-hidden="true" />
+          </button>
+          <div className="mobile-brand">trainlog</div>
+          <div className="top-bar-actions">
+            <span className="sync-indicator" title="기기에 안전하게 저장됨">
+              <span aria-hidden="true" /> 저장됨
+            </span>
+            <div className="top-bar-menu" ref={moreMenuRef}>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="더보기 메뉴"
+                aria-haspopup="menu"
+                aria-expanded={isMoreMenuOpen}
+                onClick={() => setIsMoreMenuOpen((isOpen) => !isOpen)}
+                ref={moreMenuButtonRef}
+              >
+                <MoreHorizontal size={20} aria-hidden="true" />
+              </button>
+              {isMoreMenuOpen && (
+                <div className="top-bar-popover" role="menu" aria-label="더보기" onKeyDown={moveMoreMenuFocus}>
+                  <button type="button" role="menuitem" onClick={() => selectPage('stats')}><BarChart3 size={17} aria-hidden="true" /> 통계</button>
+                  <button type="button" role="menuitem" onClick={() => selectPage('settings')}><Settings2 size={17} aria-hidden="true" /> 설정</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <Routes>
+          <Route path="/" element={<Dashboard
+            onStartWorkout={() => navigateTo('/workout')}
+            onViewRecords={() => navigateTo('/records')}
+            onSelectSession={(sessionId) => navigateTo(`/records/${sessionId}`)}
+            onManageRoutines={() => navigateTo('/routines')}
+            onSelectRoutine={(routineId) => navigateTo(`/routines/${routineId}`)}
+          />} />
+          <Route path="/workout" element={<WorkoutRunner
+            onFinish={() => { setActiveWorkoutDraft(null); navigate('/') }}
+            onCancel={() => { setActiveWorkoutDraft(null); navigate('/') }}
+            onDraftStateChange={handleDraftStateChange}
+          />} />
+          <Route path="/routines/:routineId?" element={<RoutineRoute onRoutineChange={(routineId) => navigate(routineId === 'new' ? '/routines/new' : routineId ? `/routines/${routineId}` : '/routines')} />} />
+          <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
+          <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
+          <Route path="/stats" element={<PlaceholderPage page="stats" onGoHome={() => navigateTo('/')} />} />
+          <Route path="/settings" element={<PlaceholderPage page="settings" onGoHome={() => navigateTo('/')} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+
+      {activeWorkoutDraft && location.pathname !== '/workout' && (
+        <button className="active-workout-toast" type="button" onClick={() => navigateTo('/workout')} aria-label="진행 중인 운동 이어서 기록하기">
+          <span className="active-workout-toast-icon"><Dumbbell size={18} aria-hidden="true" /></span>
+          <span className="active-workout-toast-copy"><strong>{activeWorkoutDraft.draft.routineName ?? '자유 운동'} 진행 중</strong><small><Clock3 size={14} aria-hidden="true" /> 운동 시간 {formatElapsedTime(activeWorkoutDraft.draft.startedAt, activeWorkoutClock)}</small></span>
+          <span className="active-workout-toast-action">이어서 하기</span>
+        </button>
+      )}
+
+      <nav className="bottom-nav" aria-label="모바일 주 메뉴">
+        {navigation.slice(0, 4).map((item) => {
+          const Icon = item.icon
+          return (
+            <button
+              className={activePage === item.id ? 'is-active' : ''}
+              key={item.id}
+              onClick={() => selectPage(item.id)}
+              type="button"
+              aria-current={activePage === item.id ? 'page' : undefined}
+            >
+              <Icon size={20} aria-hidden="true" />
+              <span>{item.label === '대시보드' ? '홈' : item.label}</span>
+            </button>
+          )
+        })}
+        <button
+          className={activePage === 'stats' ? 'is-active' : ''}
+          onClick={() => selectPage('stats')}
+          type="button"
+        >
+          <MoreHorizontal size={21} aria-hidden="true" />
+          <span>더보기</span>
+        </button>
+      </nav>
+    </div>
+  )
+}
+
+function AuthLoading() {
+  return <main className="auth-gate" aria-label="로그인 상태를 확인하는 중">
+    <div className="auth-gate-card"><BrandIcon /><p>안전하게 운동 기록을 불러오는 중…</p></div>
+  </main>
+}
+
+function SignInGate({ error, onSignIn }: { error: string | null; onSignIn: () => void }) {
+  return <main className="auth-gate" aria-labelledby="sign-in-title">
+    <section className="auth-gate-card">
+      <BrandIcon />
+      <p className="eyebrow">TRAINLOG</p>
+      <h1 id="sign-in-title">나의 트레이닝을 이어가세요.</h1>
+      <p>Google 계정으로 로그인하면 운동 기록과 RIR 설정을 모든 기기에서 안전하게 관리할 수 있어요.</p>
+      {error && <p className="auth-gate-error" role="alert">{error}</p>}
+      <button className="primary-button auth-google-button" type="button" onClick={onSignIn}>Google로 계속하기</button>
+      <small>개인 운동 기록만 본인 계정에서 볼 수 있습니다.</small>
+    </section>
+  </main>
+}
+
+function BrandIcon() {
+  return <span className="brand-symbol" aria-hidden="true"><img src="/trainlog-icon.png" alt="" /></span>
+}
+
+function RecordRoute({ onSelectSession }: { onSelectSession: (sessionId: string) => void }) {
+  const sessionId = useLocationPathId('/records/')
+  return <Records initialSelectedSessionId={sessionId} onSelectSession={onSelectSession} />
+}
+
+function RoutineRoute({ onRoutineChange }: { onRoutineChange: (routineId: string | 'new' | null) => void }) {
+  const { routineId } = useParams()
+  return <RoutineManager initialSelectedRoutineId={routineId && routineId !== 'new' ? routineId : null} initialCreate={routineId === 'new'} onRoutineChange={onRoutineChange} />
+}
+
+function useLocationPathId(prefix: string) {
+  const { pathname } = useLocation()
+  return decodeURIComponent(pathname.slice(prefix.length)) || null
+}
+
+function PlaceholderPage({ page, onGoHome }: { page: 'stats' | 'settings'; onGoHome: () => void }) {
+  return <section className="placeholder-page" aria-labelledby="placeholder-title">
+    <div className="placeholder-icon"><Dumbbell size={24} aria-hidden="true" /></div>
+    <p className="eyebrow">{navigation.find((item) => item.id === page)?.label}</p>
+    <h1 id="placeholder-title">이 화면을 준비하고 있어요.</h1>
+    <p>대시보드의 기반 데이터는 이미 연결되어 있습니다. 다음 기능에서 이 메뉴를 완성합니다.</p>
+    <button className="secondary-button" type="button" onClick={onGoHome}>대시보드로 돌아가기</button>
+  </section>
+}
+
+function getActivePage(pathname: string): PageId {
+  if (pathname === '/') return 'dashboard'
+  if (pathname.startsWith('/workout')) return 'workout'
+  if (pathname.startsWith('/routines')) return 'routines'
+  if (pathname.startsWith('/records')) return 'records'
+  if (pathname.startsWith('/settings')) return 'settings'
+  return 'stats'
+}
+
+export default App
