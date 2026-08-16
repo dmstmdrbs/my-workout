@@ -509,7 +509,7 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
     }
     const { data, error } = input.id
       ? await this.client.from('body_measurements').update(values).eq('id', input.id).select('*').single()
-      : await this.client.from('body_measurements').insert(values).select('*').single()
+      : await this.client.from('body_measurements').upsert(values, { onConflict: 'user_id,measured_on' }).select('*').single()
     if (error) throw toError(error, '신체 측정을 저장하지 못했어요.')
     return mapMeasurement(data as Row)
   }

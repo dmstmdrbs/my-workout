@@ -54,9 +54,16 @@ export function BodyMeasurements() {
   })
 
   const submit = () => {
-    // The same-day merge below reads measurementsQuery.data; saving while
-    // that list hasn't loaded (or failed to load) would silently create a
-    // duplicate row for today instead of updating the existing one.
+    // The same-day merge below reads measurementsQuery.data to find the
+    // existing row and carry over any fields the user didn't re-enter.
+    // A DB constraint now blocks a second row for the same date, but it
+    // can't fix a stale/missing list on its own: the mock adapter still
+    // only matches on `id`, so without this lookup it would just append a
+    // duplicate row; and for Supabase, saving without `id` now upserts on
+    // (user_id, measured_on), so an untouched field would be silently
+    // overwritten with null on the existing row instead of preserved.
+    // Either way, saving while the list hasn't loaded (or failed to load)
+    // is unsafe, so it stays blocked here.
     if (measurementsQuery.isPending || measurementsQuery.isError) {
       setError('측정 목록을 아직 불러오지 못해 저장할 수 없어요. 잠시 후 다시 시도해 주세요.')
       return
