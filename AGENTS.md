@@ -57,7 +57,14 @@ src/
     settings-flows.test.tsx       UF-12 설정 변경
     signout-flows.test.tsx        UF-12 로그아웃
     body-flows.test.tsx           UF-13 신체 측정 기록
+    theme-session-flows.test.tsx  테마 설정과 세션 복원
+    repository-query-flows.test.ts 저장소 조회 계약과 페이지네이션
+    records-pagination-flows.test.tsx UF-14 기록 화면 페이지네이션
+    workout-runner-resilience.test.tsx 운동 화면 회복력
 supabase/migrations/              스키마, RLS, 기본 운동 카탈로그
+  20260815160127_trainlog_schema.sql
+  20260816090000_atomic_writes.sql 저장소 함수, RPC 트랜잭션
+  20260817000000_body_measurement_unique.sql 신체 측정 unique 제약
 docs/user-flow-test-plan.md       수동/자동 검증 기준
 ```
 
@@ -72,6 +79,8 @@ docs/user-flow-test-plan.md       수동/자동 검증 기준
 7. 공유 카드에는 개인 식별 정보나 비밀값을 넣지 않습니다.
 8. 설정은 `useSettings()`로만 읽습니다. 화면별 쿼리에서 `getSettings()`를 직접 호출하지 않습니다. 설정 저장 후에는 `['user-settings']`를 무효화합니다.
 9. 테마는 `src/lib/theme.ts`의 `applyTheme()`을 통해서만 적용됩니다. 컴포넌트는 DOM에 `data-theme`이나 `color-scheme`을 직접 설정하거나 `trainlog:theme:v1` localStorage 미러를 직접 쓰면 안 됩니다. 데이터베이스가 진실의 원천이며, 미러는 첫 페인트 깜빡임을 방지하기 위해서만 존재하고, `src/main.tsx`가 React 렌더링 전에 미러를 적용합니다.
+10. 여러 테이블을 함께 바꾸는 저장은 Postgres 함수(RPC)로 한 트랜잭션에 담습니다. 어댑터에서 DELETE 후 INSERT를 나눠 호출하지 않습니다. 함수는 `security invoker`로 정의하고 함수 안에서도 `auth.uid()` 소유권을 검증합니다.
+11. 세션 목록은 필요한 범위만 조회합니다. `listSessions`를 옵션 없이 호출해 전체를 받지 않습니다. 목록은 커서(`startedBefore`), 기간 집계는 `startedAfter`, 단건 참조는 전용 조회(`getLastCompletedSetForExercise`)를 씁니다.
 
 ## 라우팅과 UX
 
