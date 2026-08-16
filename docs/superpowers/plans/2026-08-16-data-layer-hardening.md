@@ -163,19 +163,21 @@ Expected: FAIL — `getLastCompletedSetForExercise is not a function`, 그리고
 
 ```ts
   async listSessions(options: { status?: WorkoutSession['status']; limit?: number; startedBefore?: string; startedAfter?: string } = {}) {
+    const at = (value: string) => new Date(value).getTime()
     let sessions = clone(this.requireStore().sessions)
-      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+      .sort((a, b) => at(b.startedAt) - at(a.startedAt))
     if (options.status) sessions = sessions.filter((session) => session.status === options.status)
-    if (options.startedBefore) sessions = sessions.filter((session) => session.startedAt < options.startedBefore!)
-    if (options.startedAfter) sessions = sessions.filter((session) => session.startedAt >= options.startedAfter!)
+    if (options.startedBefore) sessions = sessions.filter((session) => at(session.startedAt) < at(options.startedBefore!))
+    if (options.startedAfter) sessions = sessions.filter((session) => at(session.startedAt) >= at(options.startedAfter!))
     if (options.limit !== undefined) sessions = sessions.slice(0, options.limit)
     return sessions
   }
 
   async getLastCompletedSetForExercise(exerciseId: Id) {
+    const at = (value: string) => new Date(value).getTime()
     const sessions = clone(this.requireStore().sessions)
       .filter((session) => session.status === 'completed')
-      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+      .sort((a, b) => at(b.startedAt) - at(a.startedAt))
     for (const session of sessions) {
       const exercise = session.exercises.find((item) => item.exerciseId === exerciseId)
       const set = exercise?.sets.filter((item) => item.isCompleted).at(-1)
@@ -185,7 +187,9 @@ Expected: FAIL — `getLastCompletedSetForExercise is not a function`, 그리고
   }
 ```
 
-**ISO 문자열 비교에 주의:** `startedAt`은 ISO 8601이라 사전순 비교가 시간순 비교와 일치한다. 단 오프셋 표기가 섞이면 깨지므로, 저장 시 항상 `toISOString()`(UTC, `Z` 접미사)을 쓰는 현재 관례를 유지한다.
+**문자열 비교를 쓰지 말 것.** 시드 데이터의 `startedAt`은 `'2026-08-14T10:05:00.000+09:00'`처럼 오프셋 표기를 쓰는 반면, 앱이 만드는 값은 `toISOString()`이라 `Z` 접미사를 쓴다. 두 표기가 섞여 있으므로 `localeCompare`나 `<` 문자열 비교는 같은 시각을 다르게 판정한다. 반드시 `new Date(...).getTime()`으로 비교한다.
+
+기존 `localStorageServices.ts`의 `listBodyMeasurements`가 `measuredOn.localeCompare`를 쓰는데, 그쪽은 `YYYY-MM-DD` 날짜 문자열이라 안전하다. 혼동하지 말 것.
 
 - [ ] **Step 6: Supabase 구현**
 
@@ -489,7 +493,13 @@ RLS를 그대로 적용하고 함수 안에서도 소유권을 검증한다."
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-Create `src/test/records-pagination-flows.test.tsx`. mock 시드 세션이 몇 개인지 먼저 확인하고(`src/services/mock/seed.ts`), 페이지 크기를 시드 개수보다 작게 잡아 두 페이지 이상 나오도록 테스트를 구성한다. 시드가 부족하면 테스트 안에서 `saveSession`으로 세션을 추가해 만든다.
+Create `src/test/records-pagination-flows.test.tsx`.
+
+**mock 시드에는 완료 세션이 3개뿐이다** (`src/services/mock/seed.ts`의 `mockSessions`). 페이지 크기 20으로는 한 페이지에 다 들어가 페이지네이션이 발동하지 않는다. 따라서 테스트는 세션을 추가로 만들어야 한다.
+
+`Records.tsx`에서 페이지 크기를 `export const recordsPageSize = 20`으로 내보내고, 테스트가 그 값을 import해 `recordsPageSize + 1`개가 되도록 `saveSession`으로 세션을 채운다(시드 3개를 감안해 필요한 만큼만). 숫자를 테스트에 하드코딩하면 페이지 크기를 바꿀 때 조용히 무의미해진다.
+
+세션을 만들 때 `startedAt`은 서로 다른 시각이어야 커서가 동작한다. 인덱스별로 하루씩 뒤로 물리는 식으로 만들고, `status: 'completed'`와 `completedAt`을 함께 채운다(도메인 규칙상 완료 세션은 `completedAt`이 있어야 한다).
 
 검증할 것:
 - 처음에는 페이지 크기만큼만 목록에 렌더된다
