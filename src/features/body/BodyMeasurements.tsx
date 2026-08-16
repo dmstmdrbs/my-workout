@@ -53,17 +53,9 @@ export function BodyMeasurements() {
     onError: () => setError('측정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.'),
   })
 
-  const submit = () => {
-    // The same-day merge below reads measurementsQuery.data to find the
-    // existing row and carry over any fields the user didn't re-enter.
-    // A DB constraint now blocks a second row for the same date, but it
-    // can't fix a stale/missing list on its own: the mock adapter still
-    // only matches on `id`, so without this lookup it would just append a
-    // duplicate row; and for Supabase, saving without `id` now upserts on
-    // (user_id, measured_on), so an untouched field would be silently
-    // overwritten with null on the existing row instead of preserved.
-    // Either way, saving while the list hasn't loaded (or failed to load)
-    // is unsafe, so it stays blocked here.
+  const submit = async () => {
+    // This guard covers "list absent": saving while the list hasn't loaded
+    // (or failed to load) at all is unsafe, so it stays blocked here.
     if (measurementsQuery.isPending || measurementsQuery.isError) {
       setError('측정 목록을 아직 불러오지 못해 저장할 수 없어요. 잠시 후 다시 시도해 주세요.')
       return
@@ -78,8 +70,28 @@ export function BodyMeasurements() {
       return
     }
 
+    // This covers "list stale": measurementsQuery.data is only as fresh as
+    // this tab's last fetch. With refetchOnWindowFocus disabled, a `/body`
+    // tab left open while another device saves today's row would otherwise
+    // merge against a cache that still lacks that row, and every field the
+    // user didn't retype would go out as null -- overwriting (Supabase
+    // upsert) or duplicating (mock, matches only by id) the real stored
+    // values. Fetching fresh at submit time, not render time, closes that
+    // window.
+    let latestMeasurements
+    try {
+      latestMeasurements = await queryClient.fetchQuery({
+        queryKey: bodyMeasurementsQueryKey,
+        queryFn: () => workoutRepository.listBodyMeasurements(),
+        staleTime: 0,
+      })
+    } catch {
+      setError('측정 목록을 다시 확인하지 못해 저장할 수 없어요. 잠시 후 다시 시도해 주세요.')
+      return
+    }
+
     // Same-day entries update the existing row instead of stacking duplicates.
-    const existing = measurementsQuery.data?.find((item) => item.measuredOn === form.measuredOn)
+    const existing = latestMeasurements.find((item) => item.measuredOn === form.measuredOn)
     const notes = form.notes.trim()
 
     saveMutation.mutate({
@@ -131,7 +143,7 @@ export function BodyMeasurements() {
         <button
           className="primary-button body-save-button"
           type="button"
-          onClick={submit}
+          onClick={() => void submit()}
           disabled={saveMutation.isPending || measurementsQuery.isPending || measurementsQuery.isError}
         >
           <Plus size={17} aria-hidden="true" /> {saveMutation.isPending ? '저장 중…' : '저장'}
