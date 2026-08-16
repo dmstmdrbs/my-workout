@@ -471,14 +471,31 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
     if (error) throw toError(error, '루틴을 삭제하지 못했어요.')
   }
 
-  async listSessions(options: { limit?: number; status?: WorkoutSession['status'] } = {}) {
+  async listSessions(options: { status?: WorkoutSession['status']; limit?: number; startedBefore?: string; startedAfter?: string } = {}) {
     await this.requireUser()
     let query = this.client.from('workout_sessions').select('*, workout_exercises(*, exercises(name, primary_muscle), workout_set_records(*))').order('started_at', { ascending: false })
     if (options.status) query = query.eq('status', options.status)
+    if (options.startedBefore) query = query.lt('started_at', options.startedBefore)
+    if (options.startedAfter) query = query.gte('started_at', options.startedAfter)
     if (options.limit !== undefined) query = query.limit(options.limit)
     const { data, error } = await query
     if (error) throw toError(error, '운동 기록을 불러오지 못했어요.')
     return asRows(data).map(mapWorkoutSession)
+  }
+
+  async getLastCompletedSetForExercise(exerciseId: Id) {
+    await this.requireUser()
+    const { data, error } = await this.client
+      .from('workout_set_records')
+      .select('*, workout_exercises!inner(exercise_id, session_id, workout_sessions!inner(started_at, status))')
+      .eq('workout_exercises.exercise_id', exerciseId)
+      .eq('workout_exercises.workout_sessions.status', 'completed')
+      .eq('is_completed', true)
+      .order('completed_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) throw toError(error, '지난 기록을 불러오지 못했어요.')
+    return data ? mapWorkoutSet(data as Row) : null
   }
 
   async getSession(id: Id) {

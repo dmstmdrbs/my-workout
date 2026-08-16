@@ -136,12 +136,29 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
   }
   async deleteRoutine(id: Id) { updateStore((store) => { store.routines = store.routines.filter((item) => item.id !== id) }) }
 
-  async listSessions(options: { limit?: number; status?: WorkoutSession['status'] } = {}) {
-    let sessions = this.requireStore().sessions.filter((item) => !options.status || item.status === options.status).sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+  async listSessions(options: { status?: WorkoutSession['status']; limit?: number; startedBefore?: string; startedAfter?: string } = {}) {
+    const at = (value: string) => new Date(value).getTime()
+    let sessions = clone(this.requireStore().sessions)
+      .sort((a, b) => at(b.startedAt) - at(a.startedAt))
+    if (options.status) sessions = sessions.filter((session) => session.status === options.status)
+    if (options.startedBefore) sessions = sessions.filter((session) => at(session.startedAt) < at(options.startedBefore!))
+    if (options.startedAfter) sessions = sessions.filter((session) => at(session.startedAt) >= at(options.startedAfter!))
     if (options.limit !== undefined) sessions = sessions.slice(0, options.limit)
-    return clone(sessions)
+    return sessions
   }
   async getSession(id: Id) { return clone(this.requireStore().sessions.find((item) => item.id === id) ?? null) }
+  async getLastCompletedSetForExercise(exerciseId: Id) {
+    const at = (value: string) => new Date(value).getTime()
+    const sessions = clone(this.requireStore().sessions)
+      .filter((session) => session.status === 'completed')
+      .sort((a, b) => at(b.startedAt) - at(a.startedAt))
+    for (const session of sessions) {
+      const exercise = session.exercises.find((item) => item.exerciseId === exerciseId)
+      const set = exercise?.sets.filter((item) => item.isCompleted).at(-1)
+      if (set) return set
+    }
+    return null
+  }
   async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }) {
     const store = this.requireStore(); const existing = input.id ? store.sessions.find((item) => item.id === input.id) : undefined; const timestamp = now()
     const saved: WorkoutSession = { ...input, id: input.id ?? newId(), userId: store.profile.id, createdAt: existing?.createdAt ?? timestamp, updatedAt: timestamp }
