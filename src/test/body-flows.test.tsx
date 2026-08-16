@@ -96,8 +96,11 @@ describe.sequential('UF-13: 신체 측정 기록', () => {
     await user.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => {
-      const today = new Date().toISOString().slice(0, 10)
-      const record = readMeasurements().find((item: { measuredOn: string }) => item.measuredOn === today)
+      // Read the date from the form to account for timezone differences.
+      // The form uses local date, not UTC, so we read what the UI actually chose.
+      const dateInput = screen.getByLabelText('측정일') as HTMLInputElement
+      const measuredDate = dateInput.value
+      const record = readMeasurements().find((item: { measuredOn: string }) => item.measuredOn === measuredDate)
       expect(record?.bodyFatPercentage).toBe(14.2)
     })
     expect(readMeasurements()).toHaveLength(before + 1)
