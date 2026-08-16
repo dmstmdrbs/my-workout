@@ -9,8 +9,10 @@ import {
   Layers3,
   Menu,
   MoreHorizontal,
+  Scale,
   Settings2,
 } from 'lucide-react'
+import { BodyMeasurements } from './features/body/BodyMeasurements'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { Records } from './features/records/Records'
 import { RoutineManager } from './features/routines/RoutineManager'
@@ -21,7 +23,7 @@ import { useAppServices } from './services'
 import type { AuthSession } from './services'
 import './App.css'
 
-type PageId = 'dashboard' | 'workout' | 'routines' | 'records' | 'stats' | 'settings'
+type PageId = 'dashboard' | 'workout' | 'routines' | 'records' | 'stats' | 'body' | 'settings'
 
 const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'dashboard', label: '대시보드', icon: Home },
@@ -29,6 +31,7 @@ const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'routines', label: '루틴', icon: Layers3 },
   { id: 'records', label: '기록', icon: CalendarDays },
   { id: 'stats', label: '통계', icon: BarChart3 },
+  { id: 'body', label: '신체 기록', icon: Scale },
   { id: 'settings', label: '설정', icon: Settings2 },
 ]
 
@@ -38,7 +41,20 @@ const pagePaths: Record<PageId, string> = {
   routines: '/routines',
   records: '/records',
   stats: '/stats',
+  body: '/body',
   settings: '/settings',
+}
+
+// Explicit placement: slicing the navigation array silently reshuffles menus
+// whenever an entry is inserted.
+const sideNavPages: PageId[] = ['dashboard', 'workout', 'routines', 'records', 'stats', 'body']
+const bottomNavPages: PageId[] = ['dashboard', 'workout', 'routines', 'records']
+const moreMenuPages: PageId[] = ['stats', 'body', 'settings']
+
+function navItem(id: PageId) {
+  const item = navigation.find((entry) => entry.id === id)
+  if (!item) throw new Error(`Unknown navigation page: ${id}`)
+  return item
 }
 
 function App() {
@@ -186,7 +202,8 @@ function AppShell() {
           <span>trainlog</span>
         </div>
         <nav className="side-nav-links">
-          {navigation.slice(0, 5).map((item) => {
+          {sideNavPages.map((id) => {
+            const item = navItem(id)
             const Icon = item.icon
             return (
               <button
@@ -243,8 +260,15 @@ function AppShell() {
               </button>
               {isMoreMenuOpen && (
                 <div className="top-bar-popover" role="menu" aria-label="더보기" onKeyDown={moveMoreMenuFocus}>
-                  <button type="button" role="menuitem" onClick={() => selectPage('stats')}><BarChart3 size={17} aria-hidden="true" /> 통계</button>
-                  <button type="button" role="menuitem" onClick={() => selectPage('settings')}><Settings2 size={17} aria-hidden="true" /> 설정</button>
+                  {moreMenuPages.map((id) => {
+                    const item = navItem(id)
+                    const Icon = item.icon
+                    return (
+                      <button type="button" role="menuitem" key={id} onClick={() => selectPage(id)}>
+                        <Icon size={17} aria-hidden="true" /> {item.label}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -268,6 +292,7 @@ function AppShell() {
           <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
           <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
           <Route path="/stats" element={<PlaceholderPage page="stats" onGoHome={() => navigateTo('/')} />} />
+          <Route path="/body" element={<BodyMeasurements />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -282,7 +307,8 @@ function AppShell() {
       )}
 
       <nav className="bottom-nav" aria-label="모바일 주 메뉴">
-        {navigation.slice(0, 4).map((item) => {
+        {bottomNavPages.map((id) => {
+          const item = navItem(id)
           const Icon = item.icon
           return (
             <button
@@ -298,9 +324,11 @@ function AppShell() {
           )
         })}
         <button
-          className={activePage === 'stats' ? 'is-active' : ''}
-          onClick={() => selectPage('stats')}
+          className={moreMenuPages.includes(activePage) ? 'is-active' : ''}
+          onClick={() => setIsMoreMenuOpen((isOpen) => !isOpen)}
           type="button"
+          aria-haspopup="menu"
+          aria-expanded={isMoreMenuOpen}
         >
           <MoreHorizontal size={21} aria-hidden="true" />
           <span>더보기</span>
@@ -365,6 +393,7 @@ function getActivePage(pathname: string): PageId {
   if (pathname.startsWith('/routines')) return 'routines'
   if (pathname.startsWith('/records')) return 'records'
   if (pathname.startsWith('/settings')) return 'settings'
+  if (pathname.startsWith('/body')) return 'body'
   return 'stats'
 }
 
