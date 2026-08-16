@@ -47,8 +47,11 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
 
   // Direct address entry (e.g. /records/:sessionId) can name a session that
   // isn't among the loaded pages yet. Fall back to a single-session lookup;
-  // a match already present in the loaded list always wins.
+  // a match already present in the loaded list always wins. This is gated on
+  // page 1 having actually resolved (`recordsQuery.data`) so the common case
+  // -- the target is already on page 1 -- never fires the fallback query.
   const sessionMissingFromList = Boolean(initialSelectedSessionId)
+    && Boolean(recordsQuery.data)
     && !sessions.some((session) => session.id === initialSelectedSessionId)
 
   const directSessionQuery = useQuery({
@@ -152,9 +155,25 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
   }
 
   if (recordsQuery.isPending || settingsQuery.isPending || (sessionMissingFromList && directSessionQuery.isPending)) return <RecordsLoading />
-  if (recordsQuery.isError || !recordsQuery.data || settingsQuery.isError || !settingsQuery.data) {
+
+  // A failure loading page 1 (no data at all yet) has nothing to show and
+  // legitimately owns the whole screen. A failure fetching a *later* page
+  // (recordsQuery.data already holds the pages fetched so far) must not wipe
+  // out an already-working list/detail/share layout -- that is handled
+  // further down as an inline status near the load-more sentinel instead.
+  const initialLoadFailed = recordsQuery.isError && !recordsQuery.data
+  if (initialLoadFailed || !recordsQuery.data || settingsQuery.isError || !settingsQuery.data) {
     return <RecordsError onRetry={() => { void recordsQuery.refetch(); void settingsQuery.refetch() }} />
   }
+
+  // The fallback single-session lookup failing must never be papered over by
+  // silently falling back to some other session -- that would show the user
+  // a workout they didn't ask for with no indication anything went wrong.
+  if (sessionMissingFromList && directSessionQuery.isError) {
+    return <RecordsError onRetry={() => { void directSessionQuery.refetch() }} />
+  }
+
+  const nextPageFailed = recordsQuery.isError && Boolean(recordsQuery.data)
 
   return (
     <main className="records-page">
@@ -184,10 +203,17 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
                   <span>{completedSetCount(session)}세트 · {formatDuration(session)}</span>
                 </button>
               ))}
-              <div className="records-list-status" ref={loadMoreRef} role="status">
-                {recordsQuery.isFetchingNextPage
-                  ? '불러오는 중…'
-                  : !recordsQuery.hasNextPage && '모든 기록을 불러왔어요.'}
+              <div className="records-list-status" ref={loadMoreRef}>
+                {nextPageFailed ? (
+                  <span role="alert">
+                    다음 페이지를 불러오지 못했어요.
+                    <button type="button" className="records-status-retry" onClick={() => void recordsQuery.fetchNextPage()}>다시 시도</button>
+                  </span>
+                ) : recordsQuery.isFetchingNextPage ? (
+                  <span role="status">불러오는 중…</span>
+                ) : !recordsQuery.hasNextPage ? (
+                  <span role="status">모든 기록을 불러왔어요.</span>
+                ) : null}
               </div>
             </div>
           </aside>
