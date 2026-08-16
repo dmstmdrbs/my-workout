@@ -3,7 +3,7 @@ import type { Ref } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
 import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
-import { useAppServices } from '../../services'
+import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import './Records.css'
 
@@ -15,12 +15,11 @@ const maxShareCardPixels = 32_000_000
 
 interface RecordsData {
   sessions: WorkoutSession[]
-  weightUnit: string
-  shareRirByDefault: boolean
 }
 
 export function Records({ initialSelectedSessionId = null, onSelectSession }: { initialSelectedSessionId?: string | null; onSelectSession?: (sessionId: string) => void }) {
   const { workoutRepository } = useAppServices()
+  const settingsQuery = useSettings()
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedSessionId)
   const [includeRir, setIncludeRir] = useState(true)
   const [exportState, setExportState] = useState<ExportState>('idle')
@@ -30,11 +29,8 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
   const recordsQuery = useQuery({
     queryKey: ['completed-workout-records'],
     queryFn: async (): Promise<RecordsData> => {
-      const [sessions, settings] = await Promise.all([
-        workoutRepository.listSessions({ status: 'completed' }),
-        workoutRepository.getSettings(),
-      ])
-      return { sessions, weightUnit: settings.weightUnit, shareRirByDefault: settings.shareRirByDefault }
+      const sessions = await workoutRepository.listSessions({ status: 'completed' })
+      return { sessions }
     },
   })
 
@@ -45,8 +41,8 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
   )
 
   useEffect(() => {
-    if (recordsQuery.data) setIncludeRir(recordsQuery.data.shareRirByDefault)
-  }, [recordsQuery.data])
+    if (settingsQuery.data) setIncludeRir(settingsQuery.data.shareRirByDefault)
+  }, [settingsQuery.data])
 
   useEffect(() => {
     setSelectedId(initialSelectedSessionId)
@@ -117,8 +113,10 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
     }
   }
 
-  if (recordsQuery.isPending) return <RecordsLoading />
-  if (recordsQuery.isError || !recordsQuery.data) return <RecordsError onRetry={() => void recordsQuery.refetch()} />
+  if (recordsQuery.isPending || settingsQuery.isPending) return <RecordsLoading />
+  if (recordsQuery.isError || !recordsQuery.data || settingsQuery.isError || !settingsQuery.data) {
+    return <RecordsError onRetry={() => { void recordsQuery.refetch(); void settingsQuery.refetch() }} />
+  }
 
   return (
     <main className="records-page">
@@ -158,7 +156,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
                 <h2 id="record-detail-title">{selectedSession.routineName ?? '자유 운동'}</h2>
                 <p>{formatDuration(selectedSession)} · {selectedSession.exercises.length}개 종목 · 완료 {completedSetCount(selectedSession)}세트</p>
               </div>
-              <div className="record-volume"><span>총 볼륨</span><strong>{formatNumber(getSessionVolume(selectedSession))} <small>{recordsQuery.data.weightUnit}</small></strong></div>
+              <div className="record-volume"><span>총 볼륨</span><strong>{formatNumber(getSessionVolume(selectedSession))} <small>{settingsQuery.data.weightUnit}</small></strong></div>
             </header>
 
             <div className="record-exercises" aria-label="운동 상세">
@@ -169,7 +167,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
                   <article className="record-exercise" key={exercise.id}>
                     <header><div><span className="muscle-label">{muscleLabel(exercise.primaryMuscle)}</span><h3>{exercise.exerciseName}</h3></div><span>{completed.length}세트</span></header>
                     <div className="completed-set-list">
-                      {completed.map((set) => <CompletedSetRow key={set.id} set={set} weightUnit={recordsQuery.data.weightUnit} />)}
+                      {completed.map((set) => <CompletedSetRow key={set.id} set={set} weightUnit={settingsQuery.data.weightUnit} />)}
                     </div>
                   </article>
                 )
@@ -186,7 +184,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
               <span className="toggle-visual" aria-hidden="true" />
             </label>
 
-            <WorkoutShareCard session={selectedSession} weightUnit={recordsQuery.data.weightUnit} includeRir={includeRir} />
+            <WorkoutShareCard session={selectedSession} weightUnit={settingsQuery.data.weightUnit} includeRir={includeRir} />
 
             <div className="share-actions">
               <button className="primary-button" type="button" onClick={() => void shareCard()} disabled={exportState === 'exporting' || exportState === 'sharing'}>
@@ -202,7 +200,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
       )}
       {selectedSession && (
         <div className="share-card-export-target" aria-hidden="true">
-          <WorkoutShareCard ref={shareCardRef} session={selectedSession} weightUnit={recordsQuery.data.weightUnit} includeRir={includeRir} />
+          <WorkoutShareCard ref={shareCardRef} session={selectedSession} weightUnit={settingsQuery.data.weightUnit} includeRir={includeRir} />
         </div>
       )}
     </main>

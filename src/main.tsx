@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { AppServicesProvider } from './services'
+import { applyTheme, readMirroredTheme } from './lib/theme'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,6 +16,10 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// Paint the user's theme before React renders; the database value replaces
+// this once settings load.
+applyTheme(readMirroredTheme())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

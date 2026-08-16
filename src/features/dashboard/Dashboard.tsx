@@ -13,7 +13,7 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react'
-import { useAppServices } from '../../services'
+import { useAppServices, useSettings } from '../../services'
 import type { Routine, WorkoutSession } from '../../types/domain'
 import './Dashboard.css'
 
@@ -29,36 +29,35 @@ interface DashboardData {
   profile: { displayName: string; avatarUrl: string | null }
   routines: Routine[]
   sessions: WorkoutSession[]
-  weightUnit: string
 }
 
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
 
 export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine }: DashboardProps) {
   const { workoutRepository } = useAppServices()
+  const settingsQuery = useSettings()
   const dashboardQuery = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: async (): Promise<DashboardData> => {
-      const [profile, routines, sessions, settings] = await Promise.all([
+      const [profile, routines, sessions] = await Promise.all([
         workoutRepository.getProfile(),
         workoutRepository.listRoutines(),
         workoutRepository.listSessions({ status: 'completed' }),
-        workoutRepository.getSettings(),
       ])
-      return { profile, routines, sessions, weightUnit: settings.weightUnit }
+      return { profile, routines, sessions }
     },
   })
 
-  if (dashboardQuery.isPending) return <DashboardLoading />
-  if (dashboardQuery.isError || !dashboardQuery.data) {
-    return <DashboardError onRetry={() => void dashboardQuery.refetch()} />
+  if (dashboardQuery.isPending || settingsQuery.isPending) return <DashboardLoading />
+  if (dashboardQuery.isError || !dashboardQuery.data || settingsQuery.isError || !settingsQuery.data) {
+    return <DashboardError onRetry={() => { void dashboardQuery.refetch(); void settingsQuery.refetch() }} />
   }
 
-  const { profile, routines, sessions, weightUnit } = dashboardQuery.data
-  return <DashboardContent profile={profile} routines={routines} sessions={sessions} weightUnit={weightUnit} onStartWorkout={onStartWorkout} onViewRecords={onViewRecords} onSelectSession={onSelectSession} onManageRoutines={onManageRoutines} onSelectRoutine={onSelectRoutine} />
+  const { profile, routines, sessions } = dashboardQuery.data
+  return <DashboardContent profile={profile} routines={routines} sessions={sessions} weightUnit={settingsQuery.data.weightUnit} onStartWorkout={onStartWorkout} onViewRecords={onViewRecords} onSelectSession={onSelectSession} onManageRoutines={onManageRoutines} onSelectRoutine={onSelectRoutine} />
 }
 
-function DashboardContent({ profile, routines, sessions, weightUnit, onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine }: DashboardData & DashboardProps) {
+function DashboardContent({ profile, routines, sessions, weightUnit, onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine }: DashboardData & DashboardProps & { weightUnit: string }) {
   const overview = useMemo(() => getOverview(sessions), [sessions])
   const nextRoutine = routines[0]
   const firstName = profile.displayName.split(' ').at(-1) || profile.displayName

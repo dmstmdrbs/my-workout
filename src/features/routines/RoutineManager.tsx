@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus, LoaderCircle, Plus, Save, SlidersHorizontal, Trash2 } from 'lucide-react'
-import { useAppServices } from '../../services'
+import { useAppServices, useSettings } from '../../services'
 import type { Exercise, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
 import './RoutineManager.css'
 
 interface RoutineManagerData {
   routines: Routine[]
   exercises: Exercise[]
-  defaultRestSeconds: number
 }
 
 type RoutineDraft = Omit<Routine, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: string }
@@ -33,6 +32,7 @@ const setTypeLabels: Record<SetType, string> = { warmup: '워밍업', working: '
 export function RoutineManager({ initialSelectedRoutineId = null, initialCreate = false, onRoutineChange }: { initialSelectedRoutineId?: string | null; initialCreate?: boolean; onRoutineChange?: (routineId: string | 'new' | null) => void }) {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
+  const settingsQuery = useSettings()
   const [draft, setDraft] = useState<RoutineDraft | null>(null)
   const [lastSavedDraft, setLastSavedDraft] = useState<RoutineDraft | null>(null)
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false)
@@ -43,12 +43,11 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
   const setupQuery = useQuery({
     queryKey: ['routine-manager-data'],
     queryFn: async (): Promise<RoutineManagerData> => {
-      const [routines, exercises, settings] = await Promise.all([
+      const [routines, exercises] = await Promise.all([
         workoutRepository.listRoutines(),
         workoutRepository.listExercises(),
-        workoutRepository.getSettings(),
       ])
-      return { routines, exercises, defaultRestSeconds: settings.defaultRestSeconds }
+      return { routines, exercises }
     },
   })
 
@@ -130,10 +129,13 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
 
   const updateDraft = (changes: Partial<RoutineDraft>) => setDraft((current) => current ? { ...current, ...changes } : current)
 
-  if (setupQuery.isPending) return <RoutineManagerLoading />
-  if (setupQuery.isError || !setupQuery.data) return <RoutineManagerError onRetry={() => void setupQuery.refetch()} />
+  if (setupQuery.isPending || settingsQuery.isPending) return <RoutineManagerLoading />
+  if (setupQuery.isError || !setupQuery.data || settingsQuery.isError || !settingsQuery.data) {
+    return <RoutineManagerError onRetry={() => { void setupQuery.refetch(); void settingsQuery.refetch() }} />
+  }
 
-  const { routines, exercises, defaultRestSeconds } = setupQuery.data
+  const { routines, exercises } = setupQuery.data
+  const { defaultRestSeconds } = settingsQuery.data
   const selectedRoutineId = draft?.id ?? null
 
   return (

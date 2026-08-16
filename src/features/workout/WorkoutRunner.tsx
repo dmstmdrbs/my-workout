@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useAppServices } from '../../services'
+import { useAppServices, useSettings } from '../../services'
 import type { Exercise, Routine, Rir, SetType, WorkoutExercise, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
@@ -36,9 +36,6 @@ interface WorkoutSetupData {
   routines: Routine[]
   exercises: Exercise[]
   previousSessions: WorkoutSession[]
-  weightUnit: string
-  defaultRestSeconds: number
-  defaultRir: Rir
 }
 
 const rirChoices: Array<{ value: number; label: string }> = [
@@ -53,6 +50,7 @@ const rirChoices: Array<{ value: number; label: string }> = [
 export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: WorkoutRunnerProps) {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
+  const settingsQuery = useSettings()
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null)
   const [restoredDraft] = useState<StoredWorkoutDraft | null>(() => readStoredWorkoutDraft())
   const [draft, setDraft] = useState<WorkoutDraft | null>(restoredDraft?.draft ?? null)
@@ -67,20 +65,12 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   const setupQuery = useQuery({
     queryKey: ['workout-runner-setup'],
     queryFn: async (): Promise<WorkoutSetupData> => {
-      const [routines, exercises, previousSessions, settings] = await Promise.all([
+      const [routines, exercises, previousSessions] = await Promise.all([
         workoutRepository.listRoutines(),
         workoutRepository.listExercises(),
         workoutRepository.listSessions({ status: 'completed' }),
-        workoutRepository.getSettings(),
       ])
-      return {
-        routines,
-        exercises,
-        previousSessions,
-        weightUnit: settings.weightUnit,
-        defaultRestSeconds: settings.defaultRestSeconds,
-        defaultRir: settings.defaultRir,
-      }
+      return { routines, exercises, previousSessions }
     },
   })
 
@@ -122,10 +112,13 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     },
   })
 
-  if (setupQuery.isPending) return <RunnerLoading />
-  if (setupQuery.isError || !setupQuery.data) return <RunnerError onRetry={() => void setupQuery.refetch()} onCancel={onCancel} />
+  if (setupQuery.isPending || settingsQuery.isPending) return <RunnerLoading />
+  if (setupQuery.isError || !setupQuery.data || settingsQuery.isError || !settingsQuery.data) {
+    return <RunnerError onRetry={() => { void setupQuery.refetch(); void settingsQuery.refetch() }} onCancel={onCancel} />
+  }
 
-  const { routines, exercises, previousSessions, weightUnit, defaultRestSeconds, defaultRir } = setupQuery.data
+  const { routines, exercises, previousSessions } = setupQuery.data
+  const { weightUnit, defaultRestSeconds, defaultRir } = settingsQuery.data
   const selectedRoutine = routines.find((routine) => routine.id === selectedRoutineId) ?? routines[0]
   const activeExercise = draft?.exercises.find((exercise) => exercise.id === activeExerciseId) ?? draft?.exercises[0] ?? null
   const activeIndex = activeExercise ? draft?.exercises.findIndex((exercise) => exercise.id === activeExercise.id) ?? 0 : 0
