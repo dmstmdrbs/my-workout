@@ -8,10 +8,11 @@ import { useAppServices } from './useAppServices'
  */
 export const userSettingsQueryKey = ['user-settings'] as const
 
-export function useSettings() {
+export function useSettings(options: { enabled?: boolean } = {}) {
   const { workoutRepository } = useAppServices()
   return useQuery({
     queryKey: userSettingsQueryKey,
     queryFn: () => workoutRepository.getSettings(),
+    enabled: options.enabled ?? true,
   })
 }

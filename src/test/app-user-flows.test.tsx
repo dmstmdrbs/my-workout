@@ -368,4 +368,23 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await screen.findByRole('heading', { name: '운동 기록' })
     expect(screen.getAllByText('자유 운동').length).toBeGreaterThan(0)
   })
+
+  test('하단 내비게이션의 더보기 버튼으로 팝오버를 열고 닫을 수 있다', async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByRole('heading', { name: /좋은 하루예요/ })
+    // The bottom-nav button (accessible name "더보기") is a distinct element
+    // from the top-bar button (accessible name "더보기 메뉴"); the popover it
+    // opens is anchored in the top bar, outside this button's own DOM subtree.
+    const bottomMoreButton = screen.getByRole('button', { name: '더보기' })
+
+    await user.click(bottomMoreButton)
+    await screen.findByRole('menu', { name: '더보기' })
+
+    // Pressing the same button again must close the menu it opened, not
+    // leave it stuck open (pointerdown-closes-then-click-reopens regression).
+    await user.click(bottomMoreButton)
+    await waitFor(() => expect(screen.queryByRole('menu', { name: '더보기' })).toBeNull())
+  })
 })

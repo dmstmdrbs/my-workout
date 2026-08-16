@@ -19,8 +19,9 @@ import { RoutineManager } from './features/routines/RoutineManager'
 import { Settings } from './features/settings/Settings'
 import { WorkoutRunner } from './features/workout/WorkoutRunner'
 import { formatElapsedTime, readStoredWorkoutDraft, workoutDraftStorageKey, type StoredWorkoutDraft } from './features/workout/activeWorkoutDraft'
-import { useAppServices } from './services'
+import { useAppServices, useSettings } from './services'
 import type { AuthSession } from './services'
+import { applyTheme } from './lib/theme'
 import './App.css'
 
 type PageId = 'dashboard' | 'workout' | 'routines' | 'records' | 'stats' | 'body' | 'settings'
@@ -81,8 +82,22 @@ function AppShell() {
   })
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const moreMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const moreMenuBottomButtonRef = useRef<HTMLButtonElement>(null)
 
   const activePage = getActivePage(location.pathname)
+
+  // Settings (and the theme they carry) are only meaningful once signed in;
+  // `enabled` keeps this from firing failing requests against the mock/
+  // Supabase repository while signed out.
+  const settingsQuery = useSettings({ enabled: Boolean(authState.session) })
+
+  // The database is the source of truth for theme (AGENTS rule 9). The
+  // localStorage mirror only prevents a first-paint flash; this effect is
+  // what actually reconciles the painted theme with the DB value once
+  // settings load or change, on every device and every account.
+  useEffect(() => {
+    if (settingsQuery.data) applyTheme(settingsQuery.data.theme)
+  }, [settingsQuery.data])
 
   useEffect(() => {
     let isMounted = true
@@ -105,7 +120,14 @@ function AppShell() {
     moreMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
 
     const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!moreMenuRef.current?.contains(event.target as Node)) setIsMoreMenuOpen(false)
+      const target = event.target as Node
+      // The bottom-nav toggle button lives outside moreMenuRef (the popover
+      // is anchored in the top bar). Without this exclusion, pressing it
+      // while open fires pointerdown (closes) then click (reopens), so the
+      // menu can never be closed from its own toggle button.
+      if (moreMenuRef.current?.contains(target)) return
+      if (moreMenuBottomButtonRef.current?.contains(target)) return
+      setIsMoreMenuOpen(false)
     }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
@@ -329,6 +351,7 @@ function AppShell() {
           type="button"
           aria-haspopup="menu"
           aria-expanded={isMoreMenuOpen}
+          ref={moreMenuBottomButtonRef}
         >
           <MoreHorizontal size={21} aria-hidden="true" />
           <span>더보기</span>

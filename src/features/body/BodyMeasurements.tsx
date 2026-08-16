@@ -47,12 +47,21 @@ export function BodyMeasurements() {
       workoutRepository.saveBodyMeasurement(input),
     onSuccess: () => {
       setError(null)
+      setForm(emptyForm())
       void queryClient.invalidateQueries({ queryKey: bodyMeasurementsQueryKey })
     },
     onError: () => setError('측정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.'),
   })
 
   const submit = () => {
+    // The same-day merge below reads measurementsQuery.data; saving while
+    // that list hasn't loaded (or failed to load) would silently create a
+    // duplicate row for today instead of updating the existing one.
+    if (measurementsQuery.isPending || measurementsQuery.isError) {
+      setError('측정 목록을 아직 불러오지 못해 저장할 수 없어요. 잠시 후 다시 시도해 주세요.')
+      return
+    }
+
     const weightKg = toNullableNumber(form.weightKg)
     const skeletalMuscleMassKg = toNullableNumber(form.skeletalMuscleMassKg)
     const bodyFatPercentage = toNullableNumber(form.bodyFatPercentage)
@@ -112,9 +121,21 @@ export function BodyMeasurements() {
             <input aria-label="메모" type="text" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
           </label>
         </div>
-        <button className="primary-button body-save-button" type="button" onClick={submit} disabled={saveMutation.isPending}>
+        <button
+          className="primary-button body-save-button"
+          type="button"
+          onClick={submit}
+          disabled={saveMutation.isPending || measurementsQuery.isPending || measurementsQuery.isError}
+        >
           <Plus size={17} aria-hidden="true" /> {saveMutation.isPending ? '저장 중…' : '저장'}
         </button>
+        {(measurementsQuery.isPending || measurementsQuery.isError) && (
+          <p className="body-hint">
+            {measurementsQuery.isError
+              ? '기존 기록을 불러오지 못해 지금은 저장할 수 없어요. 아래에서 다시 시도해 주세요.'
+              : '기존 기록을 불러오는 중이에요. 잠시 후 저장할 수 있어요.'}
+          </p>
+        )}
       </section>
 
       <section className="body-card" aria-labelledby="body-list-title">

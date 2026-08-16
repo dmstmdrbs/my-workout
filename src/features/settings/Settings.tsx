@@ -180,6 +180,10 @@ function SignOutSection() {
     try {
       await auth.signOut()
       clearStoredWorkoutDraft()
+      // The theme mirror is a device-level localStorage key, so it survives
+      // sign-out on shared devices. Without this, the next account to sign
+      // in inherits the previous account's theme until it happens to change it.
+      applyTheme('system')
       queryClient.clear()
     } catch {
       setError('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
