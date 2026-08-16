@@ -421,48 +421,14 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
   }
 
   async saveRoutine(input: Omit<Routine, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }) {
-    const user = await this.requireUser()
-    const now = new Date().toISOString()
-    const values = { ...(input.id ? { id: input.id } : {}), user_id: user.id, name: input.name, description: input.description, color: input.color, updated_at: now }
-    const { data: saved, error } = input.id
-      ? await this.client.from('routines').update(values).eq('id', input.id).select('*').single()
-      : await this.client.from('routines').insert(values).select('*').single()
+    await this.requireUser()
+    const { data, error } = await this.client.rpc('save_routine', { payload: input })
     if (error) throw toError(error, '루틴을 저장하지 못했어요.')
-    const savedRoutine = saved as Row
-    const routineId = stringValue(savedRoutine, 'id')
-    const { error: clearError } = await this.client.from('routine_exercises').delete().eq('routine_id', routineId).eq('user_id', user.id)
-    if (clearError) throw toError(clearError, '기존 루틴 구성을 정리하지 못했어요.')
-    await this.insertRoutineExercises(routineId, user.id, input.exercises)
+    const routineId = typeof data === 'string' ? data : ''
+    if (!routineId) throw new Error('루틴을 저장하지 못했어요.')
     const routine = await this.getRoutine(routineId)
     if (!routine) throw new Error('저장한 루틴을 다시 불러오지 못했어요.')
     return routine
-  }
-
-  private async insertRoutineExercises(routineId: Id, userId: Id, exercises: RoutineExercise[]) {
-    if (!exercises.length) return
-    const { data: savedExercises, error } = await this.client.from('routine_exercises').insert(exercises.map((exercise) => ({
-      routine_id: routineId,
-      user_id: userId,
-      exercise_id: exercise.exerciseId,
-      exercise_order: exercise.exerciseOrder,
-      notes: exercise.notes,
-    }))).select('*')
-    if (error) throw toError(error, '루틴 운동을 저장하지 못했어요.')
-    const idByOrder = new Map(asRows(savedExercises).map((item) => [numberValue(item, 'exercise_order'), stringValue(item, 'id')]))
-    const sets = exercises.flatMap((exercise) => exercise.sets.map((set) => ({
-      routine_exercise_id: idByOrder.get(exercise.exerciseOrder),
-      user_id: userId,
-      set_order: set.setOrder,
-      set_type: set.setType,
-      target_weight_kg: set.targetWeightKg,
-      target_reps_min: set.targetRepsMin,
-      target_reps_max: set.targetRepsMax,
-      target_rir: set.targetRir,
-      rest_seconds: set.restSeconds,
-    })))
-    if (!sets.length) return
-    const { error: setError } = await this.client.from('routine_set_prescriptions').insert(sets)
-    if (setError) throw toError(setError, '루틴 세트를 저장하지 못했어요.')
   }
 
   async deleteRoutine(id: Id) {
@@ -506,62 +472,14 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
   }
 
   async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }) {
-    const user = await this.requireUser()
-    const values = {
-      ...(input.id ? { id: input.id } : {}),
-      user_id: user.id,
-      routine_id: input.routineId,
-      routine_name: input.routineName,
-      status: input.status,
-      started_at: input.startedAt,
-      completed_at: input.completedAt,
-      notes: input.notes,
-      updated_at: new Date().toISOString(),
-    }
-    const { data: saved, error } = input.id
-      ? await this.client.from('workout_sessions').update(values).eq('id', input.id).select('*').single()
-      : await this.client.from('workout_sessions').insert(values).select('*').single()
+    await this.requireUser()
+    const { data, error } = await this.client.rpc('save_workout_session', { payload: input })
     if (error) throw toError(error, '운동 기록을 저장하지 못했어요.')
-    const savedSession = saved as Row
-    const sessionId = stringValue(savedSession, 'id')
-    const { error: clearError } = await this.client.from('workout_exercises').delete().eq('session_id', sessionId).eq('user_id', user.id)
-    if (clearError) throw toError(clearError, '기존 운동 세트를 정리하지 못했어요.')
-    await this.insertWorkoutExercises(sessionId, user.id, input.exercises)
+    const sessionId = typeof data === 'string' ? data : ''
+    if (!sessionId) throw new Error('운동 기록을 저장하지 못했어요.')
     const session = await this.getSession(sessionId)
     if (!session) throw new Error('저장한 운동 기록을 다시 불러오지 못했어요.')
     return session
-  }
-
-  private async insertWorkoutExercises(sessionId: Id, userId: Id, exercises: WorkoutExercise[]) {
-    if (!exercises.length) return
-    const { data: savedExercises, error } = await this.client.from('workout_exercises').insert(exercises.map((exercise) => ({
-      session_id: sessionId,
-      user_id: userId,
-      exercise_id: exercise.exerciseId,
-      exercise_name: exercise.exerciseName,
-      primary_muscle: exercise.primaryMuscle,
-      exercise_order: exercise.exerciseOrder,
-      notes: exercise.notes,
-    }))).select('*')
-    if (error) throw toError(error, '운동 종목을 저장하지 못했어요.')
-    const idByOrder = new Map(asRows(savedExercises).map((item) => [numberValue(item, 'exercise_order'), stringValue(item, 'id')]))
-    const sets = exercises.flatMap((exercise) => exercise.sets.map((set) => ({
-      workout_exercise_id: idByOrder.get(exercise.exerciseOrder),
-      user_id: userId,
-      set_order: set.setOrder,
-      set_type: set.setType,
-      weight_kg: set.weightKg,
-      reps: set.reps,
-      target_rir: set.targetRir,
-      actual_rir: set.actualRir,
-      rest_seconds: set.restSeconds,
-      is_completed: set.isCompleted,
-      completed_at: set.completedAt,
-      notes: set.notes,
-    })))
-    if (!sets.length) return
-    const { error: setError } = await this.client.from('workout_set_records').insert(sets)
-    if (setError) throw toError(setError, '운동 세트를 저장하지 못했어요.')
   }
 
   async deleteSession(id: Id) {
