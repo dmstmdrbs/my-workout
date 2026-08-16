@@ -28,7 +28,17 @@ interface DashboardProps {
 interface DashboardData {
   profile: { displayName: string; avatarUrl: string | null }
   routines: Routine[]
-  sessions: WorkoutSession[]
+  weekSessions: WorkoutSession[]
+  recentSessions: WorkoutSession[]
+}
+
+function weekStartIso() {
+  const today = new Date()
+  const day = (today.getDay() + 6) % 7
+  const monday = new Date(today)
+  monday.setHours(0, 0, 0, 0)
+  monday.setDate(monday.getDate() - day)
+  return monday.toISOString()
 }
 
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
@@ -39,12 +49,13 @@ export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onMa
   const dashboardQuery = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: async (): Promise<DashboardData> => {
-      const [profile, routines, sessions] = await Promise.all([
+      const [profile, routines, weekSessions, recentSessions] = await Promise.all([
         workoutRepository.getProfile(),
         workoutRepository.listRoutines(),
-        workoutRepository.listSessions({ status: 'completed' }),
+        workoutRepository.listSessions({ status: 'completed', startedAfter: weekStartIso() }),
+        workoutRepository.listSessions({ status: 'completed', limit: 4 }),
       ])
-      return { profile, routines, sessions }
+      return { profile, routines, weekSessions, recentSessions }
     },
   })
 
@@ -53,12 +64,12 @@ export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onMa
     return <DashboardError onRetry={() => { void dashboardQuery.refetch(); void settingsQuery.refetch() }} />
   }
 
-  const { profile, routines, sessions } = dashboardQuery.data
-  return <DashboardContent profile={profile} routines={routines} sessions={sessions} weightUnit={settingsQuery.data.weightUnit} onStartWorkout={onStartWorkout} onViewRecords={onViewRecords} onSelectSession={onSelectSession} onManageRoutines={onManageRoutines} onSelectRoutine={onSelectRoutine} />
+  const { profile, routines, weekSessions, recentSessions } = dashboardQuery.data
+  return <DashboardContent profile={profile} routines={routines} weekSessions={weekSessions} recentSessions={recentSessions} weightUnit={settingsQuery.data.weightUnit} onStartWorkout={onStartWorkout} onViewRecords={onViewRecords} onSelectSession={onSelectSession} onManageRoutines={onManageRoutines} onSelectRoutine={onSelectRoutine} />
 }
 
-function DashboardContent({ profile, routines, sessions, weightUnit, onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine }: DashboardData & DashboardProps & { weightUnit: string }) {
-  const overview = useMemo(() => getOverview(sessions), [sessions])
+function DashboardContent({ profile, routines, weekSessions, recentSessions, weightUnit, onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine }: DashboardData & DashboardProps & { weightUnit: string }) {
+  const overview = useMemo(() => getOverview(weekSessions), [weekSessions])
   const nextRoutine = routines[0]
   const firstName = profile.displayName.split(' ').at(-1) || profile.displayName
 
@@ -105,7 +116,7 @@ function DashboardContent({ profile, routines, sessions, weightUnit, onStartWork
       <section className="dashboard-sections">
         <article className="dashboard-card recent-card">
           <div className="section-heading"><div><p className="card-kicker">RECENT</p><h2>최근 운동 기록</h2></div><button className="text-button" type="button" onClick={onViewRecords}>전체 보기 <ChevronRight size={16} /></button></div>
-          {sessions.length === 0 ? <EmptyState text="완료한 운동이 아직 없어요. 첫 기록을 시작해 보세요." /> : <div className="session-list">{sessions.slice(0, 4).map((session) => <SessionRow session={session} key={session.id} weightUnit={weightUnit} onSelect={() => onSelectSession(session.id)} />)}</div>}
+          {recentSessions.length === 0 ? <EmptyState text="완료한 운동이 아직 없어요. 첫 기록을 시작해 보세요." /> : <div className="session-list">{recentSessions.map((session) => <SessionRow session={session} key={session.id} weightUnit={weightUnit} onSelect={() => onSelectSession(session.id)} />)}</div>}
         </article>
 
         <article className="dashboard-card routine-card">
@@ -138,16 +149,12 @@ function EmptyState({ text }: { text: string }) { return <div className="empty-s
 function DashboardLoading() { return <main className="dashboard-page" aria-label="대시보드 불러오는 중"><section className="dashboard-heading skeleton-heading"><div className="skeleton-line small" /><div className="skeleton-line title" /><div className="skeleton-line paragraph" /></section><section className="primary-grid"><div className="skeleton-card large" /><div className="skeleton-card large" /></section><section className="metric-grid">{[1, 2, 3, 4].map((item) => <div className="skeleton-card metric" key={item} />)}</section></main> }
 function DashboardError({ onRetry }: { onRetry: () => void }) { return <main className="dashboard-page dashboard-message"><div className="message-icon"><RefreshCw size={22} /></div><p className="eyebrow">CONNECTION ISSUE</p><h1>대시보드를 불러오지 못했어요.</h1><p>잠시 후 다시 시도해 주세요. 기록은 기기에 안전하게 남아 있습니다.</p><button className="primary-button" type="button" onClick={onRetry}><RefreshCw size={16} /> 다시 시도</button></main> }
 
-function getOverview(sessions: WorkoutSession[]) {
-  const today = new Date()
-  const day = (today.getDay() + 6) % 7
-  const monday = new Date(today); monday.setHours(0, 0, 0, 0); monday.setDate(monday.getDate() - day)
-  const weekly = sessions.filter((session) => new Date(session.startedAt) >= monday)
+function getOverview(weekSessions: WorkoutSession[]) {
   const dailyVolume = Array.from({ length: 7 }, () => 0)
-  weekly.forEach((session) => { const weekday = (new Date(session.startedAt).getDay() + 6) % 7; dailyVolume[weekday] += getSessionVolume(session) })
-  const allSets = weekly.flatMap((session) => session.exercises.flatMap((exercise) => exercise.sets)).filter((set) => set.isCompleted)
+  weekSessions.forEach((session) => { const weekday = (new Date(session.startedAt).getDay() + 6) % 7; dailyVolume[weekday] += getSessionVolume(session) })
+  const allSets = weekSessions.flatMap((session) => session.exercises.flatMap((exercise) => exercise.sets)).filter((set) => set.isCompleted)
   const rirs = allSets.flatMap((set) => set.actualRir === null ? [] : [set.actualRir])
-  return { daysTrained: weekly.length, volume: weekly.reduce((sum, session) => sum + getSessionVolume(session), 0), completedSets: allSets.length, averageRir: rirs.length ? rirs.reduce((sum, rir) => sum + rir, 0) / rirs.length : null, totalMinutes: weekly.reduce((sum, session) => sum + getSessionDuration(session), 0), dailyVolume, maxDailyVolume: Math.max(...dailyVolume, 1) }
+  return { daysTrained: weekSessions.length, volume: weekSessions.reduce((sum, session) => sum + getSessionVolume(session), 0), completedSets: allSets.length, averageRir: rirs.length ? rirs.reduce((sum, rir) => sum + rir, 0) / rirs.length : null, totalMinutes: weekSessions.reduce((sum, session) => sum + getSessionDuration(session), 0), dailyVolume, maxDailyVolume: Math.max(...dailyVolume, 1) }
 }
 
 function getSessionVolume(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).reduce((sum, set) => sum + (set.weightKg ?? 0) * (set.reps ?? 0), 0) }
