@@ -130,9 +130,17 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(sessionRows.length).toBeGreaterThan(1)
     const recentSession = sessionRows.at(-1)!
     expect(recentSession.tagName).toBe('BUTTON')
+    // Derive the expectation from the row itself (routine name + month/day) rather than a
+    // hardcoded date, so an ordering bug that opens the wrong session is actually caught.
+    const recentSessionRoutine = recentSession.querySelector('strong')?.textContent
+    const recentSessionDate = recentSession.textContent?.match(/\d+월\s*\d+일/)?.[0]
+    expect(recentSessionRoutine).toBeTruthy()
+    expect(recentSessionDate).toBeTruthy()
     await user.click(recentSession)
     await screen.findByRole('heading', { name: '운동 기록' })
-    expect(document.querySelector('.record-detail-heading .eyebrow')?.textContent).toContain('2026년 8월 14일')
+    const openedHeading = document.querySelector('.record-detail-heading')
+    expect(openedHeading?.querySelector('h2')?.textContent).toBe(recentSessionRoutine)
+    expect(openedHeading?.querySelector('.eyebrow')?.textContent).toContain(recentSessionDate)
 
     await user.click(sideNavButton('대시보드'))
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
