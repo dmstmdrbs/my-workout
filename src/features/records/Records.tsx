@@ -166,11 +166,15 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
     return <RecordsError onRetry={() => { void recordsQuery.refetch(); void settingsQuery.refetch() }} />
   }
 
-  // The fallback single-session lookup failing must never be papered over by
-  // silently falling back to some other session -- that would show the user
-  // a workout they didn't ask for with no indication anything went wrong.
-  if (sessionMissingFromList && directSessionQuery.isError) {
-    return <RecordsError onRetry={() => { void directSessionQuery.refetch() }} />
+  // The fallback single-session lookup failing -- or resolving with `null`,
+  // which happens for an unknown/mistyped/deleted session id and is far more
+  // likely than a rejection -- must never be papered over by silently
+  // falling back to some other session. That would show the user a workout
+  // they didn't ask for with no indication anything went wrong.
+  if (sessionMissingFromList && (directSessionQuery.isError || directSessionQuery.data === null)) {
+    return directSessionQuery.data === null
+      ? <RecordsNotFound />
+      : <RecordsError onRetry={() => { void directSessionQuery.refetch() }} />
   }
 
   const nextPageFailed = recordsQuery.isError && Boolean(recordsQuery.data)
@@ -203,18 +207,26 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
                   <span>{completedSetCount(session)}세트 · {formatDuration(session)}</span>
                 </button>
               ))}
-              <div className="records-list-status" ref={loadMoreRef}>
-                {nextPageFailed ? (
-                  <span role="alert">
-                    다음 페이지를 불러오지 못했어요.
-                    <button type="button" className="records-status-retry" onClick={() => void recordsQuery.fetchNextPage()}>다시 시도</button>
-                  </span>
-                ) : recordsQuery.isFetchingNextPage ? (
-                  <span role="status">불러오는 중…</span>
-                ) : !recordsQuery.hasNextPage ? (
-                  <span role="status">모든 기록을 불러왔어요.</span>
-                ) : null}
+              {/* This div must pre-exist so `aria-live` is registered before its
+                  content changes -- a live region mounted together with its
+                  text is not reliably announced. It also carries loadMoreRef,
+                  so it stays mounted across every page fetch regardless of
+                  status text. The failure branch is a separate sibling with
+                  role="alert" so an alert is never nested inside a status
+                  region. */}
+              <div className="records-list-status" ref={loadMoreRef} aria-live="polite">
+                {!nextPageFailed && (recordsQuery.isFetchingNextPage
+                  ? '불러오는 중…'
+                  : !recordsQuery.hasNextPage
+                    ? '모든 기록을 불러왔어요.'
+                    : null)}
               </div>
+              {nextPageFailed && (
+                <div className="records-list-status" role="alert">
+                  다음 페이지를 불러오지 못했어요.
+                  <button type="button" className="records-status-retry" onClick={() => void recordsQuery.fetchNextPage()}>다시 시도</button>
+                </div>
+              )}
             </div>
           </aside>
 
@@ -302,6 +314,7 @@ function CompletedSetRow({ set, weightUnit }: { set: WorkoutSetRecord; weightUni
 
 function RecordsLoading() { return <main className="records-page" aria-label="운동 기록 불러오는 중"><section className="records-heading skeleton-heading"><div className="skeleton-line small" /><div className="skeleton-line title" /></section><section className="records-skeleton-grid"><div className="skeleton-card records-list-skeleton" /><div className="skeleton-card records-detail-skeleton" /><div className="skeleton-card records-share-skeleton" /></section></main> }
 function RecordsError({ onRetry }: { onRetry: () => void }) { return <main className="records-page records-message"><div className="message-icon"><RefreshCw size={22} /></div><p className="eyebrow">CONNECTION ISSUE</p><h1>운동 기록을 불러오지 못했어요.</h1><p>잠시 후 다시 시도해 주세요.</p><button className="primary-button" type="button" onClick={onRetry}><RefreshCw size={16} /> 다시 시도</button></main> }
+function RecordsNotFound() { return <main className="records-page records-message"><div className="message-icon"><ImageDown size={22} /></div><p className="eyebrow">NOT FOUND</p><h1>기록을 찾을 수 없어요.</h1><p>주소가 잘못되었거나 삭제된 기록일 수 있어요.</p></main> }
 function RecordsEmpty() { return <section className="records-empty"><ImageDown size={23} aria-hidden="true" /><h2>아직 완료한 운동이 없어요.</h2><p>운동을 완료하면 이곳에서 세부 기록을 보고 공유 카드도 만들 수 있어요.</p></section> }
 
 function getSessionVolume(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).reduce((sum, set) => sum + (set.weightKg ?? 0) * (set.reps ?? 0), 0) }

@@ -149,6 +149,27 @@ describe.sequential('기록 화면 무한 스크롤', () => {
     await waitFor(() => expect(getSessionSpy).toHaveBeenCalledTimes(2))
   })
 
+  test('단건 조회 폴백이 null로 응답하면(알 수 없는/삭제된 세션 id) 다른 세션을 대신 보여주지 않고 "찾을 수 없음" 화면을 표시한다', async () => {
+    const sessionNotOnFirstPage = extraSessionIds.at(-1)
+    expect(sessionNotOnFirstPage).toBeTruthy()
+
+    const services = createLocalStorageServices()
+    // A resolved `null` -- not a rejection -- is what actually happens for
+    // an unknown/mistyped/deleted session id, and is far more likely than a
+    // network failure. It must not be treated as "no error" and fall
+    // through to showing sessions[0].
+    const getSessionSpy = vi.fn<WorkoutRepository['getSession']>(() => Promise.resolve(null))
+    services.workoutRepository.getSession = getSessionSpy
+
+    renderAppWithServices(services, `/records/${sessionNotOnFirstPage}`)
+
+    await screen.findByRole('heading', { name: '기록을 찾을 수 없어요.' })
+    // Must not silently fall back to rendering some other session's detail.
+    expect(screen.queryByRole('heading', { name: '운동 기록' })).toBeNull()
+    expect(document.querySelector('.record-detail-heading')).toBeNull()
+    expect(getSessionSpy).toHaveBeenCalledTimes(1)
+  })
+
   test('다음 페이지 조회가 실패해도 이미 불러온 목록은 그대로 유지되고, 감시 요소 옆에 인라인 오류와 다시 시도가 뜬다', async () => {
     const services = createLocalStorageServices()
     const originalListSessions = services.workoutRepository.listSessions.bind(services.workoutRepository)
