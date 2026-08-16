@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
 import { useAppServices, useSettings, userSettingsQueryKey } from '../../services'
 import { applyTheme } from '../../lib/theme'
-import type { Theme, UserSettings } from '../../types/domain'
+import type { Theme, UserProfile, UserSettings } from '../../types/domain'
 import './Settings.css'
 
 const themeChoices: Array<{ value: Theme; label: string; icon: typeof Sun }> = [
@@ -26,10 +26,13 @@ export function Settings() {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
   const settingsQuery = useSettings()
-  // Profile is also fetched here (not only inside ProfileSection) so the whole
-  // screen waits for both queries before painting. Otherwise the display-name
-  // input would mount empty and get its value replaced out from under the
-  // user mid-keystroke once ProfileSection's own query resolves a beat later.
+  // Profile is fetched once here, at the top level, and passed down to
+  // ProfileSection as a prop rather than re-queried there. That keeps a
+  // single source of truth for the query (no risk of the two declarations
+  // drifting in `select`/`enabled`/`staleTime`), and it lets the whole screen
+  // wait for both queries before painting — otherwise the display-name input
+  // would mount empty and get its value replaced out from under the user
+  // mid-keystroke once a second, independent query resolved a beat later.
   const profileQuery = useQuery({
     queryKey: ['user-profile'],
     queryFn: () => workoutRepository.getProfile(),
@@ -64,7 +67,7 @@ export function Settings() {
 
       {error && <p className="settings-error" role="alert">{error}</p>}
 
-      <ProfileSection onError={setError} />
+      <ProfileSection profile={profileQuery.data} onError={setError} />
 
       <section className="settings-card" aria-labelledby="settings-theme-title">
         <div className="settings-card-heading">
@@ -154,20 +157,16 @@ function RestSecondsField({ value, onCommit }: { value: number; onCommit: (secon
   )
 }
 
-function ProfileSection({ onError }: { onError: (message: string | null) => void }) {
+function ProfileSection({ profile, onError }: { profile: UserProfile | undefined; onError: (message: string | null) => void }) {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
-  const profileQuery = useQuery({
-    queryKey: ['user-profile'],
-    queryFn: () => workoutRepository.getProfile(),
-  })
   const [draft, setDraft] = useState('')
 
-  useEffect(() => { if (profileQuery.data) setDraft(profileQuery.data.displayName) }, [profileQuery.data])
+  useEffect(() => { if (profile) setDraft(profile.displayName) }, [profile])
 
   const profileMutation = useMutation({
     mutationFn: (displayName: string) =>
-      workoutRepository.updateProfile({ displayName, avatarUrl: profileQuery.data?.avatarUrl ?? null }),
+      workoutRepository.updateProfile({ displayName, avatarUrl: profile?.avatarUrl ?? null }),
     onMutate: () => onError(null),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['user-profile'] })
@@ -178,8 +177,8 @@ function ProfileSection({ onError }: { onError: (message: string | null) => void
 
   const commit = () => {
     const name = draft.trim()
-    if (!name || name === profileQuery.data?.displayName) {
-      setDraft(profileQuery.data?.displayName ?? '')
+    if (!name || name === profile?.displayName) {
+      setDraft(profile?.displayName ?? '')
       return
     }
     profileMutation.mutate(name)

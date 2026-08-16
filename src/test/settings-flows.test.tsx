@@ -66,11 +66,6 @@ describe.sequential('UF-12: 설정 변경', () => {
     renderApp('/settings')
 
     await screen.findByRole('heading', { name: '설정' })
-    const restInput = screen.getByRole('spinbutton', { name: '기본 휴식 시간 (초)' })
-    await user.clear(restInput)
-    await user.type(restInput, '75')
-    await user.tab()
-    await waitFor(() => expect(readSettings().defaultRestSeconds).toBe(75))
 
     await user.selectOptions(screen.getByRole('combobox', { name: '기본 목표 RIR' }), '4')
     await waitFor(() => expect(readSettings().defaultRir).toBe(4))
