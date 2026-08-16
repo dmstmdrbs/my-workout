@@ -49,9 +49,9 @@ export interface WorkoutRepository {
   listSessions(options?: {
     status?: WorkoutSession['status']
     limit?: number
-    /** 이 시각보다 이전에 시작한 세션만. 페이지네이션 커서로 쓴다. */
+    /** 이 시각보다 이전(`<`)에 시작한 세션만. 페이지네이션 커서로 쓴다. 경계값 자체는 제외된다. */
     startedBefore?: IsoDateTime
-    /** 이 시각 이후에 시작한 세션만. 기간 집계에 쓴다. */
+    /** 이 시각 이후(`>=`)에 시작한 세션만. 기간 집계에 쓴다. 경계값 자체도 포함된다. */
     startedAfter?: IsoDateTime
   }): Promise<WorkoutSession[]>
   getSession(id: Id): Promise<WorkoutSession | null>
