@@ -59,7 +59,7 @@ order by 중복수 desc;
 
 결과가 비어 있으면 지워질 것이 없으니 그대로 적용하시면 됩니다. 행이 나오면 각 그룹에서 `updated_at`이 가장 최근인 것만 남고 나머지가 삭제됩니다.
 
-신체 측정을 쓰신 적이 없다면 이 마이그레이션은 건너뛰셔도 됩니다 — **1-A만으로 저장 버그는 해결됩니다.**
+**1-A와 마찬가지로 이 마이그레이션도 반드시 적용해야 합니다.** 신체 측정 저장 코드(`saveBodyMeasurement`의 `id` 없는 경로)가 이제 `on conflict (user_id, measured_on)`으로 upsert를 겁니다. 이 제약이 DB에 없으면 Postgres가 `42P10 - there is no unique or exclusion constraint matching the ON CONFLICT specification` 오류를 내고, 그날 첫 신체 측정 저장이 재시도해도 계속 실패합니다. 신체 측정을 쓰신 적이 없어도 이 마이그레이션은 안전하게 적용됩니다 — 지울 중복 행이 없으면 DELETE는 아무 일도 하지 않는 no-op이고, 제약 추가 자체에는 비용이 들지 않습니다.
 
 ---
 
@@ -98,6 +98,7 @@ npx vercel deploy --prod --yes
 6. 같은 날짜로 신체 측정을 두 번 저장했을 때 행이 하나로 유지되는지.
 7. 모바일에서 하단 "더보기"를 눌러 메뉴가 **화면 하단에** 뜨는지. (스크롤한 상태에서도)
 8. 다른 기기에서 테마를 바꾸고 이 기기에서 열었을 때 그 테마로 뜨는지.
+9. 지난 기록이 있는 종목을 운동에 추가해 "지난 기록" 패널에 숫자가 뜨는지 확인하세요. 이 조회(`getLastCompletedSetForExercise`)는 실제 DB에서 실행된 적이 없고, 실패해도 조용히 삼켜져 "기록 없음"으로 보입니다 — 기록이 있는데도 "기록 없음"이 뜬다면 이 조회가 깨진 것입니다.
 
 ---
 
@@ -108,5 +109,7 @@ npx vercel deploy --prod --yes
 **`PGRST116 / The result contains 0 rows`가 그대로 보이면** — 1단계 없이 2단계만 나간 상태입니다. 마이그레이션을 적용하세요.
 
 **신체 측정 저장에서 unique 위반 오류가 나면** — 1-B는 적용됐는데 프론트엔드가 옛 버전인 경우입니다. 2단계를 진행하세요.
+
+**신체 측정 저장이 계속 실패하고 콘솔에 `42P10` 또는 "there is no unique or exclusion constraint matching the ON CONFLICT specification"이 보이면** — 1-B가 적용되지 않은 것입니다. 1단계로 돌아가 적용하세요.
 
 되돌리려면 Vercel 대시보드에서 이전 배포로 롤백하시면 됩니다. 마이그레이션은 되돌릴 필요가 없습니다 — 1-A는 함수 추가라 옛 프론트엔드와 공존하고, 1-B의 제약은 옛 코드도 위반하지 않습니다.
