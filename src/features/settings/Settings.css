@@ -84,3 +84,11 @@
 @media (max-width: 640px) {
   .settings-page { padding-bottom: 132px; }
 }
+
+.settings-danger { border-color: color-mix(in srgb, var(--danger) 32%, var(--border)); }
+
+.settings-signout-button {
+  align-self: flex-start;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 42%, transparent);
+}

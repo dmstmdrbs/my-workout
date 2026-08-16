@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
+import { LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
 import { useAppServices, useSettings, userSettingsQueryKey } from '../../services'
 import { applyTheme } from '../../lib/theme'
+import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../workout/activeWorkoutDraft'
 import type { Theme, UserProfile, UserSettings } from '../../types/domain'
 import './Settings.css'
 
@@ -116,6 +117,8 @@ export function Settings() {
           </select>
         </label>
       </section>
+
+      <SignOutSection />
     </main>
   )
 }
@@ -154,6 +157,46 @@ function RestSecondsField({ value, onCommit }: { value: number; onCommit: (secon
         onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
       />
     </label>
+  )
+}
+
+/**
+ * The workout draft lives in localStorage, so it survives sign-out. Leaving it
+ * behind would surface one account's in-progress workout to the next person who
+ * signs in on this device.
+ */
+function SignOutSection() {
+  const { auth } = useAppServices()
+  const queryClient = useQueryClient()
+  const [error, setError] = useState<string | null>(null)
+
+  const signOut = async () => {
+    const draft = readStoredWorkoutDraft()
+    const message = draft
+      ? '로그아웃할까요? 진행 중인 운동 초안이 이 기기에서 삭제됩니다.'
+      : '로그아웃할까요?'
+    if (!window.confirm(message)) return
+
+    try {
+      await auth.signOut()
+      clearStoredWorkoutDraft()
+      queryClient.clear()
+    } catch {
+      setError('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
+    }
+  }
+
+  return (
+    <section className="settings-card settings-danger" aria-labelledby="settings-account-title">
+      <div className="settings-card-heading">
+        <span className="settings-icon"><LogOut size={18} aria-hidden="true" /></span>
+        <div><h2 id="settings-account-title">계정</h2><p>이 기기에서 로그아웃합니다. 기록은 계정에 그대로 남습니다.</p></div>
+      </div>
+      {error && <p className="settings-error" role="alert">{error}</p>}
+      <button className="secondary-button settings-signout-button" type="button" onClick={() => void signOut()}>
+        <LogOut size={16} aria-hidden="true" /> 로그아웃
+      </button>
+    </section>
   )
 }
 
