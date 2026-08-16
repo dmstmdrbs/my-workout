@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import type { Ref } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
 import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
 import { useAppServices, useSettings } from '../../services'
@@ -13,9 +13,10 @@ const emptySessions: WorkoutSession[] = []
 const shareCardExportWidth = 720
 const maxShareCardPixels = 32_000_000
 
-interface RecordsData {
-  sessions: WorkoutSession[]
-}
+// Cursor-paginated page size for the records list. Exported so tests can
+// derive how many sessions they need to seed rather than hardcoding a
+// number that would silently go stale if this changes.
+export const recordsPageSize = 20
 
 export function Records({ initialSelectedSessionId = null, onSelectSession }: { initialSelectedSessionId?: string | null; onSelectSession?: (sessionId: string) => void }) {
   const { workoutRepository } = useAppServices()
@@ -25,20 +26,57 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
   const [exportState, setExportState] = useState<ExportState>('idle')
   const [exportMessage, setExportMessage] = useState('')
   const shareCardRef = useRef<HTMLElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const recordsQuery = useQuery({
+  const recordsQuery = useInfiniteQuery({
     queryKey: ['completed-workout-records'],
-    queryFn: async (): Promise<RecordsData> => {
-      const sessions = await workoutRepository.listSessions({ status: 'completed' })
-      return { sessions }
-    },
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => workoutRepository.listSessions({
+      status: 'completed',
+      limit: recordsPageSize,
+      startedBefore: pageParam,
+    }),
+    getNextPageParam: (lastPage) =>
+      lastPage.length < recordsPageSize ? undefined : lastPage.at(-1)?.startedAt,
   })
 
-  const sessions = recordsQuery.data?.sessions ?? emptySessions
-  const selectedSession = useMemo(
-    () => sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null,
-    [selectedId, sessions],
+  const sessions = useMemo(
+    () => recordsQuery.data?.pages.flat() ?? emptySessions,
+    [recordsQuery.data],
   )
+
+  // Direct address entry (e.g. /records/:sessionId) can name a session that
+  // isn't among the loaded pages yet. Fall back to a single-session lookup;
+  // a match already present in the loaded list always wins.
+  const sessionMissingFromList = Boolean(initialSelectedSessionId)
+    && !sessions.some((session) => session.id === initialSelectedSessionId)
+
+  const directSessionQuery = useQuery({
+    queryKey: ['workout-record', initialSelectedSessionId],
+    queryFn: () => workoutRepository.getSession(initialSelectedSessionId as string),
+    enabled: sessionMissingFromList,
+  })
+
+  const selectedSession = useMemo(
+    () => sessions.find((session) => session.id === selectedId)
+      ?? (selectedId && selectedId === directSessionQuery.data?.id ? directSessionQuery.data : null)
+      ?? sessions[0]
+      ?? null,
+    [selectedId, sessions, directSessionQuery.data],
+  )
+
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = recordsQuery
+  useEffect(() => {
+    const node = loadMoreRef.current
+    if (!node) return
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        void fetchNextPage()
+      }
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   useEffect(() => {
     if (settingsQuery.data) setIncludeRir(settingsQuery.data.shareRirByDefault)
@@ -113,7 +151,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
     }
   }
 
-  if (recordsQuery.isPending || settingsQuery.isPending) return <RecordsLoading />
+  if (recordsQuery.isPending || settingsQuery.isPending || (sessionMissingFromList && directSessionQuery.isPending)) return <RecordsLoading />
   if (recordsQuery.isError || !recordsQuery.data || settingsQuery.isError || !settingsQuery.data) {
     return <RecordsError onRetry={() => { void recordsQuery.refetch(); void settingsQuery.refetch() }} />
   }
@@ -131,7 +169,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
       {sessions.length === 0 ? <RecordsEmpty /> : selectedSession && (
         <div className="records-layout">
           <aside className="records-list-panel" aria-label="완료한 운동 목록">
-            <div className="records-list-title"><h2>완료한 운동</h2><span>{sessions.length}회</span></div>
+            <div className="records-list-title"><h2>완료한 운동</h2><span>{sessions.length}회 불러옴</span></div>
             <div className="records-list">
               {sessions.map((session) => (
                 <button
@@ -146,6 +184,11 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
                   <span>{completedSetCount(session)}세트 · {formatDuration(session)}</span>
                 </button>
               ))}
+              <div className="records-list-status" ref={loadMoreRef} role="status">
+                {recordsQuery.isFetchingNextPage
+                  ? '불러오는 중…'
+                  : !recordsQuery.hasNextPage && '모든 기록을 불러왔어요.'}
+              </div>
             </div>
           </aside>
 
