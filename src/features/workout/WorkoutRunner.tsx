@@ -108,6 +108,11 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
       void queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
       void queryClient.invalidateQueries({ queryKey: ['completed-workout-records'] })
       void queryClient.invalidateQueries({ queryKey: ['workout-runner-setup'] })
+      // Prefix match (no `exact: true`) so every exercise id under
+      // 'last-completed-set' is covered, not just the one active when this
+      // workout finished -- otherwise a workout started within the 30s
+      // staleTime still shows the pre-workout "지난 기록" value.
+      void queryClient.invalidateQueries({ queryKey: ['last-completed-set'] })
       onFinish(saved.id)
     },
   })
