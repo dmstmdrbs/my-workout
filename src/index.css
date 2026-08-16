@@ -2,8 +2,8 @@
   color-scheme: light;
   font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  color: #18181b;
-  background: #f7f7f6;
+  color: var(--text);
+  background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -76,8 +76,10 @@ h3 {
   letter-spacing: -0.03em;
 }
 
+/* Dark tokens apply when the OS asks for dark and the user has not forced
+   light, or when the user explicitly picked dark. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --bg: #171717;
     --surface: #202020;
@@ -95,4 +97,23 @@ h3 {
     --accent-border: #25446e;
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.18);
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #171717;
+  --surface: #202020;
+  --surface-subtle: #292929;
+  --surface-emphasis: #303030;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --border: #343434;
+  --accent: #60a5fa;
+  --accent-subtle: #172554;
+  --success: #34d399;
+  --success-subtle: #143c32;
+  --danger: #f87171;
+  --danger-subtle: #482021;
+  --accent-border: #25446e;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.18);
 }
