@@ -5,8 +5,20 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import App from '../App'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
+import { mockSessions } from '../services/mock/seed'
 
 const storeKey = 'trainlog:mock-store:v1'
+
+/** 목 시드에서 종목의 마지막 완료 세트를 골라, 기대값을 하드코딩하지 않고 유도한다. */
+function findLastCompletedSet(exerciseId: string) {
+  const sessionsNewestFirst = [...mockSessions].sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+  for (const session of sessionsNewestFirst) {
+    const exercise = session.exercises.find((item) => item.exerciseId === exerciseId)
+    const set = exercise?.sets.filter((item) => item.isCompleted).at(-1)
+    if (set) return set
+  }
+  return null
+}
 
 function renderApp(initialPath = '/') {
   const queryClient = new QueryClient({
@@ -81,6 +93,11 @@ describe.sequential('UF-12: 설정 변경', () => {
 
     const draft = JSON.parse(localStorage.getItem('trainlog:workout-draft:v1') ?? '{}')
     expect(draft.draft.exercises[0].sets[0].targetRir).toBe(4)
+
+    const expectedPreviousBenchSet = findLastCompletedSet('barbell-bench-press')
+    expect(expectedPreviousBenchSet).not.toBeNull()
+    expect(draft.draft.exercises[0].sets[0].weightKg).toBe(expectedPreviousBenchSet!.weightKg)
+    expect(draft.draft.exercises[0].sets[0].reps).toBe(expectedPreviousBenchSet!.reps)
   })
 
   test('프로필 이름 변경이 대시보드 인사말에 반영된다', async () => {

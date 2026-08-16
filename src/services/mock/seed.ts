@@ -98,4 +98,30 @@ export const mockSessions: WorkoutSession[] = [
     ],
     createdAt: '2026-08-14T10:05:00.000+09:00', updatedAt: '2026-08-14T11:12:00.000+09:00',
   },
+  {
+    id: 'session-2026-08-12', userId: mockUser.id, routineId: 'push-day', routineName: 'Push Day', status: 'completed',
+    startedAt: '2026-08-12T14:30:00.000+09:00', completedAt: '2026-08-12T15:20:00.000+09:00', notes: null,
+    exercises: [
+      {
+        id: 'session2-bench', exerciseId: 'barbell-bench-press', exerciseName: '바벨 벤치프레스', primaryMuscle: 'chest', exerciseOrder: 1, notes: null,
+        sets: [
+          [80, 7, 2], [80, 7, 2], [80, 6, 1],
+        ].map(([weightKg, reps, actualRir], index) => ({ id: `session2-bench-${index + 1}`, setOrder: index + 1, setType: 'working', weightKg, reps, targetRir: 2, actualRir, restSeconds: 120, isCompleted: true, completedAt: `2026-08-12T14:${40 + index * 4}:00.000+09:00`, notes: null })),
+      },
+    ],
+    createdAt: '2026-08-12T14:30:00.000+09:00', updatedAt: '2026-08-12T15:20:00.000+09:00',
+  },
+  {
+    id: 'session-2026-08-11', userId: mockUser.id, routineId: 'pull-day', routineName: 'Pull Day', status: 'completed',
+    startedAt: '2026-08-11T18:00:00.000+09:00', completedAt: '2026-08-11T19:00:00.000+09:00', notes: null,
+    exercises: [
+      {
+        id: 'session3-row', exerciseId: 'seated-cable-row', exerciseName: '체스트 서포티드 시티드 로우', primaryMuscle: 'back', exerciseOrder: 1, notes: null,
+        sets: [
+          [65, 10, 2], [65, 10, 2], [65, 9, 1],
+        ].map(([weightKg, reps, actualRir], index) => ({ id: `session3-row-${index + 1}`, setOrder: index + 1, setType: 'working', weightKg, reps, targetRir: 2, actualRir, restSeconds: 120, isCompleted: true, completedAt: `2026-08-11T18:${15 + index * 4}:00.000+09:00`, notes: null })),
+      },
+    ],
+    createdAt: '2026-08-11T18:00:00.000+09:00', updatedAt: '2026-08-11T19:00:00.000+09:00',
+  },
 ]

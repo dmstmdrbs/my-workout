@@ -2,10 +2,12 @@ import type {
   BodyMeasurement,
   Exercise,
   Id,
+  IsoDateTime,
   Routine,
   UserProfile,
   UserSettings,
   WorkoutSession,
+  WorkoutSetRecord,
 } from '../types/domain'
 
 export interface AuthSession {
@@ -44,10 +46,19 @@ export interface WorkoutRepository {
   saveRoutine(routine: Omit<Routine, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }): Promise<Routine>
   deleteRoutine(id: Id): Promise<void>
 
-  listSessions(options?: { limit?: number; status?: WorkoutSession['status'] }): Promise<WorkoutSession[]>
+  listSessions(options?: {
+    status?: WorkoutSession['status']
+    limit?: number
+    /** 이 시각보다 이전(`<`)에 시작한 세션만. 페이지네이션 커서로 쓴다. 경계값 자체는 제외된다. */
+    startedBefore?: IsoDateTime
+    /** 이 시각 이후(`>=`)에 시작한 세션만. 기간 집계에 쓴다. 경계값 자체도 포함된다. */
+    startedAfter?: IsoDateTime
+  }): Promise<WorkoutSession[]>
   getSession(id: Id): Promise<WorkoutSession | null>
   saveSession(session: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }): Promise<WorkoutSession>
   deleteSession(id: Id): Promise<void>
+  /** 지난 기록 표시용. 세션 목록 전체를 받지 않고 필요한 한 세트만 가져온다. */
+  getLastCompletedSetForExercise(exerciseId: Id): Promise<WorkoutSetRecord | null>
 
   listBodyMeasurements(): Promise<BodyMeasurement[]>
   saveBodyMeasurement(measurement: Omit<BodyMeasurement, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }): Promise<BodyMeasurement>

@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import type { Ref } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
 import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
 import { useAppServices, useSettings } from '../../services'
@@ -13,9 +13,10 @@ const emptySessions: WorkoutSession[] = []
 const shareCardExportWidth = 720
 const maxShareCardPixels = 32_000_000
 
-interface RecordsData {
-  sessions: WorkoutSession[]
-}
+// Cursor-paginated page size for the records list. Exported so tests can
+// derive how many sessions they need to seed rather than hardcoding a
+// number that would silently go stale if this changes.
+export const recordsPageSize = 20
 
 export function Records({ initialSelectedSessionId = null, onSelectSession }: { initialSelectedSessionId?: string | null; onSelectSession?: (sessionId: string) => void }) {
   const { workoutRepository } = useAppServices()
@@ -25,20 +26,60 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
   const [exportState, setExportState] = useState<ExportState>('idle')
   const [exportMessage, setExportMessage] = useState('')
   const shareCardRef = useRef<HTMLElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const recordsQuery = useQuery({
+  const recordsQuery = useInfiniteQuery({
     queryKey: ['completed-workout-records'],
-    queryFn: async (): Promise<RecordsData> => {
-      const sessions = await workoutRepository.listSessions({ status: 'completed' })
-      return { sessions }
-    },
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => workoutRepository.listSessions({
+      status: 'completed',
+      limit: recordsPageSize,
+      startedBefore: pageParam,
+    }),
+    getNextPageParam: (lastPage) =>
+      lastPage.length < recordsPageSize ? undefined : lastPage.at(-1)?.startedAt,
   })
 
-  const sessions = recordsQuery.data?.sessions ?? emptySessions
-  const selectedSession = useMemo(
-    () => sessions.find((session) => session.id === selectedId) ?? sessions[0] ?? null,
-    [selectedId, sessions],
+  const sessions = useMemo(
+    () => recordsQuery.data?.pages.flat() ?? emptySessions,
+    [recordsQuery.data],
   )
+
+  // Direct address entry (e.g. /records/:sessionId) can name a session that
+  // isn't among the loaded pages yet. Fall back to a single-session lookup;
+  // a match already present in the loaded list always wins. This is gated on
+  // page 1 having actually resolved (`recordsQuery.data`) so the common case
+  // -- the target is already on page 1 -- never fires the fallback query.
+  const sessionMissingFromList = Boolean(initialSelectedSessionId)
+    && Boolean(recordsQuery.data)
+    && !sessions.some((session) => session.id === initialSelectedSessionId)
+
+  const directSessionQuery = useQuery({
+    queryKey: ['workout-record', initialSelectedSessionId],
+    queryFn: () => workoutRepository.getSession(initialSelectedSessionId as string),
+    enabled: sessionMissingFromList,
+  })
+
+  const selectedSession = useMemo(
+    () => sessions.find((session) => session.id === selectedId)
+      ?? (selectedId && selectedId === directSessionQuery.data?.id ? directSessionQuery.data : null)
+      ?? sessions[0]
+      ?? null,
+    [selectedId, sessions, directSessionQuery.data],
+  )
+
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = recordsQuery
+  useEffect(() => {
+    const node = loadMoreRef.current
+    if (!node) return
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        void fetchNextPage()
+      }
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   useEffect(() => {
     if (settingsQuery.data) setIncludeRir(settingsQuery.data.shareRirByDefault)
@@ -113,10 +154,30 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
     }
   }
 
-  if (recordsQuery.isPending || settingsQuery.isPending) return <RecordsLoading />
-  if (recordsQuery.isError || !recordsQuery.data || settingsQuery.isError || !settingsQuery.data) {
+  if (recordsQuery.isPending || settingsQuery.isPending || (sessionMissingFromList && directSessionQuery.isPending)) return <RecordsLoading />
+
+  // A failure loading page 1 (no data at all yet) has nothing to show and
+  // legitimately owns the whole screen. A failure fetching a *later* page
+  // (recordsQuery.data already holds the pages fetched so far) must not wipe
+  // out an already-working list/detail/share layout -- that is handled
+  // further down as an inline status near the load-more sentinel instead.
+  const initialLoadFailed = recordsQuery.isError && !recordsQuery.data
+  if (initialLoadFailed || !recordsQuery.data || settingsQuery.isError || !settingsQuery.data) {
     return <RecordsError onRetry={() => { void recordsQuery.refetch(); void settingsQuery.refetch() }} />
   }
+
+  // The fallback single-session lookup failing -- or resolving with `null`,
+  // which happens for an unknown/mistyped/deleted session id and is far more
+  // likely than a rejection -- must never be papered over by silently
+  // falling back to some other session. That would show the user a workout
+  // they didn't ask for with no indication anything went wrong.
+  if (sessionMissingFromList && (directSessionQuery.isError || directSessionQuery.data === null)) {
+    return directSessionQuery.data === null
+      ? <RecordsNotFound />
+      : <RecordsError onRetry={() => { void directSessionQuery.refetch() }} />
+  }
+
+  const nextPageFailed = recordsQuery.isError && Boolean(recordsQuery.data)
 
   return (
     <main className="records-page">
@@ -131,7 +192,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
       {sessions.length === 0 ? <RecordsEmpty /> : selectedSession && (
         <div className="records-layout">
           <aside className="records-list-panel" aria-label="완료한 운동 목록">
-            <div className="records-list-title"><h2>완료한 운동</h2><span>{sessions.length}회</span></div>
+            <div className="records-list-title"><h2>완료한 운동</h2><span>{sessions.length}회 불러옴</span></div>
             <div className="records-list">
               {sessions.map((session) => (
                 <button
@@ -146,6 +207,26 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
                   <span>{completedSetCount(session)}세트 · {formatDuration(session)}</span>
                 </button>
               ))}
+              {/* This div must pre-exist so `aria-live` is registered before its
+                  content changes -- a live region mounted together with its
+                  text is not reliably announced. It also carries loadMoreRef,
+                  so it stays mounted across every page fetch regardless of
+                  status text. The failure branch is a separate sibling with
+                  role="alert" so an alert is never nested inside a status
+                  region. */}
+              <div className="records-list-status" ref={loadMoreRef} aria-live="polite">
+                {!nextPageFailed && (recordsQuery.isFetchingNextPage
+                  ? '불러오는 중…'
+                  : !recordsQuery.hasNextPage
+                    ? '모든 기록을 불러왔어요.'
+                    : null)}
+              </div>
+              {nextPageFailed && (
+                <div className="records-list-status" role="alert">
+                  다음 페이지를 불러오지 못했어요.
+                  <button type="button" className="records-status-retry" onClick={() => void recordsQuery.fetchNextPage()}>다시 시도</button>
+                </div>
+              )}
             </div>
           </aside>
 
@@ -233,6 +314,7 @@ function CompletedSetRow({ set, weightUnit }: { set: WorkoutSetRecord; weightUni
 
 function RecordsLoading() { return <main className="records-page" aria-label="운동 기록 불러오는 중"><section className="records-heading skeleton-heading"><div className="skeleton-line small" /><div className="skeleton-line title" /></section><section className="records-skeleton-grid"><div className="skeleton-card records-list-skeleton" /><div className="skeleton-card records-detail-skeleton" /><div className="skeleton-card records-share-skeleton" /></section></main> }
 function RecordsError({ onRetry }: { onRetry: () => void }) { return <main className="records-page records-message"><div className="message-icon"><RefreshCw size={22} /></div><p className="eyebrow">CONNECTION ISSUE</p><h1>운동 기록을 불러오지 못했어요.</h1><p>잠시 후 다시 시도해 주세요.</p><button className="primary-button" type="button" onClick={onRetry}><RefreshCw size={16} /> 다시 시도</button></main> }
+function RecordsNotFound() { return <main className="records-page records-message"><div className="message-icon"><ImageDown size={22} /></div><p className="eyebrow">NOT FOUND</p><h1>기록을 찾을 수 없어요.</h1><p>주소가 잘못되었거나 삭제된 기록일 수 있어요.</p></main> }
 function RecordsEmpty() { return <section className="records-empty"><ImageDown size={23} aria-hidden="true" /><h2>아직 완료한 운동이 없어요.</h2><p>운동을 완료하면 이곳에서 세부 기록을 보고 공유 카드도 만들 수 있어요.</p></section> }
 
 function getSessionVolume(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).reduce((sum, set) => sum + (set.weightKg ?? 0) * (set.reps ?? 0), 0) }

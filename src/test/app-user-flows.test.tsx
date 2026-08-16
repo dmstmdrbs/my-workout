@@ -5,12 +5,24 @@ import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import App from '../App'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
+import { mockSessions } from '../services/mock/seed'
 
 const toPngMock = vi.hoisted(() => vi.fn(async (_node: HTMLElement, _options?: Record<string, unknown>) => 'data:image/png;base64,dGVzdA=='))
 vi.mock('html-to-image', () => ({ toPng: toPngMock }))
 
 const storeKey = 'trainlog:mock-store:v1'
 const workoutDraftKey = 'trainlog:workout-draft:v1'
+
+/** 목 시드에서 종목의 마지막 완료 세트를 골라, 기대값을 하드코딩하지 않고 유도한다. */
+function findLastCompletedSet(exerciseId: string) {
+  const sessionsNewestFirst = [...mockSessions].sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+  for (const session of sessionsNewestFirst) {
+    const exercise = session.exercises.find((item) => item.exerciseId === exerciseId)
+    const set = exercise?.sets.filter((item) => item.isCompleted).at(-1)
+    if (set) return set
+  }
+  return null
+}
 
 function renderApp(initialPath = '/') {
   const queryClient = new QueryClient({
@@ -130,9 +142,17 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(sessionRows.length).toBeGreaterThan(1)
     const recentSession = sessionRows.at(-1)!
     expect(recentSession.tagName).toBe('BUTTON')
+    // Derive the expectation from the row itself (routine name + month/day) rather than a
+    // hardcoded date, so an ordering bug that opens the wrong session is actually caught.
+    const recentSessionRoutine = recentSession.querySelector('strong')?.textContent
+    const recentSessionDate = recentSession.textContent?.match(/\d+월\s*\d+일/)?.[0]
+    expect(recentSessionRoutine).toBeTruthy()
+    expect(recentSessionDate).toBeTruthy()
     await user.click(recentSession)
     await screen.findByRole('heading', { name: '운동 기록' })
-    expect(document.querySelector('.record-detail-heading .eyebrow')?.textContent).toContain('2026년 8월 14일')
+    const openedHeading = document.querySelector('.record-detail-heading')
+    expect(openedHeading?.querySelector('h2')?.textContent).toBe(recentSessionRoutine)
+    expect(openedHeading?.querySelector('.eyebrow')?.textContent).toContain(recentSessionDate)
 
     await user.click(sideNavButton('대시보드'))
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
@@ -355,6 +375,11 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(savedDraft.draft.exercises[0].sets[0].targetRir).toBe(2)
     expect(savedDraft.draft.exercises).toHaveLength(1)
     expect(savedDraft.draft.exercises[0]).toMatchObject({ exerciseId: 'lat-pulldown', exerciseOrder: 1 })
+
+    const expectedPreviousLatPulldownSet = findLastCompletedSet('lat-pulldown')
+    expect(expectedPreviousLatPulldownSet).not.toBeNull()
+    expect(savedDraft.draft.exercises[0].sets[0].weightKg).toBe(expectedPreviousLatPulldownSet!.weightKg)
+    expect(savedDraft.draft.exercises[0].sets[0].reps).toBe(expectedPreviousLatPulldownSet!.reps)
 
     await user.click(screen.getByRole('button', { name: '1세트 완료' }))
     await user.click(screen.getByRole('button', { name: '운동 종료' }))
