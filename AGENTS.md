@@ -42,13 +42,21 @@ src/
     workout/                      운동 선택·진행·휴식·초안 복원
     routines/                     루틴 편집
     records/                      운동 기록·공유 PNG 카드
+    settings/                     설정·로그아웃
+    body/                         신체 측정 기록
   services/
     contracts.ts                  AuthAdapter, WorkoutRepository 인터페이스
     AppServicesProvider.tsx       mock/Supabase 서비스 선택 경계
+    useSettings.ts                설정 단일 쿼리 훅
     mock/                         localStorage 개발용 adapter와 시드 데이터
     supabase/                     실제 Supabase adapter
+  lib/theme.ts                    테마 적용과 localStorage 미러
   types/domain.ts                 앱의 도메인 모델
-  test/app-user-flows.test.tsx    핵심 사용자 플로우 회귀 테스트
+  test/
+    app-user-flows.test.tsx       핵심 사용자 플로우 회귀 테스트
+    settings-flows.test.tsx       UF-12 설정 변경
+    signout-flows.test.tsx        UF-12 로그아웃
+    body-flows.test.tsx           UF-13 신체 측정 기록
 supabase/migrations/              스키마, RLS, 기본 운동 카탈로그
 docs/user-flow-test-plan.md       수동/자동 검증 기준
 ```
@@ -62,6 +70,8 @@ docs/user-flow-test-plan.md       수동/자동 검증 기준
 5. 운동은 한 번에 하나의 진행 중 초안만 허용합니다. 초안 키는 `trainlog:workout-draft:v1`이며 `startedAt`을 보존해 경과 시간을 계산합니다.
 6. 완료 세트가 0개인 운동 종료는 기록을 저장하지 않고 초안을 제거한 뒤 홈으로 돌아갑니다.
 7. 공유 카드에는 개인 식별 정보나 비밀값을 넣지 않습니다.
+8. 설정은 `useSettings()`로만 읽습니다. 화면별 쿼리에서 `getSettings()`를 직접 호출하지 않습니다. 설정 저장 후에는 `['user-settings']`를 무효화합니다.
+9. 테마는 `src/lib/theme.ts`의 `applyTheme()`을 통해서만 적용됩니다. 컴포넌트는 DOM에 `data-theme`이나 `color-scheme`을 직접 설정하거나 `trainlog:theme:v1` localStorage 미러를 직접 쓰면 안 됩니다. 데이터베이스가 진실의 원천이며, 미러는 첫 페인트 깜빡임을 방지하기 위해서만 존재하고, `src/main.tsx`가 React 렌더링 전에 미러를 적용합니다.
 
 ## 라우팅과 UX
 
@@ -71,7 +81,9 @@ docs/user-flow-test-plan.md       수동/자동 검증 기준
 - `/workout` 운동 시작/진행/재개
 - `/routines`, `/routines/new`, `/routines/:routineId` 루틴
 - `/records`, `/records/:sessionId` 기록/공유
-- `/stats`, `/settings` 준비 중 화면
+- `/settings` 설정
+- `/body` 신체 측정 기록
+- `/stats` 준비 중 화면
 
 새 화면은 URL을 가져야 하며, 브라우저 뒤로가기와 직접 주소 진입을 고려합니다. 운동 초안이 있는 상태에서 `/workout`을 벗어날 때의 이탈 확인과 하단 재개 토스트를 유지합니다.
 
@@ -80,6 +92,7 @@ docs/user-flow-test-plan.md       수동/자동 검증 기준
 - 데스크톱/태블릿은 사이드바와 다열 관리 화면을 우선합니다.
 - 모바일은 하단 탭, 큰 터치 영역, 하단 고정 제어를 사용합니다.
 - 고정된 휴식 타이머나 내비게이션이 마지막 입력/버튼을 가리지 않아야 합니다.
+- 모바일에서는 더보기 팝오버가 상단 바 아래가 아니라 하단 내비게이션 위에 고정됩니다. 상단 바는 고정되지 않아 뷰포트 밖으로 스크롤되므로, 하단 탭에서 열어진 팝오버가 화면 밖으로 열리지 않도록 하기 위함입니다.
 
 ## Supabase 규칙
 
