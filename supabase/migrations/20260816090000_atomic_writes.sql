@@ -5,6 +5,12 @@
 --
 -- security invoker: 호출자의 권한과 RLS를 그대로 적용한다.
 -- definer로 두면 RLS를 우회하므로 쓰지 않는다.
+--
+-- 클라이언트(WorkoutRunner/RoutineManager)는 id를 로컬에서 미리 생성해두고,
+-- 실제로 행이 존재하기 전에 그 id로 저장을 시도한다(운동 기록은 시작 시점에
+-- id가 생기고 종료 시점에야 처음 저장된다). 그래서 이 함수는 "id가 있으면
+-- update"가 아니라 "그 id로 upsert"로 동작해야 한다: 행이 있으면 소유권을
+-- 확인한 뒤 update, 없으면 그 id로 insert한다.
 
 create or replace function public.save_workout_session(payload jsonb)
 returns uuid
@@ -15,6 +21,8 @@ as $$
 declare
   v_user_id uuid := auth.uid();
   v_session_id uuid;
+  v_input_id uuid;
+  v_existing_user_id uuid;
   v_exercise jsonb;
   v_exercise_id uuid;
 begin
@@ -22,20 +30,52 @@ begin
     raise exception 'authentication required';
   end if;
 
-  if payload ? 'id' and payload ->> 'id' is not null then
-    v_session_id := (payload ->> 'id')::uuid;
-    update public.workout_sessions set
-      routine_id = (payload ->> 'routineId')::uuid,
-      routine_name = payload ->> 'routineName',
-      status = payload ->> 'status',
-      started_at = (payload ->> 'startedAt')::timestamptz,
-      completed_at = (payload ->> 'completedAt')::timestamptz,
-      notes = payload ->> 'notes',
-      updated_at = now()
-    where id = v_session_id and user_id = v_user_id;
+  -- 클라이언트의 createId()는 crypto.randomUUID가 없는 환경(비보안 origin,
+  -- 구형 Safari 등)에서 "workout-<ts>-<rand>" 같은 비-uuid 문자열로 대체된다.
+  -- 그런 값은 캐스트에서 예외를 던지는 대신 "id 없음"으로 취급해 서버가
+  -- 새 id를 생성하도록 한다.
+  begin
+    v_input_id := nullif(payload ->> 'id', '')::uuid;
+  exception when invalid_text_representation then
+    v_input_id := null;
+  end;
 
-    if not found then
-      raise exception 'workout session not found or not owned by caller';
+  if v_input_id is not null then
+    select user_id into v_existing_user_id
+    from public.workout_sessions
+    where id = v_input_id;
+
+    if found then
+      if v_existing_user_id <> v_user_id then
+        raise exception 'workout session not found or not owned by caller';
+      end if;
+
+      v_session_id := v_input_id;
+      update public.workout_sessions set
+        routine_id = (payload ->> 'routineId')::uuid,
+        routine_name = payload ->> 'routineName',
+        status = payload ->> 'status',
+        started_at = (payload ->> 'startedAt')::timestamptz,
+        completed_at = (payload ->> 'completedAt')::timestamptz,
+        notes = payload ->> 'notes',
+        updated_at = now()
+      where id = v_session_id and user_id = v_user_id;
+    else
+      -- 아직 DB에 없는 행: 클라이언트가 미리 만들어 둔 id로 그대로 insert한다.
+      -- user_id는 여전히 auth.uid()에서만 오고, insert RLS 정책도 그대로
+      -- 적용되며, 기본키 제약이 이미 존재하는 id를 가로채는 것을 막는다.
+      insert into public.workout_sessions (id, user_id, routine_id, routine_name, status, started_at, completed_at, notes)
+      values (
+        v_input_id,
+        v_user_id,
+        (payload ->> 'routineId')::uuid,
+        payload ->> 'routineName',
+        payload ->> 'status',
+        (payload ->> 'startedAt')::timestamptz,
+        (payload ->> 'completedAt')::timestamptz,
+        payload ->> 'notes'
+      )
+      returning id into v_session_id;
     end if;
   else
     insert into public.workout_sessions (user_id, routine_id, routine_name, status, started_at, completed_at, notes)
@@ -55,7 +95,9 @@ begin
   where session_id = v_session_id and user_id = v_user_id;
 
   for v_exercise in
-    select value from jsonb_array_elements(coalesce(payload -> 'exercises', '[]'::jsonb))
+    select value from jsonb_array_elements(
+      case when jsonb_typeof(payload -> 'exercises') = 'array' then payload -> 'exercises' else '[]'::jsonb end
+    )
   loop
     insert into public.workout_exercises (user_id, session_id, exercise_id, exercise_name, primary_muscle, exercise_order, notes)
     values (
@@ -86,7 +128,9 @@ begin
       coalesce((s ->> 'isCompleted')::boolean, false),
       (s ->> 'completedAt')::timestamptz,
       s ->> 'notes'
-    from jsonb_array_elements(coalesce(v_exercise -> 'sets', '[]'::jsonb)) as s;
+    from jsonb_array_elements(
+      case when jsonb_typeof(v_exercise -> 'sets') = 'array' then v_exercise -> 'sets' else '[]'::jsonb end
+    ) as s;
   end loop;
 
   return v_session_id;
@@ -102,6 +146,8 @@ as $$
 declare
   v_user_id uuid := auth.uid();
   v_routine_id uuid;
+  v_input_id uuid;
+  v_existing_user_id uuid;
   v_exercise jsonb;
   v_routine_exercise_id uuid;
 begin
@@ -109,17 +155,35 @@ begin
     raise exception 'authentication required';
   end if;
 
-  if payload ? 'id' and payload ->> 'id' is not null then
-    v_routine_id := (payload ->> 'id')::uuid;
-    update public.routines set
-      name = payload ->> 'name',
-      description = payload ->> 'description',
-      color = payload ->> 'color',
-      updated_at = now()
-    where id = v_routine_id and user_id = v_user_id;
+  -- RoutineManager의 createId() 역시 crypto.randomUUID가 없으면 비-uuid
+  -- 문자열로 대체된다. save_workout_session과 동일하게 방어적으로 처리한다.
+  begin
+    v_input_id := nullif(payload ->> 'id', '')::uuid;
+  exception when invalid_text_representation then
+    v_input_id := null;
+  end;
 
-    if not found then
-      raise exception 'routine not found or not owned by caller';
+  if v_input_id is not null then
+    select user_id into v_existing_user_id
+    from public.routines
+    where id = v_input_id;
+
+    if found then
+      if v_existing_user_id <> v_user_id then
+        raise exception 'routine not found or not owned by caller';
+      end if;
+
+      v_routine_id := v_input_id;
+      update public.routines set
+        name = payload ->> 'name',
+        description = payload ->> 'description',
+        color = payload ->> 'color',
+        updated_at = now()
+      where id = v_routine_id and user_id = v_user_id;
+    else
+      insert into public.routines (id, user_id, name, description, color)
+      values (v_input_id, v_user_id, payload ->> 'name', payload ->> 'description', payload ->> 'color')
+      returning id into v_routine_id;
     end if;
   else
     insert into public.routines (user_id, name, description, color)
@@ -131,7 +195,9 @@ begin
   where routine_id = v_routine_id and user_id = v_user_id;
 
   for v_exercise in
-    select value from jsonb_array_elements(coalesce(payload -> 'exercises', '[]'::jsonb))
+    select value from jsonb_array_elements(
+      case when jsonb_typeof(payload -> 'exercises') = 'array' then payload -> 'exercises' else '[]'::jsonb end
+    )
   loop
     insert into public.routine_exercises (routine_id, user_id, exercise_id, exercise_order, notes)
     values (
@@ -157,9 +223,20 @@ begin
       (s ->> 'targetRepsMax')::integer,
       (s ->> 'targetRir')::numeric,
       (s ->> 'restSeconds')::integer
-    from jsonb_array_elements(coalesce(v_exercise -> 'sets', '[]'::jsonb)) as s;
+    from jsonb_array_elements(
+      case when jsonb_typeof(v_exercise -> 'sets') = 'array' then v_exercise -> 'sets' else '[]'::jsonb end
+    ) as s;
   end loop;
 
   return v_routine_id;
 end;
 $$;
+
+-- Supabase's default keeps SQL-created functions callable only by the roles
+-- granted explicitly (matches the explicit-grant style used for tables in
+-- 20260815160127_trainlog_schema.sql). Revoke the implicit PUBLIC grant so
+-- anon can never invoke these, then grant to authenticated only.
+revoke execute on function public.save_workout_session(jsonb) from public;
+revoke execute on function public.save_routine(jsonb) from public;
+grant execute on function public.save_workout_session(jsonb) to authenticated;
+grant execute on function public.save_routine(jsonb) to authenticated;
