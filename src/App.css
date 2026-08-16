@@ -69,6 +69,12 @@
   .bottom-nav { display: grid; position: fixed; z-index: 15; right: 0; bottom: 0; left: 0; grid-template-columns: repeat(5, 1fr); min-height: 70px; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--surface) 93%, transparent); border-top: 1px solid var(--border); backdrop-filter: blur(14px); }
   .bottom-nav button { display: grid; place-content: center; gap: 3px; padding: 0; color: var(--text-muted); background: transparent; border: 0; border-radius: 8px; font-size: .66rem; font-weight: 650; }
   .bottom-nav button.is-active { color: var(--accent); }
+  .top-bar-popover {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: calc(70px + max(7px, env(safe-area-inset-bottom)) + 10px);
+  }
   .sync-indicator { display: none; }
   .active-workout-toast { right: 12px; bottom: 80px; left: 12px; min-width: 0; }
 }
