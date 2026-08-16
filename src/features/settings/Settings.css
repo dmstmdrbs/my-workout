@@ -1,0 +1,86 @@
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px clamp(16px, 4vw, 38px) 108px;
+  max-width: 760px;
+}
+
+.settings-heading h1 { font-size: clamp(24px, 3.4vw, 31px); }
+.settings-heading p { color: var(--text-muted); margin-top: 6px; }
+
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-card-heading { display: flex; gap: 12px; align-items: flex-start; }
+.settings-card-heading h2 { font-size: 16px; }
+.settings-card-heading p { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
+
+.settings-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.settings-field { display: flex; flex-direction: column; gap: 7px; }
+.settings-field > span { font-size: 13px; color: var(--text-muted); }
+
+.settings-field input,
+.settings-field select {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-subtle);
+  color: var(--text);
+}
+
+.theme-choice-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+.theme-choice-row button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 68px;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.theme-choice-row button.is-selected {
+  border-color: var(--accent-border);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.settings-error {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--danger);
+  background: var(--danger-subtle);
+  color: var(--danger);
+  padding: 11px 14px;
+  font-size: 14px;
+}
+
+.settings-message { align-items: flex-start; gap: 12px; }
+
+@media (max-width: 640px) {
+  .settings-page { padding-bottom: 132px; }
+}

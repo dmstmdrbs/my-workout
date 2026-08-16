@@ -14,6 +14,7 @@ import {
 import { Dashboard } from './features/dashboard/Dashboard'
 import { Records } from './features/records/Records'
 import { RoutineManager } from './features/routines/RoutineManager'
+import { Settings } from './features/settings/Settings'
 import { WorkoutRunner } from './features/workout/WorkoutRunner'
 import { formatElapsedTime, readStoredWorkoutDraft, workoutDraftStorageKey, type StoredWorkoutDraft } from './features/workout/activeWorkoutDraft'
 import { useAppServices } from './services'
@@ -267,7 +268,7 @@ function AppShell() {
           <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
           <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
           <Route path="/stats" element={<PlaceholderPage page="stats" onGoHome={() => navigateTo('/')} />} />
-          <Route path="/settings" element={<PlaceholderPage page="settings" onGoHome={() => navigateTo('/')} />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -348,7 +349,7 @@ function useLocationPathId(prefix: string) {
   return decodeURIComponent(pathname.slice(prefix.length)) || null
 }
 
-function PlaceholderPage({ page, onGoHome }: { page: 'stats' | 'settings'; onGoHome: () => void }) {
+function PlaceholderPage({ page, onGoHome }: { page: 'stats'; onGoHome: () => void }) {
   return <section className="placeholder-page" aria-labelledby="placeholder-title">
     <div className="placeholder-icon"><Dumbbell size={24} aria-hidden="true" /></div>
     <p className="eyebrow">{navigation.find((item) => item.id === page)?.label}</p>
