@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAppServices, useSettings } from '../../services'
-import type { Exercise, Routine, Rir, SetType, WorkoutExercise, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
+import type { Exercise, Routine, Rir, SetType, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
   formatElapsedTime,
@@ -35,8 +35,9 @@ interface WorkoutRunnerProps {
 interface WorkoutSetupData {
   routines: Routine[]
   exercises: Exercise[]
-  previousSessions: WorkoutSession[]
 }
+
+function lastCompletedSetQueryKey(exerciseId: string) { return ['last-completed-set', exerciseId] as const }
 
 const rirChoices: Array<{ value: number; label: string }> = [
   { value: 0, label: '0' },
@@ -65,12 +66,11 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   const setupQuery = useQuery({
     queryKey: ['workout-runner-setup'],
     queryFn: async (): Promise<WorkoutSetupData> => {
-      const [routines, exercises, previousSessions] = await Promise.all([
+      const [routines, exercises] = await Promise.all([
         workoutRepository.listRoutines(),
         workoutRepository.listExercises(),
-        workoutRepository.listSessions({ status: 'completed' }),
       ])
-      return { routines, exercises, previousSessions }
+      return { routines, exercises }
     },
   })
 
@@ -112,17 +112,24 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     },
   })
 
+  const activeExercise = draft?.exercises.find((exercise) => exercise.id === activeExerciseId) ?? draft?.exercises[0] ?? null
+
+  const lastCompletedSetQuery = useQuery({
+    queryKey: activeExercise ? lastCompletedSetQueryKey(activeExercise.exerciseId) : lastCompletedSetQueryKey('none'),
+    queryFn: () => workoutRepository.getLastCompletedSetForExercise(activeExercise!.exerciseId),
+    enabled: activeExercise !== null,
+  })
+
   if (setupQuery.isPending || settingsQuery.isPending) return <RunnerLoading />
   if (setupQuery.isError || !setupQuery.data || settingsQuery.isError || !settingsQuery.data) {
     return <RunnerError onRetry={() => { void setupQuery.refetch(); void settingsQuery.refetch() }} onCancel={onCancel} />
   }
 
-  const { routines, exercises, previousSessions } = setupQuery.data
+  const { routines, exercises } = setupQuery.data
   const { weightUnit, defaultRestSeconds, defaultRir } = settingsQuery.data
   const selectedRoutine = routines.find((routine) => routine.id === selectedRoutineId) ?? routines[0]
-  const activeExercise = draft?.exercises.find((exercise) => exercise.id === activeExerciseId) ?? draft?.exercises[0] ?? null
   const activeIndex = activeExercise ? draft?.exercises.findIndex((exercise) => exercise.id === activeExercise.id) ?? 0 : 0
-  const previousExercise = activeExercise ? getPreviousExercise(previousSessions, activeExercise.exerciseId) : null
+  const previousSet = activeExercise ? lastCompletedSetQuery.data ?? null : null
   const remainingRest = restEndsAt === null ? 0 : Math.max(0, Math.ceil((restEndsAt - clock) / 1_000))
   const restIsRunning = remainingRest > 0
   const elapsedTime = draft ? formatElapsedTime(draft.startedAt, clock) : '00:00'
@@ -176,20 +183,31 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     })
   }
 
-  const addExercise = () => {
+  const addExercise = async () => {
     if (!draft || !exerciseToAddId) return
     const exercise = exercises.find((item) => item.id === exerciseToAddId)
     if (!exercise) return
+    const exerciseOrder = draft.exercises.length + 1
+    setExerciseToAddId('')
+    let previousSet: WorkoutSetRecord | null = null
+    try {
+      previousSet = await queryClient.fetchQuery({
+        queryKey: lastCompletedSetQueryKey(exercise.id),
+        queryFn: () => workoutRepository.getLastCompletedSetForExercise(exercise.id),
+      })
+    } catch {
+      // 지난 기록을 못 불러와도 종목 추가는 막지 않는다. 빈 세트로 추가한다.
+      previousSet = null
+    }
     const nextExercise = createFreeWorkoutExercise({
       exercise,
-      exerciseOrder: draft.exercises.length + 1,
-      previousExercise: getPreviousExercise(previousSessions, exercise.id),
+      exerciseOrder,
+      previousSet,
       defaultRestSeconds,
       defaultRir,
     })
     setDraft((current) => current ? { ...current, exercises: [...current.exercises, nextExercise] } : current)
     setActiveExerciseId(nextExercise.id)
-    setExerciseToAddId('')
   }
 
   const beginWorkout = () => {
@@ -350,7 +368,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
             exercises={exercises}
             selectedExerciseId={exerciseToAddId}
             onSelectionChange={setExerciseToAddId}
-            onAdd={addExercise}
+            onAdd={() => { void addExercise() }}
             compact
           />}
         </aside>
@@ -362,7 +380,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
               <h2 id="active-exercise-title">{activeExercise.exerciseName}</h2>
               {activeExercise.notes && <p className="exercise-note">{activeExercise.notes}</p>}
             </div>
-            <div className="exercise-workspace-actions"><div className="previous-context"><span>지난 기록</span><strong>{formatPrevious(previousExercise, weightUnit)}</strong></div><button className="exercise-remove-button" type="button" onClick={() => removeExercise(activeExercise.id)}><Trash2 size={15} /> 종목 삭제</button></div>
+            <div className="exercise-workspace-actions"><div className="previous-context"><span>지난 기록</span><strong>{formatPrevious(previousSet, weightUnit)}</strong></div><button className="exercise-remove-button" type="button" onClick={() => removeExercise(activeExercise.id)}><Trash2 size={15} /> 종목 삭제</button></div>
           </div>
 
           <div className="set-table" role="region" aria-label={`${activeExercise.exerciseName} 세트 기록`} tabIndex={0}>
@@ -386,7 +404,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
             exercises={exercises}
             selectedExerciseId={exerciseToAddId}
             onSelectionChange={setExerciseToAddId}
-            onAdd={addExercise}
+            onAdd={() => { void addExercise() }}
           />
         </section>}
 
@@ -527,8 +545,7 @@ function createFreeDraft(): WorkoutDraft {
   }
 }
 
-function createFreeWorkoutExercise({ exercise, exerciseOrder, previousExercise, defaultRestSeconds, defaultRir }: { exercise: Exercise; exerciseOrder: number; previousExercise: WorkoutExercise | null; defaultRestSeconds: number; defaultRir: Rir }): WorkoutExercise {
-  const previousSet = previousExercise?.sets.filter((set) => set.isCompleted).at(-1)
+function createFreeWorkoutExercise({ exercise, exerciseOrder, previousSet, defaultRestSeconds, defaultRir }: { exercise: Exercise; exerciseOrder: number; previousSet: WorkoutSetRecord | null; defaultRestSeconds: number; defaultRir: Rir }): WorkoutExercise {
   return {
     id: createId(), exerciseId: exercise.id, exerciseName: exercise.name, primaryMuscle: exercise.primaryMuscle, exerciseOrder, notes: null,
     sets: [{
@@ -543,8 +560,7 @@ function normalizeExerciseOrder(exercises: WorkoutExercise[]) { return exercises
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `workout-${Date.now()}-${Math.random().toString(36).slice(2)}` }
 function toNullableNumber(value: string) { if (value.trim() === '') return null; const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? parsed : null }
 function toNullableInteger(value: string) { const number = toNullableNumber(value); return number === null ? null : Math.floor(number) }
-function getPreviousExercise(sessions: WorkoutSession[], exerciseId: string) { return sessions.find((session) => session.exercises.some((exercise) => exercise.exerciseId === exerciseId))?.exercises.find((exercise) => exercise.exerciseId === exerciseId) ?? null }
-function formatPrevious(exercise: WorkoutExercise | null, weightUnit: string) { const set = exercise?.sets.filter((item) => item.isCompleted).at(-1); return set?.weightKg !== null && set?.weightKg !== undefined && set.reps !== null && set.reps !== undefined ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음' }
+function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) { return set?.weightKg !== null && set?.weightKg !== undefined && set.reps !== null && set.reps !== undefined ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음' }
 function formatTarget(set: WorkoutSetRecord | undefined, weightUnit: string) { if (!set) return '목표 없음'; const weight = set.weightKg === null ? '중량 자유' : `${set.weightKg}${weightUnit}`; const reps = set.reps === null ? '횟수 자유' : `${set.reps}회`; return `${weight} × ${reps} · RIR ${formatRir(set.targetRir)}` }
 function formatRir(rir: Rir) { if (rir === null) return '–'; return rir >= 5 ? '5+' : String(rir) }
 function formatTimer(seconds: number) { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
