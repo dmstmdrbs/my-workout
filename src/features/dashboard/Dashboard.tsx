@@ -13,6 +13,7 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react'
+import { getSessionDurationMinutes } from '../../lib/duration'
 import { useAppServices, useSettings } from '../../services'
 import type { Routine, WorkoutSession } from '../../types/domain'
 import './Dashboard.css'
@@ -137,7 +138,7 @@ function MetricCard({ icon, label, value, unit, note }: { icon: React.ReactNode;
 function SessionRow({ session, weightUnit, onSelect }: { session: WorkoutSession; weightUnit: string; onSelect: () => void }) {
   const volume = getSessionVolume(session)
   const setCount = session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).length
-  return <button className="session-row" type="button" onClick={onSelect} aria-label={`${session.routineName ?? '자유 운동'} 기록 보기`}><span className="session-icon"><Flame size={18} aria-hidden="true" /></span><span className="session-details"><strong>{session.routineName ?? '자유 운동'}</strong><span>{formatSessionDate(session.startedAt)} · {session.exercises.length}개 종목 · {setCount}세트</span></span><span className="session-volume"><strong>{formatNumber(volume)} {weightUnit}</strong><span>{formatDuration(getSessionDuration(session))}</span></span><ArrowUpRight size={17} className="session-arrow" aria-hidden="true" /></button>
+  return <button className="session-row" type="button" onClick={onSelect} aria-label={`${session.routineName ?? '자유 운동'} 기록 보기`}><span className="session-icon"><Flame size={18} aria-hidden="true" /></span><span className="session-details"><strong>{session.routineName ?? '자유 운동'}</strong><span>{formatSessionDate(session.startedAt)} · {session.exercises.length}개 종목 · {setCount}세트</span></span><span className="session-volume"><strong>{formatNumber(volume)} {weightUnit}</strong><span>{formatDuration(getSessionDurationMinutes(session))}</span></span><ArrowUpRight size={17} className="session-arrow" aria-hidden="true" /></button>
 }
 
 function RoutineRow({ routine, onSelect }: { routine: Routine; onSelect: () => void }) {
@@ -154,11 +155,10 @@ function getOverview(weekSessions: WorkoutSession[]) {
   weekSessions.forEach((session) => { const weekday = (new Date(session.startedAt).getDay() + 6) % 7; dailyVolume[weekday] += getSessionVolume(session) })
   const allSets = weekSessions.flatMap((session) => session.exercises.flatMap((exercise) => exercise.sets)).filter((set) => set.isCompleted)
   const rirs = allSets.flatMap((set) => set.actualRir === null ? [] : [set.actualRir])
-  return { daysTrained: weekSessions.length, volume: weekSessions.reduce((sum, session) => sum + getSessionVolume(session), 0), completedSets: allSets.length, averageRir: rirs.length ? rirs.reduce((sum, rir) => sum + rir, 0) / rirs.length : null, totalMinutes: weekSessions.reduce((sum, session) => sum + getSessionDuration(session), 0), dailyVolume, maxDailyVolume: Math.max(...dailyVolume, 1) }
+  return { daysTrained: weekSessions.length, volume: weekSessions.reduce((sum, session) => sum + getSessionVolume(session), 0), completedSets: allSets.length, averageRir: rirs.length ? rirs.reduce((sum, rir) => sum + rir, 0) / rirs.length : null, totalMinutes: weekSessions.reduce((sum, session) => sum + getSessionDurationMinutes(session), 0), dailyVolume, maxDailyVolume: Math.max(...dailyVolume, 1) }
 }
 
 function getSessionVolume(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).reduce((sum, set) => sum + (set.weightKg ?? 0) * (set.reps ?? 0), 0) }
-function getSessionDuration(session: WorkoutSession) { if (!session.completedAt) return 0; return Math.max(0, Math.round((new Date(session.completedAt).getTime() - new Date(session.startedAt).getTime()) / 60_000)) }
 function countRoutineSets(routine: Routine) { return routine.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0) }
 function formatNumber(value: number) { return new Intl.NumberFormat('ko-KR').format(Math.round(value)) }
 function formatDuration(minutes: number) { if (minutes < 60) return `${minutes}분`; return `${Math.floor(minutes / 60)}시간 ${minutes % 60 ? `${minutes % 60}분` : ''}` }

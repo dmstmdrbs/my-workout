@@ -14,11 +14,11 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { formatElapsedTime } from '../../lib/duration'
 import { useAppServices, useSettings } from '../../services'
 import type { Equipment, Exercise, Routine, Rir, SetType, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
-  formatElapsedTime,
   readStoredWorkoutDraft,
   type StoredWorkoutDraft,
   type WorkoutDraft,

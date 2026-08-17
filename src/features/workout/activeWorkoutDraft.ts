@@ -42,21 +42,6 @@ export function clearStoredWorkoutDraft() {
   }
 }
 
-export function getElapsedSeconds(startedAt: string, now = Date.now()) {
-  const startedAtMs = Date.parse(startedAt)
-  return Number.isFinite(startedAtMs) ? Math.max(0, Math.floor((now - startedAtMs) / 1_000)) : 0
-}
-
-export function formatElapsedTime(startedAt: string, now = Date.now()) {
-  const totalSeconds = getElapsedSeconds(startedAt, now)
-  const hours = Math.floor(totalSeconds / 3_600)
-  const minutes = Math.floor((totalSeconds % 3_600) / 60)
-  const seconds = totalSeconds % 60
-  return hours > 0
-    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
-
 function isValidStartedAt(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value))
 }
