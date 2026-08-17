@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus, LoaderCircle, Plus, Save, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus, ListX, LoaderCircle, Plus, Save, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useAppServices, useSettings } from '../../services'
 import type { Exercise, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
 import './RoutineManager.css'
@@ -65,11 +65,23 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
       setDraft(null)
       setLastSavedDraft(null)
     } else if (!(initialSelectedRoutineId && draft?.id === initialSelectedRoutineId)) {
-      const initialRoutine = setupQuery.data.routines.find((routine) => routine.id === initialSelectedRoutineId) ?? setupQuery.data.routines[0]
-      const initialDraft = toDraft(initialRoutine)
-      setDraft(initialDraft)
-      setLastSavedDraft(initialDraft)
-      setNotice(null)
+      // An `initialSelectedRoutineId` that names no known routine (a deleted
+      // or mistyped id) must never fall back to some other routine -- that
+      // would let the person edit and save a routine they didn't ask for
+      // while the URL still names the one they think they're editing. Leave
+      // the draft empty; the render below shows a not-found screen instead.
+      const initialRoutine = initialSelectedRoutineId
+        ? setupQuery.data.routines.find((routine) => routine.id === initialSelectedRoutineId) ?? null
+        : setupQuery.data.routines[0]
+      if (initialRoutine) {
+        const initialDraft = toDraft(initialRoutine)
+        setDraft(initialDraft)
+        setLastSavedDraft(initialDraft)
+        setNotice(null)
+      } else {
+        setDraft(null)
+        setLastSavedDraft(null)
+      }
     }
     appliedRouteSelection.current = routeSelection
   }, [draft?.id, initialCreate, initialSelectedRoutineId, setupQuery.data])
@@ -135,6 +147,16 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
   }
 
   const { routines, exercises } = setupQuery.data
+
+  // Gated on `setupQuery.data` above (not just truthy `routines`) so this
+  // never fires during the loading window before the routine list has
+  // actually resolved -- otherwise every direct visit to /routines/:id would
+  // flash "not found" before the real list arrives.
+  const routineNotFound = Boolean(initialSelectedRoutineId)
+    && !initialCreate
+    && !routines.some((routine) => routine.id === initialSelectedRoutineId)
+  if (routineNotFound) return <RoutineNotFound onBackToList={() => onRoutineChange?.(null)} />
+
   const { defaultRestSeconds } = settingsQuery.data
   const selectedRoutineId = draft?.id ?? null
 
@@ -404,6 +426,7 @@ function DiscardChangesDialog({ destination, onCancel, onDiscard }: { destinatio
 
 function RoutineManagerLoading() { return <main className="routine-manager-page" aria-label="루틴을 불러오는 중"><div className="routine-loading-heading" /><div className="routine-loading-layout"><div /><div /></div></main> }
 function RoutineManagerError({ onRetry }: { onRetry: () => void }) { return <main className="routine-manager-message"><span><Dumbbell size={25} aria-hidden="true" /></span><h1>루틴을 불러오지 못했어요.</h1><p>저장소 연결을 확인한 뒤 다시 시도해 주세요.</p><button className="primary-button" type="button" onClick={onRetry}>다시 시도</button></main> }
+function RoutineNotFound({ onBackToList }: { onBackToList: () => void }) { return <main className="routine-manager-message"><span><ListX size={25} aria-hidden="true" /></span><h1>루틴을 찾을 수 없어요.</h1><p>주소가 잘못되었거나 삭제된 루틴일 수 있어요.</p><button className="primary-button" type="button" onClick={onBackToList}>루틴 목록으로 돌아가기</button></main> }
 
 function toDraft(routine: Routine): RoutineDraft { return { id: routine.id, name: routine.name, description: routine.description, color: routine.color, exercises: structuredClone(routine.exercises) } }
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `routine-${Date.now()}-${Math.random().toString(36).slice(2)}` }

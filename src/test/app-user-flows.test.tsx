@@ -201,8 +201,19 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect((screen.getByRole('textbox', { name: '루틴 이름' }) as HTMLInputElement).value).toBe('Pull Day')
     directRoutine.unmount()
 
+    // A deleted/mistyped routine id must show not-found, not silently fall
+    // back to editing a different routine (Pull Day) under the wrong URL.
+    const missingRoutine = renderApp('/routines/not-a-real-routine')
+    await screen.findByRole('heading', { name: '루틴을 찾을 수 없어요.' })
+    expect(screen.queryByRole('textbox', { name: '루틴 이름' })).toBeNull()
+    missingRoutine.unmount()
+
+    // An unknown path must render a real not-found screen at the URL the
+    // user typed, not silently redirect to the dashboard.
     const unknownRoute = renderApp('/not-a-real-page')
-    await screen.findByRole('heading', { name: /좋은 하루예요/ })
+    await screen.findByRole('heading', { name: '이 페이지를 찾을 수 없어요.' })
+    expect(screen.queryByRole('heading', { name: /좋은 하루예요/ })).toBeNull()
+    expect(document.querySelector('.placeholder-page code')?.textContent).toBe('/not-a-real-page')
     unknownRoute.unmount()
 
     renderAppWithHistory()
