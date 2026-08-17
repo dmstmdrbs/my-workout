@@ -3,6 +3,7 @@ import type { Ref } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
 import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
+import { getSessionDurationMinutes } from '../../lib/duration'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import './Records.css'
@@ -325,7 +326,7 @@ function formatRir(rir: number) { return rir >= 5 ? '5+' : String(rir) }
 function formatSet(set: WorkoutSetRecord, weightUnit: string) { return `${formatWeight(set.weightKg)} ${weightUnit} × ${set.reps ?? '–'}` }
 function formatWeight(weight: number | null) { return weight === null ? '–' : Number.isInteger(weight) ? String(weight) : weight.toFixed(1) }
 function formatNumber(value: number) { return new Intl.NumberFormat('ko-KR').format(Math.round(value)) }
-function formatDuration(session: WorkoutSession) { if (!session.completedAt) return '기록 중'; const minutes = Math.max(0, Math.round((new Date(session.completedAt).getTime() - new Date(session.startedAt).getTime()) / 60_000)); return minutes < 60 ? `${minutes}분` : `${Math.floor(minutes / 60)}시간${minutes % 60 ? ` ${minutes % 60}분` : ''}` }
+function formatDuration(session: WorkoutSession) { if (!session.completedAt) return '기록 중'; const minutes = getSessionDurationMinutes(session); return minutes < 60 ? `${minutes}분` : `${Math.floor(minutes / 60)}시간${minutes % 60 ? ` ${minutes % 60}분` : ''}` }
 function formatDateShort(date: string) { return new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }).format(new Date(date)) }
 function formatDateFull(date: string) { return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(date)) }
 function formatCardDate(date: string) { return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(date)).replace(/\.$/, '') }

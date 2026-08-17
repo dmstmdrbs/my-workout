@@ -123,6 +123,8 @@ export interface WorkoutSession {
   status: SessionStatus
   startedAt: IsoDateTime
   completedAt: IsoDateTime | null
+  /** 운동을 일시정지한 누적 시간(초). 경과/소요 시간 계산에서 항상 제외한다. */
+  pausedSeconds: number
   notes: string | null
   exercises: WorkoutExercise[]
   createdAt: IsoDateTime

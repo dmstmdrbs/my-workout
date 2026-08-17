@@ -81,7 +81,7 @@ export const mockRoutines: Routine[] = [
 export const mockSessions: WorkoutSession[] = [
   {
     id: 'session-2026-08-14', userId: mockUser.id, routineId: 'pull-day', routineName: 'Pull Day', status: 'completed',
-    startedAt: '2026-08-14T10:05:00.000+09:00', completedAt: '2026-08-14T11:12:00.000+09:00', notes: '랫 풀다운 마지막 세트 집중',
+    startedAt: '2026-08-14T10:05:00.000+09:00', completedAt: '2026-08-14T11:12:00.000+09:00', pausedSeconds: 0, notes: '랫 풀다운 마지막 세트 집중',
     exercises: [
       {
         id: 'session-row', exerciseId: 'seated-cable-row', exerciseName: '체스트 서포티드 시티드 로우', primaryMuscle: 'back', exerciseOrder: 1, notes: null,
@@ -100,7 +100,7 @@ export const mockSessions: WorkoutSession[] = [
   },
   {
     id: 'session-2026-08-12', userId: mockUser.id, routineId: 'push-day', routineName: 'Push Day', status: 'completed',
-    startedAt: '2026-08-12T14:30:00.000+09:00', completedAt: '2026-08-12T15:20:00.000+09:00', notes: null,
+    startedAt: '2026-08-12T14:30:00.000+09:00', completedAt: '2026-08-12T15:20:00.000+09:00', pausedSeconds: 0, notes: null,
     exercises: [
       {
         id: 'session2-bench', exerciseId: 'barbell-bench-press', exerciseName: '바벨 벤치프레스', primaryMuscle: 'chest', exerciseOrder: 1, notes: null,
@@ -113,7 +113,7 @@ export const mockSessions: WorkoutSession[] = [
   },
   {
     id: 'session-2026-08-11', userId: mockUser.id, routineId: 'pull-day', routineName: 'Pull Day', status: 'completed',
-    startedAt: '2026-08-11T18:00:00.000+09:00', completedAt: '2026-08-11T19:00:00.000+09:00', notes: null,
+    startedAt: '2026-08-11T18:00:00.000+09:00', completedAt: '2026-08-11T19:00:00.000+09:00', pausedSeconds: 0, notes: null,
     exercises: [
       {
         id: 'session3-row', exerciseId: 'seated-cable-row', exerciseName: '체스트 서포티드 시티드 로우', primaryMuscle: 'back', exerciseOrder: 1, notes: null,

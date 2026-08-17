@@ -220,6 +220,7 @@ function mapWorkoutSession(row: Row): WorkoutSession {
     status: stringValue(row, 'status') as SessionStatus,
     startedAt: stringValue(row, 'started_at'),
     completedAt: nullableString(row, 'completed_at'),
+    pausedSeconds: numberValue(row, 'paused_seconds'),
     notes: nullableString(row, 'notes'),
     exercises,
     createdAt: stringValue(row, 'created_at'),
@@ -471,7 +472,7 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
     return data ? mapWorkoutSession(data as Row) : null
   }
 
-  async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }) {
+  async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'pausedSeconds'> & { id?: Id; pausedSeconds?: number }) {
     await this.requireUser()
     const { data, error } = await this.client.rpc('save_workout_session', { payload: input })
     if (error) throw toError(error, '운동 기록을 저장하지 못했어요.')

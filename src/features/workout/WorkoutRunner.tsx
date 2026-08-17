@@ -7,6 +7,7 @@ import {
   GripVertical,
   ListOrdered,
   Minus,
+  Pause,
   Play,
   Plus,
   Save,
@@ -14,11 +15,11 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
 import { useAppServices, useSettings } from '../../services'
 import type { Equipment, Exercise, Routine, Rir, SetType, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
-  formatElapsedTime,
   readStoredWorkoutDraft,
   type StoredWorkoutDraft,
   type WorkoutDraft,
@@ -62,6 +63,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   const [draft, setDraft] = useState<WorkoutDraft | null>(restoredDraft?.draft ?? null)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(restoredDraft?.activeExerciseId ?? null)
   const [restEndsAt, setRestEndsAt] = useState<number | null>(restoredDraft?.restEndsAt ?? null)
+  const [pausedAt, setPausedAt] = useState<number | null>(restoredDraft?.pausedAt ?? null)
   const [clock, setClock] = useState(Date.now())
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -96,10 +98,10 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
       onDraftStateChange?.(null)
       return
     }
-    const storedDraft = { draft, activeExerciseId, restEndsAt }
+    const storedDraft = { draft, activeExerciseId, restEndsAt, pausedAt }
     writeStoredWorkoutDraft(storedDraft)
     onDraftStateChange?.(storedDraft)
-  }, [activeExerciseId, draft, onDraftStateChange, restEndsAt])
+  }, [activeExerciseId, draft, onDraftStateChange, pausedAt, restEndsAt])
 
   const finishMutation = useMutation({
     mutationFn: async (session: WorkoutDraft) => workoutRepository.saveSession({
@@ -111,6 +113,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
       clearStoredWorkoutDraft()
       setDraft(null)
       setRestEndsAt(null)
+      setPausedAt(null)
       void queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
       void queryClient.invalidateQueries({ queryKey: ['completed-workout-records'] })
       void queryClient.invalidateQueries({ queryKey: ['workout-runner-setup'] })
@@ -133,8 +136,25 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   const selectedRoutine = routines.find((routine) => routine.id === selectedRoutineId) ?? routines[0]
   const remainingRest = restEndsAt === null ? 0 : Math.max(0, Math.ceil((restEndsAt - clock) / 1_000))
   const restIsRunning = remainingRest > 0
-  const elapsedTime = draft ? formatElapsedTime(draft.startedAt, clock) : '00:00'
+  const isPaused = pausedAt !== null
+  // 일시정지 중에도 매초 clock은 계속 갱신되지만(휴식 타이머는 계속 흐르기
+  // 때문), 지금까지 흐른 일시정지 시간도 함께 늘어나 서로 상쇄되므로 화면에
+  // 보이는 경과 시간은 일시정지가 시작된 시점에 멈춰 보인다.
+  const effectivePausedSeconds = draft ? getEffectivePausedSeconds(draft.pausedSeconds, pausedAt, clock) : 0
+  const elapsedTime = draft ? formatElapsedTime(draft.startedAt, clock, effectivePausedSeconds) : '00:00'
   const restartRestSeconds = () => findMostRecentlyCompletedSet(draft)?.restSeconds ?? defaultRestSeconds
+
+  const togglePause = () => {
+    if (!draft) return
+    const now = Date.now()
+    if (pausedAt === null) {
+      setPausedAt(now)
+    } else {
+      const additionalPausedSeconds = Math.max(0, Math.floor((now - pausedAt) / 1_000))
+      setDraft((current) => current ? { ...current, pausedSeconds: current.pausedSeconds + additionalPausedSeconds } : current)
+      setPausedAt(null)
+    }
+  }
 
   const updateSet = (exerciseId: string, setId: string, changes: Partial<WorkoutSetRecord>) => {
     setDraft((current) => current ? {
@@ -226,6 +246,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
       setDraft(storedDraft.draft)
       setActiveExerciseId(storedDraft.activeExerciseId)
       setRestEndsAt(storedDraft.restEndsAt)
+      setPausedAt(storedDraft.pausedAt)
       setClock(Date.now())
       return
     }
@@ -241,6 +262,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
       setDraft(storedDraft.draft)
       setActiveExerciseId(storedDraft.activeExerciseId)
       setRestEndsAt(storedDraft.restEndsAt)
+      setPausedAt(storedDraft.pausedAt)
       setClock(Date.now())
       return
     }
@@ -256,10 +278,14 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
       setDraft(null)
       setActiveExerciseId(null)
       setRestEndsAt(null)
+      setPausedAt(null)
       onCancel()
       return
     }
-    finishMutation.mutate(draft)
+    // 일시정지 중에 종료하더라도 그 시점까지의 일시정지 시간이 저장 값에
+    // 반영되도록, 진행 중인 일시정지를 먼저 누적치에 접어 넣는다.
+    const finalPausedSeconds = getEffectivePausedSeconds(draft.pausedSeconds, pausedAt, Date.now())
+    finishMutation.mutate({ ...draft, pausedSeconds: finalPausedSeconds })
   }
 
   const reorderExercises = (sourceExerciseId: string, targetExerciseId: string) => {
@@ -329,6 +355,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     clearStoredWorkoutDraft()
     setDraft(null)
     setRestEndsAt(null)
+    setPausedAt(null)
     onCancel()
   }
 
@@ -355,7 +382,22 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
           </div>
         </div>
         <div className="workout-header-actions">
-          <span className="workout-elapsed-time" aria-label={`운동 시간 ${elapsedTime}`}><Clock3 size={16} aria-hidden="true" /> {elapsedTime}</span>
+          <span
+            className={`workout-elapsed-time ${isPaused ? 'is-paused' : ''}`}
+            aria-label={`운동 시간 ${elapsedTime}${isPaused ? ', 일시정지됨' : ''}`}
+          >
+            <Clock3 size={16} aria-hidden="true" /> {elapsedTime}
+            {isPaused && <span className="workout-paused-badge">일시정지</span>}
+          </span>
+          <button
+            className="pause-toggle-button"
+            type="button"
+            onClick={togglePause}
+            aria-label={isPaused ? '운동 재개' : '운동 일시정지'}
+            aria-pressed={isPaused}
+          >
+            {isPaused ? <Play size={16} /> : <Pause size={16} />}
+          </button>
           <button className="runner-text-button" type="button" onClick={cancelWorkout}><X size={17} /> 나가기</button>
           <button className="primary-button" type="button" onClick={finishWorkout} disabled={finishMutation.isPending}>
             <Save size={17} /> {finishMutation.isPending ? '저장 중…' : '운동 종료'}
@@ -555,7 +597,7 @@ function createDraft(routine: Routine, exercises: Exercise[]): WorkoutDraft {
   const startedAt = new Date().toISOString()
   const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
   return {
-    id: createId(), routineId: routine.id, routineName: routine.name, status: 'in_progress', startedAt, completedAt: null, notes: null,
+    id: createId(), routineId: routine.id, routineName: routine.name, status: 'in_progress', startedAt, completedAt: null, pausedSeconds: 0, notes: null,
     exercises: [...routine.exercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder).map((routineExercise): WorkoutExercise => ({
       id: createId(), exerciseId: routineExercise.exerciseId, exerciseName: routineExercise.exerciseName,
       primaryMuscle: exerciseById.get(routineExercise.exerciseId)?.primaryMuscle ?? 'full_body', exerciseOrder: routineExercise.exerciseOrder, notes: routineExercise.notes,
@@ -570,7 +612,7 @@ function createDraft(routine: Routine, exercises: Exercise[]): WorkoutDraft {
 
 function createFreeDraft(): WorkoutDraft {
   return {
-    id: createId(), routineId: null, routineName: null, status: 'in_progress', startedAt: new Date().toISOString(), completedAt: null, notes: null, exercises: [],
+    id: createId(), routineId: null, routineName: null, status: 'in_progress', startedAt: new Date().toISOString(), completedAt: null, pausedSeconds: 0, notes: null, exercises: [],
   }
 }
 
