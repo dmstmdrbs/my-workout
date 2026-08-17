@@ -184,8 +184,8 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(screen.getByRole('button', { name: '더보기 메뉴' }))
     const moreMenu = screen.getByRole('menu', { name: '더보기' })
     await user.click(within(moreMenu).getByRole('menuitem', { name: '통계' }))
-    await screen.findByRole('heading', { name: '이 화면을 준비하고 있어요.' })
-    expect(document.querySelector('.placeholder-page .eyebrow')?.textContent).toBe('통계')
+    await screen.findByRole('heading', { name: '주간 통계' })
+    expect(document.querySelector('.stats-heading .eyebrow')?.textContent).toBe('STATISTICS')
   })
 
   test('UF-01: 직접 주소 진입·알 수 없는 주소 정리·히스토리 뒤로가기가 동작한다', async () => {
@@ -213,7 +213,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     // the genuine case: direct entry to /stats still marks 통계 active in both
     // the sidebar and the bottom nav's 더보기 toggle.
     const directStats = renderApp('/stats')
-    await screen.findByRole('heading', { name: '이 화면을 준비하고 있어요.' })
+    await screen.findByRole('heading', { name: '주간 통계' })
     expect(sideNavButton('통계').classList.contains('is-active')).toBe(true)
     expect(document.querySelector('.bottom-nav button[aria-haspopup="menu"]')?.classList.contains('is-active')).toBe(true)
     directStats.unmount()
