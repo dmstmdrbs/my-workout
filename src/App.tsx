@@ -347,7 +347,7 @@ function AppShell() {
           )
         })}
         <button
-          className={moreMenuPages.includes(activePage) ? 'is-active' : ''}
+          className={activePage !== null && moreMenuPages.includes(activePage) ? 'is-active' : ''}
           onClick={() => setIsMoreMenuOpen((isOpen) => !isOpen)}
           type="button"
           aria-haspopup="menu"
@@ -426,14 +426,19 @@ function PlaceholderPage({ page, onGoHome }: { page: 'stats'; onGoHome: () => vo
   </section>
 }
 
-function getActivePage(pathname: string): PageId {
+// Returns `null` for a pathname that matches no known page (an unknown
+// route, e.g. a typo). No nav item should read as active in that case --
+// falling through to 'stats' would make the UI claim the person is on the
+// statistics screen while the content says the page doesn't exist.
+function getActivePage(pathname: string): PageId | null {
   if (pathname === '/') return 'dashboard'
   if (pathname.startsWith('/workout')) return 'workout'
   if (pathname.startsWith('/routines')) return 'routines'
   if (pathname.startsWith('/records')) return 'records'
   if (pathname.startsWith('/settings')) return 'settings'
   if (pathname.startsWith('/body')) return 'body'
-  return 'stats'
+  if (pathname.startsWith('/stats')) return 'stats'
+  return null
 }
 
 export default App
