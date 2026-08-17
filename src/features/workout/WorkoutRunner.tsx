@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Check,
-  ChevronRight,
   Clock3,
   Dumbbell,
   GripVertical,
   ListOrdered,
+  Minus,
   Play,
   Plus,
   Save,
@@ -38,6 +38,9 @@ interface WorkoutSetupData {
 }
 
 function lastCompletedSetQueryKey(exerciseId: string) { return ['last-completed-set', exerciseId] as const }
+
+const WEIGHT_STEP = 2.5
+const REPS_STEP = 1
 
 const rirChoices: Array<{ value: number; label: string }> = [
   { value: 0, label: '0' },
@@ -117,14 +120,6 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     },
   })
 
-  const activeExercise = draft?.exercises.find((exercise) => exercise.id === activeExerciseId) ?? draft?.exercises[0] ?? null
-
-  const lastCompletedSetQuery = useQuery({
-    queryKey: activeExercise ? lastCompletedSetQueryKey(activeExercise.exerciseId) : lastCompletedSetQueryKey('none'),
-    queryFn: () => workoutRepository.getLastCompletedSetForExercise(activeExercise!.exerciseId),
-    enabled: activeExercise !== null,
-  })
-
   if (setupQuery.isPending || settingsQuery.isPending) return <RunnerLoading />
   if (setupQuery.isError || !setupQuery.data || settingsQuery.isError || !settingsQuery.data) {
     return <RunnerError onRetry={() => { void setupQuery.refetch(); void settingsQuery.refetch() }} onCancel={onCancel} />
@@ -133,11 +128,10 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   const { routines, exercises } = setupQuery.data
   const { weightUnit, defaultRestSeconds, defaultRir } = settingsQuery.data
   const selectedRoutine = routines.find((routine) => routine.id === selectedRoutineId) ?? routines[0]
-  const activeIndex = activeExercise ? draft?.exercises.findIndex((exercise) => exercise.id === activeExercise.id) ?? 0 : 0
-  const previousSet = activeExercise ? lastCompletedSetQuery.data ?? null : null
   const remainingRest = restEndsAt === null ? 0 : Math.max(0, Math.ceil((restEndsAt - clock) / 1_000))
   const restIsRunning = remainingRest > 0
   const elapsedTime = draft ? formatElapsedTime(draft.startedAt, clock) : '00:00'
+  const restartRestSeconds = () => findMostRecentlyCompletedSet(draft)?.restSeconds ?? defaultRestSeconds
 
   const updateSet = (exerciseId: string, setId: string, changes: Partial<WorkoutSetRecord>) => {
     setDraft((current) => current ? {
@@ -282,13 +276,14 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
 
   const removeExercise = (exerciseId: string) => {
     if (!draft) return
-    const orderedExercises = sortExercises(draft.exercises)
-    const removedIndex = orderedExercises.findIndex((exercise) => exercise.id === exerciseId)
-    if (removedIndex < 0) return
-    const remainingExercises = orderedExercises.filter((exercise) => exercise.id !== exerciseId)
+    // The stacked layout has no notion of a "selected" exercise, but
+    // `activeExerciseId` still round-trips through the persisted draft for
+    // backward compatibility (see activeWorkoutDraft.ts). Keep it pointing at
+    // an exercise that still exists so a draft saved by this build restores
+    // cleanly if an older build ever reads it back.
     if (activeExerciseId === exerciseId) {
-      setActiveExerciseId(remainingExercises[removedIndex]?.id ?? remainingExercises[removedIndex - 1]?.id ?? null)
-      setRestEndsAt(null)
+      const remainingExercises = draft.exercises.filter((exercise) => exercise.id !== exerciseId)
+      setActiveExerciseId(remainingExercises[0]?.id ?? null)
     }
     setDraft((current) => current ? { ...current, exercises: normalizeExerciseOrder(current.exercises.filter((exercise) => exercise.id !== exerciseId)) } : current)
   }
@@ -343,7 +338,10 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
         <div>
           <p className="eyebrow">ACTIVE WORKOUT</p>
           <h1 id="workout-title">{draft.routineName ?? '자유 운동'}</h1>
-          <p>{draft.exercises.length}개 종목 · 완료한 세트 {countCompletedSets(draft)}개</p>
+          <div className="workout-progress-line">
+            <p>{draft.exercises.length}개 종목 · 완료 {countCompletedSets(draft)}세트 · {countCompletedSets(draft)}/{countAllSets(draft)}</p>
+            {draft.exercises.length > 1 && <button className="order-button" type="button" onClick={() => setIsReorderOpen(true)}><ListOrdered size={15} /> 순서 변경</button>}
+          </div>
         </div>
         <div className="workout-header-actions">
           <span className="workout-elapsed-time" aria-label={`운동 시간 ${elapsedTime}`}><Clock3 size={16} aria-hidden="true" /> {elapsedTime}</span>
@@ -356,52 +354,8 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
 
       {finishMutation.isError && <p className="runner-save-error" role="alert">운동을 저장하지 못했어요. 네트워크를 확인한 뒤 다시 시도해 주세요.</p>}
 
-      <div className="workout-layout">
-        <aside className="exercise-rail" aria-label="운동 종목">
-          <div className="rail-heading"><span>운동 순서</span><div><strong>{draft.exercises.length ? `${activeIndex + 1} / ${draft.exercises.length}` : '0 / 0'}</strong>{draft.exercises.length > 1 && <button className="rail-order-button" type="button" onClick={() => setIsReorderOpen(true)}><ListOrdered size={15} /> 순서 변경</button>}</div></div>
-          <div className="exercise-nav-list">
-            {draft.exercises.map((exercise, index) => {
-              const completeCount = exercise.sets.filter((set) => set.isCompleted).length
-              return <button className={`exercise-nav-item ${activeExercise?.id === exercise.id ? 'is-active' : ''}`} onClick={() => setActiveExerciseId(exercise.id)} type="button" key={exercise.id}>
-                <span className="exercise-index">{String(index + 1).padStart(2, '0')}</span>
-                <span><strong>{exercise.exerciseName}</strong><small>{completeCount}/{exercise.sets.length} 세트 완료</small></span>
-                <ChevronRight size={16} aria-hidden="true" />
-              </button>
-            })}
-          </div>
-          {activeExercise && <ExerciseAdder
-            exercises={exercises}
-            selectedExerciseId={exerciseToAddId}
-            onSelectionChange={setExerciseToAddId}
-            onAdd={() => { void addExercise() }}
-            compact
-          />}
-        </aside>
-
-        {activeExercise && <section className="exercise-workspace" aria-labelledby="active-exercise-title">
-          <div className="exercise-workspace-heading">
-            <div>
-              <p className="eyebrow">{muscleLabel(activeExercise.primaryMuscle)}</p>
-              <h2 id="active-exercise-title">{activeExercise.exerciseName}</h2>
-              {activeExercise.notes && <p className="exercise-note">{activeExercise.notes}</p>}
-            </div>
-            <div className="exercise-workspace-actions"><div className="previous-context"><span>지난 기록</span><strong>{formatPrevious(previousSet, weightUnit)}</strong></div><button className="exercise-remove-button" type="button" onClick={() => removeExercise(activeExercise.id)}><Trash2 size={15} /> 종목 삭제</button></div>
-          </div>
-
-          <div className="set-table" role="region" aria-label={`${activeExercise.exerciseName} 세트 기록`} tabIndex={0}>
-            <div className="set-row set-table-head" aria-hidden="true"><span>세트</span><span>중량 ({weightUnit})</span><span>횟수</span><span>목표 RIR</span><span>실제 RIR</span><span /></div>
-            {activeExercise.sets.map((set) => <SetRow
-              key={set.id}
-              set={set}
-              weightUnit={weightUnit}
-              onChange={(changes) => updateSet(activeExercise.id, set.id, changes)}
-              onComplete={() => toggleSetComplete(activeExercise.id, set)}
-            />)}
-          </div>
-          <button className="add-set-button" type="button" onClick={() => addWorkingSet(activeExercise.id)}><Plus size={17} /> 작업 세트 추가</button>
-        </section>}
-
-        {!activeExercise && <section className="exercise-workspace free-workout-empty" aria-labelledby="free-workout-empty-title">
+      <div className="workout-cards">
+        {draft.exercises.length === 0 && <section className="exercise-workspace free-workout-empty" aria-labelledby="free-workout-empty-title">
           <Dumbbell size={27} aria-hidden="true" />
           <h2 id="free-workout-empty-title">첫 운동을 추가해 주세요.</h2>
           <p>종목을 고르면 지난 기록과 기본 휴식 시간, 목표 RIR을 불러와 바로 기록할 수 있어요.</p>
@@ -413,20 +367,27 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
           />
         </section>}
 
-        <aside className="workout-side-panel">
-          <RestTimer remaining={remainingRest} isRunning={restIsRunning} onRestart={() => startRest(activeExercise?.sets.findLast((set) => set.isCompleted)?.restSeconds ?? defaultRestSeconds)} onStop={() => setRestEndsAt(null)} />
-          <article className="target-card">
-            <div className="target-card-icon"><Dumbbell size={18} /></div>
-            <div><span>현재 목표</span><strong>{activeExercise ? formatTarget(activeExercise.sets.find((set) => !set.isCompleted) ?? activeExercise.sets.at(-1), weightUnit) : '–'}</strong></div>
-          </article>
-          <article className="workout-progress-card">
-            <div><span>운동 진행률</span><strong>{countCompletedSets(draft)} / {countAllSets(draft)} 세트</strong></div>
-            <div className="progress-track"><span style={{ width: `${getProgress(draft)}%` }} /></div>
-          </article>
-        </aside>
+        {draft.exercises.map((exercise) => <ExerciseCard
+          key={exercise.id}
+          exercise={exercise}
+          weightUnit={weightUnit}
+          onChangeSet={(setId, changes) => updateSet(exercise.id, setId, changes)}
+          onCompleteSet={(set) => toggleSetComplete(exercise.id, set)}
+          onAddSet={() => addWorkingSet(exercise.id)}
+          onRemove={() => removeExercise(exercise.id)}
+        />)}
+
+        {draft.exercises.length > 0 && <div className="exercise-adder-trailing">
+          <ExerciseAdder
+            exercises={exercises}
+            selectedExerciseId={exerciseToAddId}
+            onSelectionChange={setExerciseToAddId}
+            onAdd={() => { void addExercise() }}
+          />
+        </div>}
       </div>
 
-      <div className="mobile-rest-dock"><RestTimer remaining={remainingRest} isRunning={restIsRunning} onRestart={() => startRest(activeExercise?.sets.findLast((set) => set.isCompleted)?.restSeconds ?? defaultRestSeconds)} onStop={() => setRestEndsAt(null)} compact /></div>
+      <div className="rest-timer-dock"><RestTimer remaining={remainingRest} isRunning={restIsRunning} onRestart={() => startRest(restartRestSeconds())} onStop={() => setRestEndsAt(null)} compact /></div>
       {isReorderOpen && <ExerciseReorderDialog
         exercises={sortExercises(draft.exercises)}
         draggingExerciseId={draggingExerciseId}
@@ -468,6 +429,46 @@ function ExerciseReorderDialog({ exercises, draggingExerciseId, onClose, onMove,
   </div>
 }
 
+function ExerciseCard({ exercise, weightUnit, onChangeSet, onCompleteSet, onAddSet, onRemove }: {
+  exercise: WorkoutExercise
+  weightUnit: string
+  onChangeSet: (setId: string, changes: Partial<WorkoutSetRecord>) => void
+  onCompleteSet: (set: WorkoutSetRecord) => void
+  onAddSet: () => void
+  onRemove: () => void
+}) {
+  const { workoutRepository } = useAppServices()
+  const lastCompletedSetQuery = useQuery({
+    queryKey: lastCompletedSetQueryKey(exercise.exerciseId),
+    queryFn: () => workoutRepository.getLastCompletedSetForExercise(exercise.exerciseId),
+  })
+  const previousSet = lastCompletedSetQuery.data ?? null
+  const titleId = `exercise-title-${exercise.id}`
+
+  return <section className="exercise-workspace" aria-labelledby={titleId}>
+    <div className="exercise-workspace-heading">
+      <div>
+        <p className="eyebrow">{muscleLabel(exercise.primaryMuscle)}</p>
+        <h2 id={titleId}>{exercise.exerciseName}</h2>
+        {exercise.notes && <p className="exercise-note">{exercise.notes}</p>}
+      </div>
+      <div className="exercise-workspace-actions"><div className="previous-context"><span>지난 기록</span><strong>{formatPrevious(previousSet, weightUnit)}</strong></div><button className="exercise-remove-button" type="button" onClick={onRemove}><Trash2 size={15} /> 종목 삭제</button></div>
+    </div>
+
+    <div className="set-table" role="region" aria-label={`${exercise.exerciseName} 세트 기록`} tabIndex={0}>
+      <div className="set-row set-table-head" aria-hidden="true"><span>세트</span><span>중량 ({weightUnit})</span><span>횟수</span><span>목표 RIR</span><span>실제 RIR</span><span /></div>
+      {exercise.sets.map((set) => <SetRow
+        key={set.id}
+        set={set}
+        weightUnit={weightUnit}
+        onChange={(changes) => onChangeSet(set.id, changes)}
+        onComplete={() => onCompleteSet(set)}
+      />)}
+    </div>
+    <button className="add-set-button" type="button" onClick={onAddSet}><Plus size={17} /> 작업 세트 추가</button>
+  </section>
+}
+
 function RoutinePicker({ routines, selectedRoutine, onSelect, onBegin, onBeginFree, onCancel }: { routines: Routine[]; selectedRoutine: Routine | undefined; onSelect: (id: string) => void; onBegin: () => void; onBeginFree: () => void; onCancel: () => void }) {
   return <main className="routine-picker-page" aria-labelledby="routine-picker-title">
     <section className="routine-picker-heading"><div><p className="eyebrow">START TRAINING</p><h1 id="routine-picker-title">오늘 어떤 운동을 할까요?</h1><p>루틴의 처방을 따르거나, 자유 운동에서 원하는 종목을 바로 추가해 보세요.</p></div><button className="runner-text-button" type="button" onClick={onCancel}>대시보드로 돌아가기</button></section>
@@ -485,10 +486,10 @@ function RoutinePicker({ routines, selectedRoutine, onSelect, onBegin, onBeginFr
   </main>
 }
 
-function ExerciseAdder({ exercises, selectedExerciseId, onSelectionChange, onAdd, compact = false }: { exercises: Exercise[]; selectedExerciseId: string; onSelectionChange: (id: string) => void; onAdd: () => void; compact?: boolean }) {
-  return <div className={`exercise-adder ${compact ? 'is-compact' : ''}`}>
+function ExerciseAdder({ exercises, selectedExerciseId, onSelectionChange, onAdd }: { exercises: Exercise[]; selectedExerciseId: string; onSelectionChange: (id: string) => void; onAdd: () => void }) {
+  return <div className="exercise-adder">
     <label>
-      <span>{compact ? '종목 추가' : '운동 종목'}</span>
+      <span>운동 종목</span>
       <select aria-label="운동 종목 추가" value={selectedExerciseId} onChange={(event) => onSelectionChange(event.target.value)}>
         <option value="">운동을 선택하세요</option>
         {exercises.map((exercise) => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}
@@ -501,8 +502,22 @@ function ExerciseAdder({ exercises, selectedExerciseId, onSelectionChange, onAdd
 function SetRow({ set, weightUnit, onChange, onComplete }: { set: WorkoutSetRecord; weightUnit: string; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
   return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''}`}>
     <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
-    <label><span className="mobile-field-label">중량 ({weightUnit})</span><input aria-label={`${set.setOrder}세트 중량 (${weightUnit})`} inputMode="decimal" type="number" min="0" step="0.5" value={set.weightKg ?? ''} onChange={(event) => onChange({ weightKg: toNullableNumber(event.target.value) })} /></label>
-    <label><span className="mobile-field-label">횟수</span><input aria-label={`${set.setOrder}세트 횟수`} inputMode="numeric" type="number" min="0" step="1" value={set.reps ?? ''} onChange={(event) => onChange({ reps: toNullableInteger(event.target.value) })} /></label>
+    <label>
+      <span className="mobile-field-label">중량 ({weightUnit})</span>
+      <div className="numeric-stepper">
+        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 중량 ${WEIGHT_STEP}${weightUnit} 감소`} onClick={() => onChange({ weightKg: decrementValue(set.weightKg, WEIGHT_STEP) })}><Minus size={14} /></button>
+        <input aria-label={`${set.setOrder}세트 중량 (${weightUnit})`} inputMode="decimal" type="number" min="0" step="0.5" value={set.weightKg ?? ''} onChange={(event) => onChange({ weightKg: toNullableNumber(event.target.value) })} />
+        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 중량 ${WEIGHT_STEP}${weightUnit} 증가`} onClick={() => onChange({ weightKg: incrementValue(set.weightKg, WEIGHT_STEP) })}><Plus size={14} /></button>
+      </div>
+    </label>
+    <label>
+      <span className="mobile-field-label">횟수</span>
+      <div className="numeric-stepper">
+        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 횟수 ${REPS_STEP} 감소`} onClick={() => onChange({ reps: decrementValue(set.reps, REPS_STEP) })}><Minus size={14} /></button>
+        <input aria-label={`${set.setOrder}세트 횟수`} inputMode="numeric" type="number" min="0" step="1" value={set.reps ?? ''} onChange={(event) => onChange({ reps: toNullableInteger(event.target.value) })} />
+        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 횟수 ${REPS_STEP} 증가`} onClick={() => onChange({ reps: incrementValue(set.reps, REPS_STEP) })}><Plus size={14} /></button>
+      </div>
+    </label>
     <span className="target-rir"><small className="mobile-field-label">목표 RIR</small>{formatRir(set.targetRir)}</span>
     <div className="actual-rir"><span className="mobile-field-label">실제 RIR</span><div className="rir-choice-row" role="group" aria-label={`${set.setOrder}세트 실제 RIR`}>
       {rirChoices.map((choice) => <button className={set.actualRir === choice.value ? 'is-selected' : ''} type="button" key={choice.value} onClick={() => onChange({ actualRir: choice.value })}>{choice.label}</button>)}
@@ -566,12 +581,26 @@ function createId() { return globalThis.crypto?.randomUUID?.() ?? `workout-${Dat
 function toNullableNumber(value: string) { if (value.trim() === '') return null; const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? parsed : null }
 function toNullableInteger(value: string) { const number = toNullableNumber(value); return number === null ? null : Math.floor(number) }
 function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) { return set?.weightKg !== null && set?.weightKg !== undefined && set.reps !== null && set.reps !== undefined ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음' }
-function formatTarget(set: WorkoutSetRecord | undefined, weightUnit: string) { if (!set) return '목표 없음'; const weight = set.weightKg === null ? '중량 자유' : `${set.weightKg}${weightUnit}`; const reps = set.reps === null ? '횟수 자유' : `${set.reps}회`; return `${weight} × ${reps} · RIR ${formatRir(set.targetRir)}` }
 function formatRir(rir: Rir) { if (rir === null) return '–'; return rir >= 5 ? '5+' : String(rir) }
 function formatTimer(seconds: number) { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
 function countCompletedSets(session: WorkoutDraft) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).length }
 function countAllSets(session: WorkoutDraft) { return session.exercises.reduce((count, exercise) => count + exercise.sets.length, 0) }
-function getProgress(session: WorkoutDraft) { const all = countAllSets(session); return all === 0 ? 0 : (countCompletedSets(session) / all) * 100 }
 function countRoutineSets(routine: Routine) { return routine.exercises.reduce((count, exercise) => count + exercise.sets.length, 0) }
+// A null field is treated as an empty 0 baseline: incrementing it once lands
+// on exactly one step (rather than staying null or producing NaN), and
+// decrementing it clamps at the floor like any other value.
+function incrementValue(value: number | null, step: number, floor = 0) { return Math.max(floor, (value ?? 0) + step) }
+function decrementValue(value: number | null, step: number, floor = 0) { return Math.max(floor, (value ?? 0) - step) }
+function findMostRecentlyCompletedSet(draft: WorkoutDraft | null): WorkoutSetRecord | null {
+  if (!draft) return null
+  let latest: WorkoutSetRecord | null = null
+  for (const exercise of draft.exercises) {
+    for (const set of exercise.sets) {
+      if (!set.isCompleted || !set.completedAt) continue
+      if (!latest || !latest.completedAt || set.completedAt > latest.completedAt) latest = set
+    }
+  }
+  return latest
+}
 function setTypeLabel(setType: SetType) { return setType === 'warmup' ? '워밍업' : setType === 'dropset' ? '드롭' : '작업' }
 function muscleLabel(muscle: WorkoutExercise['primaryMuscle']) { return ({ chest: '가슴', back: '등', shoulders: '어깨', biceps: '이두', triceps: '삼두', quadriceps: '대퇴사두', hamstrings: '햄스트링', glutes: '둔근', calves: '종아리', core: '코어', cardio: '유산소', full_body: '전신' })[muscle] }

@@ -64,6 +64,19 @@ function sideNavButton(name: string) {
   return screen.getAllByRole('button', { name })[0]
 }
 
+/**
+ * The stacked workout layout renders every exercise's card (and its own
+ * "1세트 ..." labelled controls) at once, so plain `screen.getByRole` queries
+ * for per-set labels are ambiguous once more than one exercise is on screen.
+ * Scope to the specific exercise's card by its heading to disambiguate.
+ */
+function exerciseCard(exerciseName: string) {
+  const heading = screen.getByRole('heading', { name: exerciseName })
+  const section = heading.closest('section')
+  expect(section).not.toBeNull()
+  return within(section!)
+}
+
 describe.sequential('Trainlog 핵심 사용자 플로우', () => {
   beforeAll(() => {
     localStorage.clear()
@@ -84,14 +97,17 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(screen.getByRole('button', { name: 'Pull Day 시작' }))
 
     await screen.findByRole('heading', { name: 'Pull Day' })
-    const weightInput = screen.getByRole('spinbutton', { name: '1세트 중량 (kg)' })
-    const repsInput = screen.getByRole('spinbutton', { name: '1세트 횟수' })
+    // Pull Day has three exercises, all visible at once in the stacked
+    // layout; scope to the first (체스트 서포티드 시티드 로우 = exercises[0]).
+    const firstExercise = exerciseCard('체스트 서포티드 시티드 로우')
+    const weightInput = firstExercise.getByRole('spinbutton', { name: '1세트 중량 (kg)' })
+    const repsInput = firstExercise.getByRole('spinbutton', { name: '1세트 횟수' })
     await user.clear(weightInput)
     await user.type(weightInput, '62.5')
     await user.clear(repsInput)
     await user.type(repsInput, '9')
 
-    const actualRirGroup = screen.getByRole('group', { name: '1세트 실제 RIR' })
+    const actualRirGroup = firstExercise.getByRole('group', { name: '1세트 실제 RIR' })
     expect(within(actualRirGroup).getByRole('button', { name: '–' }).className).toContain('is-selected')
     await user.click(within(actualRirGroup).getByRole('button', { name: '5+' }))
     expect(within(actualRirGroup).getByRole('button', { name: '5+' }).className).toContain('is-selected')
@@ -104,8 +120,8 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
       actualRir: 5,
     })
 
-    await user.click(screen.getByRole('button', { name: '1세트 완료' }))
-    expect(screen.getByRole('button', { name: '1세트 완료 취소' })).toBeTruthy()
+    await user.click(firstExercise.getByRole('button', { name: '1세트 완료' }))
+    expect(firstExercise.getByRole('button', { name: '1세트 완료 취소' })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: '운동 종료' }))
 
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
@@ -291,7 +307,8 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(screen.getByRole('button', { name: 'Push Day 시작' }))
     await screen.findByRole('heading', { name: 'Push Day' })
 
-    const firstWeight = screen.getByRole('spinbutton', { name: '1세트 중량 (kg)' })
+    // Push Day has two exercises; scope to the first (바벨 벤치프레스 = exercises[0]).
+    const firstWeight = exerciseCard('바벨 벤치프레스').getByRole('spinbutton', { name: '1세트 중량 (kg)' })
     await user.clear(firstWeight)
     await user.type(firstWeight, '91')
     await waitFor(() => expect(JSON.parse(localStorage.getItem(workoutDraftKey) ?? '{}').draft.exercises[0].sets[0].weightKg).toBe(91))
@@ -309,7 +326,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(resumeToast.textContent).toContain('Push Day 진행 중')
     await user.click(resumeToast)
     await screen.findByRole('heading', { name: 'Push Day' })
-    expect((screen.getByRole('spinbutton', { name: '1세트 중량 (kg)' }) as HTMLInputElement).value).toBe('91')
+    expect((exerciseCard('바벨 벤치프레스').getByRole('spinbutton', { name: '1세트 중량 (kg)' }) as HTMLInputElement).value).toBe('91')
     expect(JSON.parse(localStorage.getItem(workoutDraftKey) ?? '{}').draft.startedAt).toBe(originalStartedAt)
 
     firstRender.unmount()
@@ -317,7 +334,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
     await user.click(sideNavButton('운동 시작'))
     await screen.findByRole('heading', { name: 'Push Day' })
-    expect((screen.getByRole('spinbutton', { name: '1세트 중량 (kg)' }) as HTMLInputElement).value).toBe('91')
+    expect((exerciseCard('바벨 벤치프레스').getByRole('spinbutton', { name: '1세트 중량 (kg)' }) as HTMLInputElement).value).toBe('91')
 
     await user.click(screen.getByRole('button', { name: '나가기' }))
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
@@ -361,14 +378,12 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
       ['barbell-bench-press', 2],
     ]))
 
-    const benchExerciseNav = Array.from(document.querySelectorAll<HTMLButtonElement>('.exercise-nav-item')).find((button) =>
-      button.textContent?.includes('바벨 벤치프레스'),
-    )
-    expect(benchExerciseNav).toBeTruthy()
-    await user.click(benchExerciseNav!)
-    await screen.findByRole('heading', { name: '바벨 벤치프레스' })
-    await user.click(screen.getByRole('button', { name: '종목 삭제' }))
-    await screen.findByRole('heading', { name: '와이드 그립 랫 풀다운' })
+    // Both exercises are already visible in the stacked layout -- no need to
+    // navigate into one first. Scope the delete to 바벨 벤치프레스's own card,
+    // since both cards render an identically-labelled "종목 삭제" button.
+    await user.click(exerciseCard('바벨 벤치프레스').getByRole('button', { name: '종목 삭제' }))
+    await waitFor(() => expect(screen.queryByRole('heading', { name: '바벨 벤치프레스' })).toBeNull())
+    expect(screen.getByRole('heading', { name: '와이드 그립 랫 풀다운' })).toBeTruthy()
 
     const savedDraft = JSON.parse(localStorage.getItem(workoutDraftKey) ?? '{}')
     expect(savedDraft.draft).toMatchObject({ routineId: null, routineName: null })
