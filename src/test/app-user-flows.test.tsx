@@ -393,12 +393,14 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(screen.getByRole('button', { name: '자유 운동으로 시작' }))
     await screen.findByRole('heading', { name: '첫 운동을 추가해 주세요.' })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: '운동 종목 추가' }), 'barbell-bench-press')
-    await user.click(screen.getByRole('button', { name: '추가' }))
+    await user.click(screen.getByRole('button', { name: '종목 추가' }))
+    await screen.findByRole('dialog', { name: '종목 추가' })
+    await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: '운동 종목 추가' }), 'lat-pulldown')
-    await user.click(screen.getByRole('button', { name: '추가' }))
+    await user.click(screen.getByRole('button', { name: '종목 추가' }))
+    await screen.findByRole('dialog', { name: '종목 추가' })
+    await user.click(screen.getByRole('button', { name: '와이드 그립 랫 풀다운' }))
     await user.click(screen.getByRole('button', { name: '순서 변경' }))
     await screen.findByRole('dialog', { name: '운동 순서 변경' })
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스 아래로' }))

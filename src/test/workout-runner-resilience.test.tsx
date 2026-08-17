@@ -56,8 +56,9 @@ describe.sequential('운동 화면: 지난 기록 조회 실패 내성', () => {
 
     // barbell-bench-press has real seeded history (80kg x 6 in mockSessions),
     // so this only proves resilience if the lookup genuinely runs and fails.
-    await user.selectOptions(screen.getByRole('combobox', { name: '운동 종목 추가' }), 'barbell-bench-press')
-    await user.click(screen.getByRole('button', { name: '추가' }))
+    await user.click(screen.getByRole('button', { name: '종목 추가' }))
+    await screen.findByRole('dialog', { name: '종목 추가' })
+    await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
     const draft = JSON.parse(localStorage.getItem(workoutDraftKey) ?? '{}')

@@ -43,8 +43,9 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     // barbell-bench-press has seeded history (80kg range), which primes the
     // `['last-completed-set', 'barbell-bench-press']` cache with that old
     // value once added below.
-    await user.selectOptions(screen.getByRole('combobox', { name: '운동 종목 추가' }), 'barbell-bench-press')
-    await user.click(screen.getByRole('button', { name: '추가' }))
+    await user.click(screen.getByRole('button', { name: '종목 추가' }))
+    await screen.findByRole('dialog', { name: '종목 추가' })
+    await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
     // Record a distinctive new value, distinct from the seeded history, and
@@ -66,8 +67,9 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     await user.click(screen.getByRole('button', { name: '자유 운동으로 시작' }))
     await screen.findByRole('heading', { name: '첫 운동을 추가해 주세요.' })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: '운동 종목 추가' }), 'barbell-bench-press')
-    await user.click(screen.getByRole('button', { name: '추가' }))
+    await user.click(screen.getByRole('button', { name: '종목 추가' }))
+    await screen.findByRole('dialog', { name: '종목 추가' })
+    await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
     // The workout finished a moment ago must be reflected as "지난 기록"
