@@ -18,6 +18,7 @@ import { Dashboard } from './features/dashboard/Dashboard'
 import { Records } from './features/records/Records'
 import { RoutineManager } from './features/routines/RoutineManager'
 import { Settings } from './features/settings/Settings'
+import { Stats } from './features/stats/Stats'
 import { WorkoutRunner } from './features/workout/WorkoutRunner'
 import { readStoredWorkoutDraft, workoutDraftStorageKey, type StoredWorkoutDraft } from './features/workout/activeWorkoutDraft'
 import { useAppServices, useSettings } from './services'
@@ -315,7 +316,7 @@ function AppShell() {
           <Route path="/routines/:routineId?" element={<RoutineRoute onRoutineChange={(routineId) => navigate(routineId === 'new' ? '/routines/new' : routineId ? `/routines/${routineId}` : '/routines')} />} />
           <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
           <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
-          <Route path="/stats" element={<PlaceholderPage page="stats" onGoHome={() => navigateTo('/')} />} />
+          <Route path="/stats" element={<Stats />} />
           <Route path="/body" element={<BodyMeasurements />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<UnknownPageRoute onGoHome={() => navigateTo('/')} />} />
@@ -422,16 +423,6 @@ function UnknownPageRoute({ onGoHome }: { onGoHome: () => void }) {
     <p><code>{location.pathname}</code> 주소를 확인해 주세요. 페이지가 이동했거나 존재하지 않을 수 있어요.</p>
     <button className="secondary-button" type="button" onClick={onGoHome}>홈으로 돌아가기</button>
   </main>
-}
-
-function PlaceholderPage({ page, onGoHome }: { page: 'stats'; onGoHome: () => void }) {
-  return <section className="placeholder-page" aria-labelledby="placeholder-title">
-    <div className="placeholder-icon"><Dumbbell size={24} aria-hidden="true" /></div>
-    <p className="eyebrow">{navigation.find((item) => item.id === page)?.label}</p>
-    <h1 id="placeholder-title">이 화면을 준비하고 있어요.</h1>
-    <p>대시보드의 기반 데이터는 이미 연결되어 있습니다. 다음 기능에서 이 메뉴를 완성합니다.</p>
-    <button className="secondary-button" type="button" onClick={onGoHome}>대시보드로 돌아가기</button>
-  </section>
 }
 
 // Returns `null` for a pathname that matches no known page (an unknown

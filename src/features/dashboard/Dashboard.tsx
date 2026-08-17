@@ -14,6 +14,8 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { getSessionDurationMinutes } from '../../lib/duration'
+import { completedSetCount, getSessionVolume } from '../../lib/volume'
+import { getMondayIndex, getWeekStart } from '../../lib/week'
 import { useAppServices, useSettings } from '../../services'
 import type { Routine, WorkoutSession } from '../../types/domain'
 import './Dashboard.css'
@@ -33,15 +35,6 @@ interface DashboardData {
   recentSessions: WorkoutSession[]
 }
 
-function weekStartIso() {
-  const today = new Date()
-  const day = (today.getDay() + 6) % 7
-  const monday = new Date(today)
-  monday.setHours(0, 0, 0, 0)
-  monday.setDate(monday.getDate() - day)
-  return monday.toISOString()
-}
-
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
 
 export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine }: DashboardProps) {
@@ -53,7 +46,7 @@ export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onMa
       const [profile, routines, weekSessions, recentSessions] = await Promise.all([
         workoutRepository.getProfile(),
         workoutRepository.listRoutines(),
-        workoutRepository.listSessions({ status: 'completed', startedAfter: weekStartIso() }),
+        workoutRepository.listSessions({ status: 'completed', startedAfter: getWeekStart(new Date()).toISOString() }),
         workoutRepository.listSessions({ status: 'completed', limit: 4 }),
       ])
       return { profile, routines, weekSessions, recentSessions }
@@ -101,8 +94,8 @@ function DashboardContent({ profile, routines, weekSessions, recentSessions, wei
         <article className="week-card">
           <div className="card-heading"><div><span className="card-kicker">THIS WEEK</span><h2>이번 주 트레이닝</h2></div><Signal size={18} aria-hidden="true" /></div>
           <div className="week-stat"><strong>{overview.daysTrained}</strong><span>일 운동</span></div>
-          <div className="week-chart" aria-label={`이번 주 ${overview.daysTrained}일 운동 완료`}>
-            {overview.dailyVolume.map((volume, index) => <div className="day-column" key={dayLabels[index]}><span className="day-bar" style={{ height: `${Math.max(7, (volume / overview.maxDailyVolume) * 46)}px` }} data-active={volume > 0} /><span>{dayLabels[index]}</span></div>)}
+          <div className="week-chart" role="group" aria-label={`이번 주 ${overview.daysTrained}일 운동 완료`}>
+            {overview.dailyVolume.map((volume, index) => <div className="day-column" key={dayLabels[index]}><span className="day-bar" role="img" aria-label={`${dayLabels[index]}요일 ${formatNumber(volume)} ${weightUnit}`} style={{ height: `${Math.max(7, (volume / overview.maxDailyVolume) * 46)}px` }} data-active={volume > 0} /><span aria-hidden="true">{dayLabels[index]}</span></div>)}
           </div>
         </article>
       </section>
@@ -137,7 +130,7 @@ function MetricCard({ icon, label, value, unit, note }: { icon: React.ReactNode;
 
 function SessionRow({ session, weightUnit, onSelect }: { session: WorkoutSession; weightUnit: string; onSelect: () => void }) {
   const volume = getSessionVolume(session)
-  const setCount = session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).length
+  const setCount = completedSetCount(session)
   return <button className="session-row" type="button" onClick={onSelect} aria-label={`${session.routineName ?? '자유 운동'} 기록 보기`}><span className="session-icon"><Flame size={18} aria-hidden="true" /></span><span className="session-details"><strong>{session.routineName ?? '자유 운동'}</strong><span>{formatSessionDate(session.startedAt)} · {session.exercises.length}개 종목 · {setCount}세트</span></span><span className="session-volume"><strong>{formatNumber(volume)} {weightUnit}</strong><span>{formatDuration(getSessionDurationMinutes(session))}</span></span><ArrowUpRight size={17} className="session-arrow" aria-hidden="true" /></button>
 }
 
@@ -152,13 +145,12 @@ function DashboardError({ onRetry }: { onRetry: () => void }) { return <main cla
 
 function getOverview(weekSessions: WorkoutSession[]) {
   const dailyVolume = Array.from({ length: 7 }, () => 0)
-  weekSessions.forEach((session) => { const weekday = (new Date(session.startedAt).getDay() + 6) % 7; dailyVolume[weekday] += getSessionVolume(session) })
+  weekSessions.forEach((session) => { const weekday = getMondayIndex(new Date(session.startedAt)); dailyVolume[weekday] += getSessionVolume(session) })
   const allSets = weekSessions.flatMap((session) => session.exercises.flatMap((exercise) => exercise.sets)).filter((set) => set.isCompleted)
   const rirs = allSets.flatMap((set) => set.actualRir === null ? [] : [set.actualRir])
   return { daysTrained: weekSessions.length, volume: weekSessions.reduce((sum, session) => sum + getSessionVolume(session), 0), completedSets: allSets.length, averageRir: rirs.length ? rirs.reduce((sum, rir) => sum + rir, 0) / rirs.length : null, totalMinutes: weekSessions.reduce((sum, session) => sum + getSessionDurationMinutes(session), 0), dailyVolume, maxDailyVolume: Math.max(...dailyVolume, 1) }
 }
 
-function getSessionVolume(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).reduce((sum, set) => sum + (set.weightKg ?? 0) * (set.reps ?? 0), 0) }
 function countRoutineSets(routine: Routine) { return routine.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0) }
 function formatNumber(value: number) { return new Intl.NumberFormat('ko-KR').format(Math.round(value)) }
 function formatDuration(minutes: number) { if (minutes < 60) return `${minutes}분`; return `${Math.floor(minutes / 60)}시간 ${minutes % 60 ? `${minutes % 60}분` : ''}` }

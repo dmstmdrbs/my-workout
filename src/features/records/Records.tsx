@@ -4,8 +4,10 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
 import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
 import { getSessionDurationMinutes } from '../../lib/duration'
+import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
+import { muscleLabel } from '../workout/exerciseLabels'
 import './Records.css'
 
 type ExportState = 'idle' | 'exporting' | 'sharing' | 'success' | 'error'
@@ -318,8 +320,6 @@ function RecordsError({ onRetry }: { onRetry: () => void }) { return <main class
 function RecordsNotFound() { return <main className="records-page records-message"><div className="message-icon"><ImageDown size={22} /></div><p className="eyebrow">NOT FOUND</p><h1>기록을 찾을 수 없어요.</h1><p>주소가 잘못되었거나 삭제된 기록일 수 있어요.</p></main> }
 function RecordsEmpty() { return <section className="records-empty"><ImageDown size={23} aria-hidden="true" /><h2>아직 완료한 운동이 없어요.</h2><p>운동을 완료하면 이곳에서 세부 기록을 보고 공유 카드도 만들 수 있어요.</p></section> }
 
-function getSessionVolume(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).reduce((sum, set) => sum + (set.weightKg ?? 0) * (set.reps ?? 0), 0) }
-function completedSetCount(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).length }
 function getActualRirs(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted && set.actualRir !== null).map((set) => set.actualRir as number) }
 function formatAverageRir(session: WorkoutSession) { const rirs = getActualRirs(session); if (!rirs.length) return '–'; const average = rirs.reduce((sum, value) => sum + value, 0) / rirs.length; return average >= 5 ? '5+' : average.toFixed(1) }
 function formatRir(rir: number) { return rir >= 5 ? '5+' : String(rir) }
@@ -330,7 +330,6 @@ function formatDuration(session: WorkoutSession) { if (!session.completedAt) ret
 function formatDateShort(date: string) { return new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }).format(new Date(date)) }
 function formatDateFull(date: string) { return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(date)) }
 function formatCardDate(date: string) { return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(date)).replace(/\.$/, '') }
-function muscleLabel(muscle: WorkoutSession['exercises'][number]['primaryMuscle']) { const labels: Record<WorkoutSession['exercises'][number]['primaryMuscle'], string> = { chest: '가슴', back: '등', shoulders: '어깨', biceps: '이두', triceps: '삼두', quadriceps: '대퇴사두', hamstrings: '햄스트링', glutes: '둔근', calves: '종아리', core: '코어', cardio: '유산소', full_body: '전신' }; return labels[muscle] }
 function shareFileName(session: WorkoutSession) { const date = new Date(session.startedAt); const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; return `trainlog-${localDate}.png` }
 function downloadDataUrl(dataUrl: string, filename: string) { const link = document.createElement('a'); link.href = dataUrl; link.download = filename; document.body.append(link); link.click(); link.remove() }
 async function dataUrlToFile(dataUrl: string, filename: string) { const response = await fetch(dataUrl); const blob = await response.blob(); return new File([blob], filename, { type: 'image/png' }) }
