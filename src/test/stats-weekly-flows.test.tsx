@@ -215,6 +215,32 @@ describe.sequential('통계: 주간 볼륨과 부위별 분포', () => {
     expect([...volumes]).toEqual([...volumes].sort((a, b) => b - a))
   })
 
+  test('요일별 볼륨 막대는 스크린리더에도 요일별 값이 노출된다', async () => {
+    const user = userEvent.setup()
+    renderApp('/stats')
+    await screen.findByRole('heading', { name: '주간 통계' })
+
+    const seedWeekStart = getWeekStart(new Date(mockSessions[0].startedAt))
+    await clickWeeksBack(user, weeksBetween(new Date(), seedWeekStart))
+
+    await waitFor(() => {
+      expect(document.querySelector('.stats-weekday-chart')).not.toBeNull()
+    })
+
+    // A bare `<div>`/`<span>` maps to ARIA role `generic`, and the spec
+    // prohibits name-from-author on `generic` -- an `aria-label` there is
+    // dropped from the accessibility tree entirely, not merely terse. Role
+    // queries (unlike `getByLabelText`, which matches the raw attribute)
+    // only succeed once the element actually carries a name-accepting role,
+    // so this distinguishes "exposed to assistive tech" from "attribute is
+    // merely present in the DOM".
+    expect(screen.getByRole('group', { name: '요일별 볼륨' })).toBeTruthy()
+    // Tuesday (화) in the seed week has a known non-zero volume from
+    // session-2026-08-11's completed sets.
+    expect(screen.getByRole('img', { name: /^화요일 [0-9,]+ kg$/ })).toBeTruthy()
+    expect(screen.getByRole('img', { name: /^일요일 0 kg$/ })).toBeTruthy()
+  })
+
   test('이번 주보다 미래로는 이동할 수 없다', async () => {
     const user = userEvent.setup()
     renderApp('/stats')

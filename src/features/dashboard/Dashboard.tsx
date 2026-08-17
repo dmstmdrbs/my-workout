@@ -94,8 +94,8 @@ function DashboardContent({ profile, routines, weekSessions, recentSessions, wei
         <article className="week-card">
           <div className="card-heading"><div><span className="card-kicker">THIS WEEK</span><h2>이번 주 트레이닝</h2></div><Signal size={18} aria-hidden="true" /></div>
           <div className="week-stat"><strong>{overview.daysTrained}</strong><span>일 운동</span></div>
-          <div className="week-chart" aria-label={`이번 주 ${overview.daysTrained}일 운동 완료`}>
-            {overview.dailyVolume.map((volume, index) => <div className="day-column" key={dayLabels[index]}><span className="day-bar" style={{ height: `${Math.max(7, (volume / overview.maxDailyVolume) * 46)}px` }} data-active={volume > 0} /><span>{dayLabels[index]}</span></div>)}
+          <div className="week-chart" role="group" aria-label={`이번 주 ${overview.daysTrained}일 운동 완료`}>
+            {overview.dailyVolume.map((volume, index) => <div className="day-column" key={dayLabels[index]}><span className="day-bar" role="img" aria-label={`${dayLabels[index]}요일 ${formatNumber(volume)} ${weightUnit}`} style={{ height: `${Math.max(7, (volume / overview.maxDailyVolume) * 46)}px` }} data-active={volume > 0} /><span aria-hidden="true">{dayLabels[index]}</span></div>)}
           </div>
         </article>
       </section>

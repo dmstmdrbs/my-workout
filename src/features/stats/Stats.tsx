@@ -36,7 +36,14 @@ export function Stats() {
   // (that would be a future week).
   const [weekOffset, setWeekOffset] = useState(0)
 
-  const thisWeekStart = useMemo(() => getWeekStart(new Date()), [])
+  // Deliberately not memoized with an empty dependency array -- that would
+  // freeze "this week" at mount time, so a tab left open across a Sunday
+  // midnight would keep treating the old week as current until the
+  // component remounts. Recomputing on every render (matching how the
+  // dashboard's equivalent re-derives `new Date()` on each query execution)
+  // keeps it honest without meaningfully changing what gets rendered, since
+  // it only actually changes value once a week boundary is crossed.
+  const thisWeekStart = getWeekStart(new Date())
   const selectedWeekStart = useMemo(() => {
     const start = new Date(thisWeekStart)
     start.setDate(start.getDate() + weekOffset * 7)
@@ -164,15 +171,17 @@ function StatsContent({
             <div className="card-heading">
               <div><span className="card-kicker">BY WEEKDAY</span><h2>요일별 볼륨</h2></div>
             </div>
-            <div className="stats-weekday-chart" aria-label="요일별 볼륨">
+            <div className="stats-weekday-chart" role="group" aria-label="요일별 볼륨">
               {overview.dailyVolume.map((volume, index) => (
                 <div className="day-column" key={dayLabels[index]}>
                   <span
                     className="day-bar"
+                    role="img"
+                    aria-label={`${dayLabels[index]}요일 ${formatNumber(volume)} ${weightUnit}`}
                     style={{ height: `${Math.max(7, (volume / overview.maxDailyVolume) * 90)}px` }}
                     data-active={volume > 0}
                   />
-                  <span>{dayLabels[index]}</span>
+                  <span aria-hidden="true">{dayLabels[index]}</span>
                 </div>
               ))}
             </div>

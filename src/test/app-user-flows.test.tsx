@@ -188,6 +188,21 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(document.querySelector('.stats-heading .eyebrow')?.textContent).toBe('STATISTICS')
   })
 
+  test('대시보드의 요일별 볼륨 막대는 스크린리더에도 요일별 값이 노출된다', async () => {
+    renderApp()
+    await screen.findByRole('heading', { name: /좋은 하루예요/ })
+
+    // A bare `<div>`/`<span>` maps to ARIA role `generic`, and the spec
+    // prohibits name-from-author on `generic` -- an `aria-label` there is
+    // dropped from the accessibility tree entirely, not merely terse.
+    // `getByRole` only succeeds once the element carries a name-accepting
+    // role, so unlike `getByLabelText` (a raw attribute match) this actually
+    // distinguishes "exposed to assistive tech" from "attribute is present".
+    expect(screen.getByRole('group', { name: /이번 주 \d+일 운동 완료/ })).toBeTruthy()
+    expect(screen.getByRole('img', { name: /^월요일 [0-9,]+ kg$/ })).toBeTruthy()
+    expect(screen.getByRole('img', { name: /^일요일 [0-9,]+ kg$/ })).toBeTruthy()
+  })
+
   test('UF-01: 직접 주소 진입·알 수 없는 주소 정리·히스토리 뒤로가기가 동작한다', async () => {
     const user = userEvent.setup()
 
