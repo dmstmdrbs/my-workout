@@ -6,6 +6,13 @@ export interface StoredWorkoutDraft {
   draft: WorkoutDraft
   activeExerciseId: string | null
   restEndsAt: number | null
+  /**
+   * 현재 일시정지가 시작된 시각(epoch ms). 일시정지 중일 때만 의미가 있으므로
+   * 세션이 아니라(`draft.pausedSeconds`) 이 초안 메타데이터에 둔다.
+   * 재개하면 이 값과 지금 사이의 시간을 `draft.pausedSeconds`에 더하고
+   * null로 되돌린다.
+   */
+  pausedAt: number | null
 }
 
 export const workoutDraftStorageKey = 'trainlog:workout-draft:v1'
@@ -16,10 +23,15 @@ export function readStoredWorkoutDraft(): StoredWorkoutDraft | null {
     if (!raw) return null
     const value = JSON.parse(raw) as Partial<StoredWorkoutDraft>
     if (!value.draft || value.draft.status !== 'in_progress' || !Array.isArray(value.draft.exercises) || !isValidStartedAt(value.draft.startedAt)) return null
+    // A draft written before pause support existed has neither field. Default
+    // them exactly as restEndsAt/activeExerciseId already are below, so an
+    // in-progress workout saved by older code still restores cleanly.
+    const pausedSeconds = typeof value.draft.pausedSeconds === 'number' && value.draft.pausedSeconds >= 0 ? value.draft.pausedSeconds : 0
     return {
-      draft: value.draft,
+      draft: { ...value.draft, pausedSeconds },
       activeExerciseId: value.activeExerciseId ?? null,
       restEndsAt: typeof value.restEndsAt === 'number' ? value.restEndsAt : null,
+      pausedAt: typeof value.pausedAt === 'number' ? value.pausedAt : null,
     }
   } catch {
     return null

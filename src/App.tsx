@@ -22,7 +22,7 @@ import { WorkoutRunner } from './features/workout/WorkoutRunner'
 import { readStoredWorkoutDraft, workoutDraftStorageKey, type StoredWorkoutDraft } from './features/workout/activeWorkoutDraft'
 import { useAppServices, useSettings } from './services'
 import type { AuthSession } from './services'
-import { formatElapsedTime } from './lib/duration'
+import { formatElapsedTime, getEffectivePausedSeconds } from './lib/duration'
 import { applyTheme } from './lib/theme'
 import './App.css'
 
@@ -322,13 +322,20 @@ function AppShell() {
         </Routes>
       </div>
 
-      {activeWorkoutDraft && location.pathname !== '/workout' && (
-        <button className="active-workout-toast" type="button" onClick={() => navigateTo('/workout')} aria-label="진행 중인 운동 이어서 기록하기">
-          <span className="active-workout-toast-icon"><Dumbbell size={18} aria-hidden="true" /></span>
-          <span className="active-workout-toast-copy"><strong>{activeWorkoutDraft.draft.routineName ?? '자유 운동'} 진행 중</strong><small><Clock3 size={14} aria-hidden="true" /> 운동 시간 {formatElapsedTime(activeWorkoutDraft.draft.startedAt, activeWorkoutClock)}</small></span>
-          <span className="active-workout-toast-action">이어서 하기</span>
-        </button>
-      )}
+      {activeWorkoutDraft && location.pathname !== '/workout' && (() => {
+        const isPaused = activeWorkoutDraft.pausedAt !== null
+        const effectivePausedSeconds = getEffectivePausedSeconds(activeWorkoutDraft.draft.pausedSeconds, activeWorkoutDraft.pausedAt, activeWorkoutClock)
+        return (
+          <button className={`active-workout-toast ${isPaused ? 'is-paused' : ''}`} type="button" onClick={() => navigateTo('/workout')} aria-label="진행 중인 운동 이어서 기록하기">
+            <span className="active-workout-toast-icon"><Dumbbell size={18} aria-hidden="true" /></span>
+            <span className="active-workout-toast-copy">
+              <strong>{activeWorkoutDraft.draft.routineName ?? '자유 운동'} 진행 중{isPaused ? ' · 일시정지' : ''}</strong>
+              <small><Clock3 size={14} aria-hidden="true" /> 운동 시간 {formatElapsedTime(activeWorkoutDraft.draft.startedAt, activeWorkoutClock, effectivePausedSeconds)}</small>
+            </span>
+            <span className="active-workout-toast-action">이어서 하기</span>
+          </button>
+        )
+      })()}
 
       <nav className="bottom-nav" aria-label="모바일 주 메뉴">
         {bottomNavPages.map((id) => {

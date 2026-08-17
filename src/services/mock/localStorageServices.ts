@@ -159,9 +159,9 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
     }
     return null
   }
-  async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }) {
+  async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'pausedSeconds'> & { id?: Id; pausedSeconds?: number }) {
     const store = this.requireStore(); const existing = input.id ? store.sessions.find((item) => item.id === input.id) : undefined; const timestamp = now()
-    const saved: WorkoutSession = { ...input, id: input.id ?? newId(), userId: store.profile.id, createdAt: existing?.createdAt ?? timestamp, updatedAt: timestamp }
+    const saved: WorkoutSession = { ...input, id: input.id ?? newId(), userId: store.profile.id, pausedSeconds: input.pausedSeconds ?? 0, createdAt: existing?.createdAt ?? timestamp, updatedAt: timestamp }
     updateStore((next) => { const index = next.sessions.findIndex((item) => item.id === saved.id); if (index >= 0) next.sessions[index] = saved; else next.sessions.push(saved) })
     return clone(saved)
   }
