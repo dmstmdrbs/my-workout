@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest'
@@ -164,7 +164,11 @@ describe.sequential('운동 화면: 종목 추가 시트 검색·필터·즉석 
     await user.click(createDialog.getByRole('button', { name: '만들고 추가' }))
 
     const card = within((await screen.findByRole('heading', { name: '푸시업' })).closest('section')!)
-    const weightInput = card.getByRole('spinbutton', { name: '1세트 추가 중량 (kg)' }) as HTMLInputElement
+    // The bodyweight label depends on the catalog query (invalidated, not
+    // set synchronously) actually including the exercise just created, so
+    // assert through `waitFor` rather than a synchronous `getByRole` --
+    // otherwise this only proves correct behavior on mock-adapter timing.
+    const weightInput = await waitFor(() => card.getByRole('spinbutton', { name: '1세트 추가 중량 (kg)' })) as HTMLInputElement
     // Empty is the normal state for a pure bodyweight set, not missing data --
     // the placeholder communicates that instead of leaving a blank, ambiguous box.
     expect(weightInput.value).toBe('')
@@ -234,5 +238,45 @@ describe.sequential('운동 화면: 종목 추가 시트 위에 뜨는 새 운�
 
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+})
+
+describe.sequential('운동 화면: 종목 추가 시트는 열려 있는 동안 부모가 다시 렌더링돼도 포커스를 지킨다', () => {
+  beforeAll(() => {
+    localStorage.clear()
+  })
+
+  test('경과 시간을 갱신하는 1초 간격 타이머가 한 번 돌아도 필터 select의 포커스가 유지된다', async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByRole('heading', { name: '오늘 어떤 운동을 할까요?' })
+    await user.click(screen.getByRole('button', { name: '자유 운동으로 시작' }))
+    await screen.findByRole('heading', { name: '첫 운동을 추가해 주세요.' })
+
+    const sheet = await openPickerSheet(user)
+    const muscleSelect = sheet.getByRole('combobox', { name: '부위로 필터' })
+
+    // Move focus off the sheet's own initial-focus target (the search box)
+    // onto a control that isn't it. The initial-focus target would trivially
+    // "stay" focused even if the mount effect re-ran, since re-running it
+    // re-focuses that very same element -- this control is the one that
+    // actually exposes the bug.
+    act(() => { muscleSelect.focus() })
+    expect(document.activeElement).toBe(muscleSelect)
+
+    // WorkoutRunner runs `setInterval(() => setClock(Date.now()), 1_000)` for
+    // as long as a draft exists -- exactly the state the sheet can be open
+    // in -- to drive the "운동 시간" display. That is the real trigger this
+    // regresses against, so wait for it to actually fire once in real time
+    // rather than forcing an arbitrary re-render. (Vitest fake timers were
+    // not usable here: this project's `@testing-library/dom` only
+    // auto-advances Jest's fake timers, so faking `setInterval` would also
+    // stall every `findBy`/`waitFor` call used throughout this file.)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1_100))
+    })
+
+    expect(document.activeElement).toBe(muscleSelect)
   })
 })

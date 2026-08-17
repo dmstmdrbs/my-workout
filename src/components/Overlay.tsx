@@ -60,9 +60,22 @@ export function Overlay({ isOpen, onClose, presentation, labelledBy, describedBy
   const layerRef = useRef<number | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
+  // `onClose` is passed as a fresh inline arrow by every caller, and the
+  // consuming screen can re-render on its own timers (e.g. WorkoutRunner's
+  // once-a-second elapsed-time clock) while an overlay sits open. Reading it
+  // through a ref -- updated by its own effect, never in the main effect's
+  // dependency array -- keeps the mount/focus/keydown-listener effect below
+  // from tearing down and re-running on every such re-render. Without this,
+  // focus (and the "previously focused" capture used to restore it) resets
+  // once a second for as long as the overlay stays open.
+  const onCloseRef = useRef(onClose)
 
   if (isOpen && layerRef.current === null) layerRef.current = nextOverlayLayer++
   if (!isOpen) layerRef.current = null
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!isOpen) return
@@ -77,7 +90,7 @@ export function Overlay({ isOpen, onClose, presentation, labelledBy, describedBy
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         if (openOverlayIds.at(-1) !== id) return
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key === 'Tab') trapTabFocus(event, panelRef.current)
@@ -89,7 +102,8 @@ export function Overlay({ isOpen, onClose, presentation, labelledBy, describedBy
       openOverlayIds = openOverlayIds.filter((entry) => entry !== id)
       previouslyFocusedRef.current?.focus()
     }
-  }, [isOpen, id, onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onClose is read through onCloseRef intentionally; see comment above.
+  }, [isOpen, id])
 
   if (!isOpen) return null
 
