@@ -24,6 +24,7 @@ declare
   v_existing_user_id uuid;
   v_exercise jsonb;
   v_exercise_id uuid;
+  v_paused_seconds integer;
 begin
   if v_user_id is null then
     raise exception 'authentication required';
@@ -37,6 +38,18 @@ begin
     v_input_id := nullif(payload ->> 'id', '')::uuid;
   exception when invalid_text_representation then
     v_input_id := null;
+  end;
+
+  -- pausedSeconds도 같은 이유로 방어적으로 파싱한다: 정상적인 클라이언트는
+  -- 항상 정수를 보내지만, 손상되었거나 변조된 초안이 12.5 같은 소수나
+  -- 문자열을 보내면 ::integer 캐스트가 예외를 던져 저장 전체가 실패한다.
+  -- numeric을 거쳐 floor로 내림한 뒤 정수로 바꾸고, 그래도 실패하면(값이
+  -- 아예 숫자가 아니면) null로 취급해 아래 coalesce가 안전한 기본값을
+  -- 쓰게 한다.
+  begin
+    v_paused_seconds := floor((payload ->> 'pausedSeconds')::numeric)::integer;
+  exception when invalid_text_representation or numeric_value_out_of_range then
+    v_paused_seconds := null;
   end;
 
   if v_input_id is not null then
@@ -57,7 +70,11 @@ begin
         started_at = (payload ->> 'startedAt')::timestamptz,
         completed_at = (payload ->> 'completedAt')::timestamptz,
         notes = payload ->> 'notes',
-        paused_seconds = coalesce((payload ->> 'pausedSeconds')::integer, 0),
+        -- pausedSeconds는 saveSession에서 선택 입력이다. 이미 저장된 세션을
+        -- 그 필드 없이 다시 저장하는 호출도 있을 수 있으므로, 없으면 0이
+        -- 아니라 이미 저장돼 있던 값을 그대로 둔다. 0은 새 행에만 맞는
+        -- 기본값이다(아래 두 insert에서만 coalesce(..., 0)을 쓴다).
+        paused_seconds = coalesce(v_paused_seconds, paused_seconds),
         updated_at = now()
       where id = v_session_id and user_id = v_user_id;
     else
@@ -74,7 +91,7 @@ begin
         (payload ->> 'startedAt')::timestamptz,
         (payload ->> 'completedAt')::timestamptz,
         payload ->> 'notes',
-        coalesce((payload ->> 'pausedSeconds')::integer, 0)
+        coalesce(v_paused_seconds, 0)
       )
       returning id into v_session_id;
     end if;
@@ -88,7 +105,7 @@ begin
       (payload ->> 'startedAt')::timestamptz,
       (payload ->> 'completedAt')::timestamptz,
       payload ->> 'notes',
-      coalesce((payload ->> 'pausedSeconds')::integer, 0)
+      coalesce(v_paused_seconds, 0)
     )
     returning id into v_session_id;
   end if;

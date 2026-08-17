@@ -143,6 +143,46 @@ describe.sequential('일시정지: 러너 화면 동작', () => {
     app.unmount()
     localStorage.removeItem(workoutDraftStorageKey)
   })
+
+  test('일시정지한 채로 운동을 종료해도 그 시점까지의 일시정지 시간이 저장된다', async () => {
+    localStorage.removeItem(workoutDraftStorageKey)
+    vi.useFakeTimers({ now: Date.now() })
+
+    const app = renderApp('/workout')
+    await flushSetupQuery()
+    expect(screen.getByRole('heading', { name: '오늘 어떤 운동을 할까요?' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '자유 운동으로 시작' }))
+    expect(screen.getByRole('heading', { name: '자유 운동' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '종목 추가' }))
+    expect(screen.getByRole('dialog', { name: '종목 추가' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
+    await flushSetupQuery()
+    expect(screen.getByRole('heading', { name: '바벨 벤치프레스' })).toBeTruthy()
+
+    // 완료 세트가 0개면 종료가 저장 없이 초안만 지우므로, 저장 경로를
+    // 실제로 거치도록 한 세트를 완료해 둔다.
+    fireEvent.click(screen.getByRole('button', { name: '1세트 완료' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '운동 일시정지' }))
+    // 재개 없이 90초를 흘려보낸 뒤 곧바로 종료한다 -- "일시정지한 채 재개
+    // 없이 종료"가 spec이 명시한 시나리오다.
+    act(() => { vi.advanceTimersByTime(90_000) })
+
+    fireEvent.click(screen.getByRole('button', { name: '운동 종료' }))
+    await flushSetupQuery()
+
+    const store = JSON.parse(localStorage.getItem('trainlog:mock-store:v1') ?? '{}') as { sessions?: Array<{ pausedSeconds: number; status: string }> }
+    const saved = store.sessions?.at(-1)
+    expect(saved).toBeTruthy()
+    expect(saved?.status).toBe('completed')
+    // fake timers 위에서 결정론적으로 정확히 90초여야 한다.
+    expect(saved?.pausedSeconds).toBe(90)
+
+    app.unmount()
+    localStorage.removeItem(workoutDraftStorageKey)
+  })
 })
 
 describe.sequential('일시정지: 저장·표시', () => {

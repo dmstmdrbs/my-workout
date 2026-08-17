@@ -26,7 +26,10 @@ export function readStoredWorkoutDraft(): StoredWorkoutDraft | null {
     // A draft written before pause support existed has neither field. Default
     // them exactly as restEndsAt/activeExerciseId already are below, so an
     // in-progress workout saved by older code still restores cleanly.
-    const pausedSeconds = typeof value.draft.pausedSeconds === 'number' && value.draft.pausedSeconds >= 0 ? value.draft.pausedSeconds : 0
+    // Integer-only: a non-integer here (e.g. from a corrupted/tampered draft)
+    // would reach save_workout_session's `::integer` cast on finish and abort
+    // the entire save -- the exact failure mode this feature exists to avoid.
+    const pausedSeconds = typeof value.draft.pausedSeconds === 'number' && Number.isInteger(value.draft.pausedSeconds) && value.draft.pausedSeconds >= 0 ? value.draft.pausedSeconds : 0
     return {
       draft: { ...value.draft, pausedSeconds },
       activeExerciseId: value.activeExerciseId ?? null,
