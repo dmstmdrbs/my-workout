@@ -102,14 +102,6 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
   const [equipment, setEquipment] = useState<Equipment>('barbell')
   const [restSeconds, setRestSeconds] = useState(defaultRestSeconds)
 
-  useEffect(() => {
-    if (!isOpen) return
-    setName('')
-    setPrimaryMuscle('chest')
-    setEquipment('barbell')
-    setRestSeconds(defaultRestSeconds)
-  }, [isOpen, defaultRestSeconds])
-
   const createMutation = useMutation({
     mutationFn: () => workoutRepository.saveExercise({
       name: name.trim(),
@@ -121,9 +113,26 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
     }),
     onSuccess: (exercise) => {
       void queryClient.invalidateQueries({ queryKey: ['workout-runner-setup'] })
+      // RoutineManager caches the same catalog under its own key
+      // (`listExercises()` again, independently) -- without this, a routine
+      // opened within its 30s staleTime right after creating an exercise
+      // here would show an editor missing the exercise just created.
+      void queryClient.invalidateQueries({ queryKey: ['routine-manager-data'] })
       onCreated(exercise)
     },
   })
+  const resetMutation = createMutation.reset
+
+  useEffect(() => {
+    if (!isOpen) return
+    setName('')
+    setPrimaryMuscle('chest')
+    setEquipment('barbell')
+    setRestSeconds(defaultRestSeconds)
+    // Without this, a save that failed on a previous open leaves its error
+    // banner showing on the next, otherwise-blank form.
+    resetMutation()
+  }, [isOpen, defaultRestSeconds, resetMutation])
 
   const trimmedName = name.trim()
   const canSave = trimmedName.length > 0 && !createMutation.isPending
