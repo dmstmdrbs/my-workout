@@ -43,8 +43,9 @@ describe.sequential('운동 화면: 세트 중량/횟수 증감 버튼', () => {
     // leg-press (레그 프레스) has no seeded completion history, so it is added
     // with a genuinely empty (null) weight and reps -- the case that matters
     // for the "increment from empty" rule below.
-    await user.selectOptions(screen.getByRole('combobox', { name: '운동 종목 추가' }), 'leg-press')
-    await user.click(screen.getByRole('button', { name: '추가' }))
+    await user.click(screen.getByRole('button', { name: '종목 추가' }))
+    await screen.findByRole('dialog', { name: '종목 추가' })
+    await user.click(screen.getByRole('button', { name: '레그 프레스' }))
     const card = within((await screen.findByRole('heading', { name: '레그 프레스' })).closest('section')!)
 
     const weightInput = card.getByRole('spinbutton', { name: '1세트 중량 (kg)' }) as HTMLInputElement
