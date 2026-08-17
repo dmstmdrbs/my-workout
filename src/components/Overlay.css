@@ -1,0 +1,15 @@
+.overlay-backdrop { display: grid; position: fixed; inset: 0; place-items: center; padding: 20px; background: rgb(16 24 40 / .42); }
+.overlay-backdrop--sheet { align-items: end; padding: 0; }
+
+.overlay-panel { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-float); }
+.overlay-panel:focus-visible, .overlay-panel:focus { outline: 0; }
+
+.overlay-panel--dialog { width: min(100%, 440px); max-height: min(680px, calc(100dvh - 40px)); overflow: auto; border-radius: var(--radius-md); }
+
+.overlay-panel--sheet { width: min(100%, 480px); max-height: min(82dvh, 720px); overflow: auto; border-radius: var(--radius-lg); }
+
+@media (max-width: 560px) {
+  .overlay-backdrop--dialog { align-items: end; padding: 0; }
+  .overlay-panel--dialog { width: 100%; max-height: min(88dvh, 680px); border-right: 0; border-bottom: 0; border-left: 0; border-radius: 18px 18px 0 0; }
+  .overlay-panel--sheet { width: 100%; max-height: min(88dvh, 720px); border-right: 0; border-bottom: 0; border-left: 0; border-radius: 18px 18px 0 0; }
+}
