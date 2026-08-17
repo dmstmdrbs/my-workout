@@ -201,8 +201,38 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect((screen.getByRole('textbox', { name: '루틴 이름' }) as HTMLInputElement).value).toBe('Pull Day')
     directRoutine.unmount()
 
+    // A deleted/mistyped routine id must show not-found, not silently fall
+    // back to editing a different routine (Pull Day) under the wrong URL.
+    const missingRoutine = renderApp('/routines/not-a-real-routine')
+    await screen.findByRole('heading', { name: '루틴을 찾을 수 없어요.' })
+    expect(screen.queryByRole('textbox', { name: '루틴 이름' })).toBeNull()
+    missingRoutine.unmount()
+
+    // /stats is the real page that shares the value ('stats') the unknown-path
+    // fallback used to default to -- confirm the fix didn't collaterally break
+    // the genuine case: direct entry to /stats still marks 통계 active in both
+    // the sidebar and the bottom nav's 더보기 toggle.
+    const directStats = renderApp('/stats')
+    await screen.findByRole('heading', { name: '이 화면을 준비하고 있어요.' })
+    expect(sideNavButton('통계').classList.contains('is-active')).toBe(true)
+    expect(document.querySelector('.bottom-nav button[aria-haspopup="menu"]')?.classList.contains('is-active')).toBe(true)
+    directStats.unmount()
+
+    // An unknown path must render a real not-found screen at the URL the
+    // user typed, not silently redirect to the dashboard -- and it must not
+    // leave any nav tab (sidebar, bottom nav, 더보기 toggle) marked active,
+    // visually or via aria-current, since the app isn't actually on any of
+    // those pages.
     const unknownRoute = renderApp('/not-a-real-page')
-    await screen.findByRole('heading', { name: /좋은 하루예요/ })
+    await screen.findByRole('heading', { name: '이 페이지를 찾을 수 없어요.' })
+    expect(screen.queryByRole('heading', { name: /좋은 하루예요/ })).toBeNull()
+    expect(document.querySelector('.placeholder-page code')?.textContent).toBe('/not-a-real-page')
+    const unknownRouteNavButtons = document.querySelectorAll('.side-nav-links button, .side-nav-footer button, .bottom-nav > button')
+    expect(unknownRouteNavButtons.length).toBeGreaterThan(0)
+    unknownRouteNavButtons.forEach((button) => {
+      expect(button.classList.contains('is-active')).toBe(false)
+      expect(button.hasAttribute('aria-current')).toBe(false)
+    })
     unknownRoute.unmount()
 
     renderAppWithHistory()

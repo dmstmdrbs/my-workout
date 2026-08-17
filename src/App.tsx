@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { MemoryRouter, Navigate, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   BarChart3,
   CalendarDays,
@@ -10,6 +10,7 @@ import {
   Menu,
   MoreHorizontal,
   Scale,
+  SearchX,
   Settings2,
 } from 'lucide-react'
 import { BodyMeasurements } from './features/body/BodyMeasurements'
@@ -316,7 +317,7 @@ function AppShell() {
           <Route path="/stats" element={<PlaceholderPage page="stats" onGoHome={() => navigateTo('/')} />} />
           <Route path="/body" element={<BodyMeasurements />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<UnknownPageRoute onGoHome={() => navigateTo('/')} />} />
         </Routes>
       </div>
 
@@ -346,7 +347,7 @@ function AppShell() {
           )
         })}
         <button
-          className={moreMenuPages.includes(activePage) ? 'is-active' : ''}
+          className={activePage !== null && moreMenuPages.includes(activePage) ? 'is-active' : ''}
           onClick={() => setIsMoreMenuOpen((isOpen) => !isOpen)}
           type="button"
           aria-haspopup="menu"
@@ -400,6 +401,21 @@ function useLocationPathId(prefix: string) {
   return decodeURIComponent(pathname.slice(prefix.length)) || null
 }
 
+function UnknownPageRoute({ onGoHome }: { onGoHome: () => void }) {
+  // Deliberately does not redirect on mount. Bouncing to "/" would erase the
+  // evidence of what the user actually typed, leaving no way to tell a typo
+  // from a moved page from a real bug. The URL stays as entered until the
+  // person chooses to leave.
+  const location = useLocation()
+  return <main className="placeholder-page" aria-labelledby="not-found-title">
+    <div className="placeholder-icon"><SearchX size={24} aria-hidden="true" /></div>
+    <p className="eyebrow">NOT FOUND</p>
+    <h1 id="not-found-title">이 페이지를 찾을 수 없어요.</h1>
+    <p><code>{location.pathname}</code> 주소를 확인해 주세요. 페이지가 이동했거나 존재하지 않을 수 있어요.</p>
+    <button className="secondary-button" type="button" onClick={onGoHome}>홈으로 돌아가기</button>
+  </main>
+}
+
 function PlaceholderPage({ page, onGoHome }: { page: 'stats'; onGoHome: () => void }) {
   return <section className="placeholder-page" aria-labelledby="placeholder-title">
     <div className="placeholder-icon"><Dumbbell size={24} aria-hidden="true" /></div>
@@ -410,14 +426,19 @@ function PlaceholderPage({ page, onGoHome }: { page: 'stats'; onGoHome: () => vo
   </section>
 }
 
-function getActivePage(pathname: string): PageId {
+// Returns `null` for a pathname that matches no known page (an unknown
+// route, e.g. a typo). No nav item should read as active in that case --
+// falling through to 'stats' would make the UI claim the person is on the
+// statistics screen while the content says the page doesn't exist.
+function getActivePage(pathname: string): PageId | null {
   if (pathname === '/') return 'dashboard'
   if (pathname.startsWith('/workout')) return 'workout'
   if (pathname.startsWith('/routines')) return 'routines'
   if (pathname.startsWith('/records')) return 'records'
   if (pathname.startsWith('/settings')) return 'settings'
   if (pathname.startsWith('/body')) return 'body'
-  return 'stats'
+  if (pathname.startsWith('/stats')) return 'stats'
+  return null
 }
 
 export default App
