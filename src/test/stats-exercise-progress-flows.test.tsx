@@ -122,6 +122,7 @@ describe.sequential('통계: 종목별 중량 추이', () => {
       primaryMuscle: 'quadriceps',
       secondaryMuscles: [],
       equipment: 'bodyweight',
+      brand: null,
       defaultRestSeconds: 60,
       isArchived: false,
     })

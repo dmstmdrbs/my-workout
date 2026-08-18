@@ -9,12 +9,14 @@ import {
   Layers3,
   Menu,
   MoreHorizontal,
+  ListChecks,
   Scale,
   SearchX,
   Settings2,
 } from 'lucide-react'
 import { BodyMeasurements } from './features/body/BodyMeasurements'
 import { Dashboard } from './features/dashboard/Dashboard'
+import { ExerciseCatalog } from './features/exercises/ExerciseCatalog'
 import { Records } from './features/records/Records'
 import { RoutineManager } from './features/routines/RoutineManager'
 import { Settings } from './features/settings/Settings'
@@ -27,7 +29,7 @@ import { formatElapsedTime, getEffectivePausedSeconds } from './lib/duration'
 import { applyTheme } from './lib/theme'
 import './App.css'
 
-type PageId = 'dashboard' | 'workout' | 'routines' | 'records' | 'stats' | 'body' | 'settings'
+type PageId = 'dashboard' | 'workout' | 'routines' | 'records' | 'stats' | 'body' | 'exercises' | 'settings'
 
 const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'dashboard', label: '대시보드', icon: Home },
@@ -36,6 +38,7 @@ const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'records', label: '기록', icon: CalendarDays },
   { id: 'stats', label: '통계', icon: BarChart3 },
   { id: 'body', label: '신체 기록', icon: Scale },
+  { id: 'exercises', label: '종목 관리', icon: ListChecks },
   { id: 'settings', label: '설정', icon: Settings2 },
 ]
 
@@ -46,14 +49,15 @@ const pagePaths: Record<PageId, string> = {
   records: '/records',
   stats: '/stats',
   body: '/body',
+  exercises: '/exercises',
   settings: '/settings',
 }
 
 // Explicit placement: slicing the navigation array silently reshuffles menus
 // whenever an entry is inserted.
-const sideNavPages: PageId[] = ['dashboard', 'workout', 'routines', 'records', 'stats', 'body']
+const sideNavPages: PageId[] = ['dashboard', 'workout', 'routines', 'records', 'stats', 'body', 'exercises']
 const bottomNavPages: PageId[] = ['dashboard', 'workout', 'routines', 'records']
-const moreMenuPages: PageId[] = ['stats', 'body', 'settings']
+const moreMenuPages: PageId[] = ['stats', 'body', 'exercises', 'settings']
 
 function navItem(id: PageId) {
   const item = navigation.find((entry) => entry.id === id)
@@ -318,6 +322,7 @@ function AppShell() {
           <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/body" element={<BodyMeasurements />} />
+          <Route path="/exercises" element={<ExerciseCatalog />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<UnknownPageRoute onGoHome={() => navigateTo('/')} />} />
         </Routes>
@@ -436,6 +441,7 @@ function getActivePage(pathname: string): PageId | null {
   if (pathname.startsWith('/records')) return 'records'
   if (pathname.startsWith('/settings')) return 'settings'
   if (pathname.startsWith('/body')) return 'body'
+  if (pathname.startsWith('/exercises')) return 'exercises'
   if (pathname.startsWith('/stats')) return 'stats'
   return null
 }

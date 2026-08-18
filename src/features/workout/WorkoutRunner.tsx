@@ -28,7 +28,7 @@ import {
   writeStoredWorkoutDraft,
 } from './activeWorkoutDraft'
 import { CreateExerciseDialog, ExercisePickerSheet } from './ExercisePicker'
-import { muscleLabel } from './exerciseLabels'
+import { muscleLabel, snapshotExerciseName } from './exerciseLabels'
 import './WorkoutRunner.css'
 
 interface WorkoutRunnerProps {
@@ -678,7 +678,7 @@ function createFreeDraft(): WorkoutDraft {
 
 function createFreeWorkoutExercise({ exercise, exerciseOrder, previousSet, defaultRestSeconds, defaultRir }: { exercise: Exercise; exerciseOrder: number; previousSet: WorkoutSetRecord | null; defaultRestSeconds: number; defaultRir: Rir }): WorkoutExercise {
   return {
-    id: createId(), exerciseId: exercise.id, exerciseName: exercise.name, primaryMuscle: exercise.primaryMuscle, exerciseOrder, notes: null,
+    id: createId(), exerciseId: exercise.id, exerciseName: snapshotExerciseName(exercise), primaryMuscle: exercise.primaryMuscle, exerciseOrder, notes: null,
     sets: [{
       id: createId(), setOrder: 1, setType: 'working', weightKg: previousSet?.weightKg ?? null, reps: previousSet?.reps ?? null,
       targetRir: defaultRir, actualRir: null, restSeconds: exercise.defaultRestSeconds || defaultRestSeconds, isCompleted: false, completedAt: null, notes: null,

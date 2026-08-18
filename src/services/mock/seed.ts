@@ -23,23 +23,24 @@ export const mockSettings: UserSettings = {
   updatedAt: '2026-08-01T00:00:00.000Z',
 }
 
-const exerciseSeeds: Array<[string, string, Exercise['primaryMuscle'], Exercise['secondaryMuscles'], Exercise['equipment']]> = [
-  ['barbell-bench-press', '바벨 벤치프레스', 'chest', ['triceps', 'shoulders'], 'barbell'],
-  ['seated-cable-row', '체스트 서포티드 시티드 로우', 'back', ['biceps'], 'cable'],
-  ['lat-pulldown', '와이드 그립 랫 풀다운', 'back', ['biceps'], 'cable'],
-  ['one-arm-dumbbell-row', '원 암 덤벨 로우', 'back', ['biceps'], 'dumbbell'],
-  ['machine-shoulder-press', '머신 숄더 프레스', 'shoulders', ['triceps'], 'machine'],
-  ['dumbbell-curl', '이지바 컬', 'biceps', [], 'barbell'],
-  ['leg-press', '레그 프레스', 'quadriceps', ['glutes'], 'machine'],
+const exerciseSeeds: Array<[string, string, Exercise['primaryMuscle'], Exercise['secondaryMuscles'], Exercise['equipment'], Exercise['brand']]> = [
+  ['barbell-bench-press', '바벨 벤치프레스', 'chest', ['triceps', 'shoulders'], 'barbell', null],
+  ['seated-cable-row', '체스트 서포티드 시티드 로우', 'back', ['biceps'], 'cable', 'hammer_strength'],
+  ['lat-pulldown', '와이드 그립 랫 풀다운', 'back', ['biceps'], 'cable', 'nautilus'],
+  ['one-arm-dumbbell-row', '원 암 덤벨 로우', 'back', ['biceps'], 'dumbbell', null],
+  ['machine-shoulder-press', '머신 숄더 프레스', 'shoulders', ['triceps'], 'machine', 'nutec'],
+  ['dumbbell-curl', '이지바 컬', 'biceps', [], 'barbell', null],
+  ['leg-press', '레그 프레스', 'quadriceps', ['glutes'], 'machine', null],
 ]
 
-export const mockExercises: Exercise[] = exerciseSeeds.map(([id, name, primaryMuscle, secondaryMuscles, equipment]) => ({
+export const mockExercises: Exercise[] = exerciseSeeds.map(([id, name, primaryMuscle, secondaryMuscles, equipment, brand]) => ({
   id,
   userId: null,
   name,
   primaryMuscle,
   secondaryMuscles,
   equipment,
+  brand,
   defaultRestSeconds: 120,
   isArchived: false,
   createdAt: '2026-08-01T00:00:00.000Z',

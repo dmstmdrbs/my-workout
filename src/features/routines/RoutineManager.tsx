@@ -4,6 +4,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus,
 import { useAppServices, useSettings } from '../../services'
 import type { Exercise, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
 import { CreateExerciseDialog, ExercisePickerSheet } from '../workout/ExercisePicker'
+import { snapshotExerciseName } from '../workout/exerciseLabels'
 import './RoutineManager.css'
 
 interface RoutineManagerData {
@@ -256,7 +257,7 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
     const newExercise: RoutineExercise = {
       id: createId(),
       exerciseId: exercise.id,
-      exerciseName: exercise.name,
+      exerciseName: snapshotExerciseName(exercise),
       exerciseOrder: draft.exercises.length + 1,
       notes: null,
       sets: [makeSet(1, 'working', exercise.defaultRestSeconds || defaultRestSeconds)],

@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, X } from 'lucide-react'
+import { ListChecks, Plus, Search, X } from 'lucide-react'
 import { Overlay } from '../../components/Overlay'
 import { useAppServices } from '../../services'
-import type { Equipment, Exercise, MuscleGroup } from '../../types/domain'
-import { equipmentLabel, equipmentTypes, muscleGroups, muscleLabel } from './exerciseLabels'
+import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
+import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from './exerciseLabels'
 import './ExercisePicker.css'
 
 type MuscleFilter = MuscleGroup | 'all'
@@ -26,6 +27,9 @@ interface ExercisePickerSheetProps {
 }
 
 export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOpenCreate }: ExercisePickerSheetProps) {
+  // 시트에서 바로 종목 관리로 갈 수 있어야, 운동 중에 브랜드를 잘못 고른 종목을
+  // 그 자리에서 고칠 수 있다. 진행 중인 초안은 저장돼 있어 나갔다 와도 이어진다.
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [muscleFilter, setMuscleFilter] = useState<MuscleFilter>('all')
   const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilter>('all')
@@ -49,6 +53,7 @@ export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOp
     <header className="exercise-picker-header">
       <div><p className="eyebrow">ADD EXERCISE</p><h2 id="exercise-picker-title">종목 추가</h2></div>
       <div className="exercise-picker-header-actions">
+        <button className="icon-button" type="button" onClick={() => { onClose(); navigate('/exercises') }} aria-label="종목 관리로 이동"><ListChecks size={18} /></button>
         {onOpenCreate && <button className="icon-button" type="button" onClick={onOpenCreate} aria-label="새 운동 만들기"><Plus size={19} /></button>}
         <button className="icon-button" type="button" onClick={onClose} aria-label="종목 추가 닫기"><X size={19} /></button>
       </div>
@@ -85,7 +90,10 @@ export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOp
     <ul className="exercise-picker-list">
       {filtered.map((exercise) => <li key={exercise.id}>
         <button type="button" className="exercise-picker-item" aria-label={exercise.name} onClick={() => onSelect(exercise)}>
-          <span className="exercise-picker-item-name">{exercise.name}</span>
+          <span className="exercise-picker-item-name">
+            {exercise.brand && <span className="exercise-brand-badge">{brandLabel(exercise.brand)}</span>}
+            {exercise.name}
+          </span>
           <span className="exercise-picker-item-meta">{muscleLabel(exercise.primaryMuscle)} · {equipmentLabel(exercise.equipment)}</span>
         </button>
       </li>)}
@@ -107,6 +115,7 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
   const [name, setName] = useState('')
   const [primaryMuscle, setPrimaryMuscle] = useState<MuscleGroup>('chest')
   const [equipment, setEquipment] = useState<Equipment>('barbell')
+  const [brand, setBrand] = useState<ExerciseBrand | null>(null)
   const [restSeconds, setRestSeconds] = useState(defaultRestSeconds)
 
   const createMutation = useMutation({
@@ -115,6 +124,7 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
       primaryMuscle,
       secondaryMuscles: [],
       equipment,
+      brand,
       defaultRestSeconds: restSeconds,
       isArchived: false,
     }),
@@ -135,6 +145,7 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
     setName('')
     setPrimaryMuscle('chest')
     setEquipment('barbell')
+    setBrand(null)
     setRestSeconds(defaultRestSeconds)
     // Without this, a save that failed on a previous open leaves its error
     // banner showing on the next, otherwise-blank form.
@@ -171,6 +182,14 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
         <select aria-label="새 운동 장비" value={equipment} onChange={(event) => setEquipment(event.target.value as Equipment)}>
           {equipmentTypes.map((item) => <option value={item} key={item}>{equipmentLabel(item)}</option>)}
         </select>
+      </label>
+      <label>
+        <span>브랜드</span>
+        <select aria-label="새 운동 브랜드" value={brand ?? ''} onChange={(event) => setBrand(event.target.value === '' ? null : event.target.value as ExerciseBrand)}>
+          <option value="">없음</option>
+          {exerciseBrands.map((item) => <option value={item} key={item}>{brandLabel(item)}</option>)}
+        </select>
+        <small className="create-exercise-hint">목록에 없는 제조사는 운동 이름에 적어 주세요.</small>
       </label>
       <label>
         <span>기본 휴식 시간 (초)</span>

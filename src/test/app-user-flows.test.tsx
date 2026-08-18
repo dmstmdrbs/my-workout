@@ -438,7 +438,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     // since both cards render an identically-labelled "종목 삭제" button.
     await user.click(exerciseCard('바벨 벤치프레스').getByRole('button', { name: '종목 삭제' }))
     await waitFor(() => expect(screen.queryByRole('heading', { name: '바벨 벤치프레스' })).toBeNull())
-    expect(screen.getByRole('heading', { name: '와이드 그립 랫 풀다운' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '노틸러스 와이드 그립 랫 풀다운' })).toBeTruthy()
 
     const savedDraft = JSON.parse(localStorage.getItem(workoutDraftKey) ?? '{}')
     expect(savedDraft.draft).toMatchObject({ routineId: null, routineName: null })
@@ -456,7 +456,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
 
     const store = JSON.parse(localStorage.getItem(storeKey) ?? '{}')
-    const savedSession = store.sessions.findLast((session: { routineId: string | null; exercises: Array<{ exerciseName: string }> }) => session.routineId === null && session.exercises[0]?.exerciseName === '와이드 그립 랫 풀다운')
+    const savedSession = store.sessions.findLast((session: { routineId: string | null; exercises: Array<{ exerciseName: string }> }) => session.routineId === null && session.exercises[0]?.exerciseName === '노틸러스 와이드 그립 랫 풀다운')
     expect(savedSession).toMatchObject({ routineId: null, routineName: null, status: 'completed' })
 
     await user.click(sideNavButton('기록'))

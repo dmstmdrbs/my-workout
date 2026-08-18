@@ -10,6 +10,25 @@ export type Theme = 'system' | 'light' | 'dark'
 export type SetType = 'warmup' | 'working' | 'dropset'
 export type SessionStatus = 'in_progress' | 'completed' | 'abandoned'
 export type Equipment = 'barbell' | 'dumbbell' | 'machine' | 'cable' | 'bodyweight' | 'cardio' | 'other'
+
+/**
+ * 기구 제조사. 같은 "체스트 프레스"라도 제조사가 다르면 같은 중량이 같은
+ * 무게가 아니라, 브랜드가 다르면 별개의 종목으로 둔다. 목록을 고정한 이유는
+ * 자유 입력이 오타로 같은 브랜드를 갈라놓기 때문이다 -- 갈라지면 브랜드로
+ * 묶어 보는 의미가 사라진다. 목록에 없는 제조사는 종목 이름에 적는다.
+ */
+export type ExerciseBrand =
+  | 'hammer_strength'
+  | 'nautilus'
+  | 'nutec'
+  | 'cybex'
+  | 'life_fitness'
+  | 'technogym'
+  | 'matrix'
+  | 'precor'
+  | 'panatta'
+  | 'watson'
+  | 'star_trac'
 export type MuscleGroup =
   | 'chest'
   | 'back'
@@ -54,6 +73,8 @@ export interface Exercise {
   primaryMuscle: MuscleGroup
   secondaryMuscles: MuscleGroup[]
   equipment: Equipment
+  /** 기구 제조사. 바벨·덤벨·맨몸처럼 제조사를 붙일 일이 없으면 null이다. */
+  brand: ExerciseBrand | null
   defaultRestSeconds: number
   isArchived: boolean
   createdAt: IsoDateTime

@@ -13,7 +13,7 @@
 .exercise-picker-list { display: grid; flex: 1; min-height: 0; gap: 6px; margin: 0; padding: 12px; list-style: none; overflow-y: auto; align-content: start; }
 .exercise-picker-item { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; min-height: 56px; padding: 9px 14px; text-align: left; background: var(--surface-subtle); border: 1px solid transparent; border-radius: 10px; }
 .exercise-picker-item:hover, .exercise-picker-item:focus-visible { border-color: var(--accent-border); background: var(--accent-subtle); }
-.exercise-picker-item-name { font-size: .88rem; font-weight: 750; }
+.exercise-picker-item-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .88rem; font-weight: 750; }.exercise-picker-item-name .exercise-brand-badge { padding: 2px 7px; color: var(--accent); background: var(--accent-subtle); border-radius: 999px; font-size: .64rem; font-weight: 800; white-space: nowrap; }.create-exercise-hint { color: var(--text-muted); font-size: .68rem; font-weight: 500; }
 .exercise-picker-item-meta { color: var(--text-muted); font-size: .72rem; }
 .exercise-picker-empty { padding: 28px 14px; color: var(--text-muted); text-align: center; font-size: .82rem; line-height: 1.6; }
 

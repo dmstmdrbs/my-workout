@@ -215,7 +215,9 @@ describe.sequential('운동 화면: 종목 추가 시트 위에 뜨는 새 운�
     expect(sheet.queryByRole('button', { name: '바벨 벤치프레스' })).toBeNull()
 
     await user.click(sheet.getByRole('button', { name: '와이드 그립 랫 풀다운' }))
-    await screen.findByRole('heading', { name: '와이드 그립 랫 풀다운' })
+    // 시트는 종목 이름만 보여주지만(브랜드는 배지로 따로), 기록에 들어갈 때는
+    // 브랜드를 합친 이름으로 복사된다.
+    await screen.findByRole('heading', { name: '노틸러스 와이드 그립 랫 풀다운' })
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
