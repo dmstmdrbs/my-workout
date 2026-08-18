@@ -118,6 +118,13 @@ export interface WorkoutSetRecord {
   setType: SetType
   weightKg: number | null
   reps: number | null
+  /**
+   * 유산소 세트의 수행 시간(초)과 거리(km). 장비가 `cardio`인 종목만 이 둘을
+   * 입력하고, 그 종목은 중량·횟수를 비워 둔다. 볼륨(중량 × 횟수) 합산에는
+   * 들어가지 않는다 -- 시간과 거리는 kg에 더할 수 있는 값이 아니다.
+   */
+  durationSeconds: number | null
+  distanceKm: number | null
   targetRir: Rir
   actualRir: Rir
   restSeconds: number | null

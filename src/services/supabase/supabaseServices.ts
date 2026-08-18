@@ -187,6 +187,8 @@ function mapWorkoutSet(row: Row): WorkoutSetRecord {
     setType: stringValue(row, 'set_type', 'working') as SetType,
     weightKg: nullableNumber(row, 'weight_kg'),
     reps: nullableNumber(row, 'reps'),
+    durationSeconds: nullableNumber(row, 'duration_seconds'),
+    distanceKm: nullableNumber(row, 'distance_km'),
     targetRir: nullableNumber(row, 'target_rir') as Rir,
     actualRir: nullableNumber(row, 'actual_rir') as Rir,
     restSeconds: nullableNumber(row, 'rest_seconds'),

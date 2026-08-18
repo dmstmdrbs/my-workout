@@ -86,6 +86,8 @@ async function addSessionInWeek(repo: WorkoutRepository, weekStart: Date, weight
             setType: 'working',
             weightKg,
             reps,
+            durationSeconds: null,
+            distanceKm: null,
             targetRir: 2,
             actualRir: 2,
             restSeconds: 120,

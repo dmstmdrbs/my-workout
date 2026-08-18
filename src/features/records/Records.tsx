@@ -358,7 +358,19 @@ function RecordsEmpty() { return <section className="records-empty"><ImageDown s
 function getActualRirs(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted && set.actualRir !== null).map((set) => set.actualRir as number) }
 function formatAverageRir(session: WorkoutSession) { const rirs = getActualRirs(session); if (!rirs.length) return '–'; const average = rirs.reduce((sum, value) => sum + value, 0) / rirs.length; return average >= 5 ? '5+' : average.toFixed(1) }
 function formatRir(rir: number) { return rir >= 5 ? '5+' : String(rir) }
-function formatSet(set: WorkoutSetRecord, weightUnit: string) { return `${formatWeight(set.weightKg)} ${weightUnit} × ${set.reps ?? '–'}` }
+/**
+ * 시간이나 거리가 적힌 세트는 유산소로 본다. 세트 자체에는 장비 정보가 없고,
+ * 유산소가 아니면 이 두 값이 채워질 일이 없어 이 판정으로 충분하다.
+ */
+function formatSet(set: WorkoutSetRecord, weightUnit: string) {
+  if (set.durationSeconds !== null || set.distanceKm !== null) {
+    const parts = []
+    if (set.durationSeconds !== null) parts.push(`${Math.round(set.durationSeconds / 60)}분`)
+    if (set.distanceKm !== null) parts.push(`${set.distanceKm}km`)
+    return parts.join(' · ')
+  }
+  return `${formatWeight(set.weightKg)} ${weightUnit} × ${set.reps ?? '–'}`
+}
 function formatWeight(weight: number | null) { return weight === null ? '–' : Number.isInteger(weight) ? String(weight) : weight.toFixed(1) }
 function formatNumber(value: number) { return new Intl.NumberFormat('ko-KR').format(Math.round(value)) }
 function formatDuration(session: WorkoutSession) { if (!session.completedAt) return '기록 중'; const minutes = getSessionDurationMinutes(session); return minutes < 60 ? `${minutes}분` : `${Math.floor(minutes / 60)}시간${minutes % 60 ? ` ${minutes % 60}분` : ''}` }

@@ -17,7 +17,18 @@
 @media (max-width: 480px) { .records-page { width: min(100% - 32px, 760px); }.records-heading > div > p:last-child { font-size: .83rem; }.record-detail-heading { display: grid; }.record-volume { justify-items: start; padding-top: 3px; }.completed-set-row { grid-template-columns: 23px minmax(0, 1fr); min-height: 42px; }.completed-set-row > span:last-child { grid-column: 2; margin-top: -8px; padding-bottom: 6px; font-size: .62rem; }.share-panel { padding: 16px; }.workout-share-card { padding: 18px 15px 14px; }.share-card-exercise-name strong { font-size: .7rem; }.share-card-e1rm { font-size: .58rem; }.share-card-exercise-sets { font-size: .62rem; }.share-actions { grid-template-columns: 1fr; }.records-empty { margin-top: 7vh; } }
 
 /* The hidden capture target always keeps the desktop card scale, even on a phone. */
-.share-card-export-target .workout-share-card { width: 540px; padding: 26px 24px 20px; }
-.share-card-export-target .share-card-exercise-name strong { font-size: .76rem; }
-.share-card-export-target .share-card-e1rm { font-size: .64rem; }
-.share-card-export-target .share-card-exercise-sets { font-size: .67rem; }
+.share-card-export-target .workout-share-card { width: 540px; padding: 34px 30px 26px; border-radius: 20px; }
+.share-card-export-target .share-card-brand { font-size: .86rem; }
+.share-card-export-target .share-card-header p { margin-top: 7px; font-size: .86rem; }
+.share-card-export-target .share-card-mark { width: 38px; height: 38px; border-radius: 11px; font-size: .82rem; }
+.share-card-export-target .workout-share-card h3 { margin-top: 22px; font-size: 1.7rem; }
+.share-card-export-target .share-card-summary { gap: 12px; margin: 24px 0; padding: 20px 0; }
+.share-card-export-target .share-card-summary strong { font-size: 1.42rem; }
+.share-card-export-target .share-card-summary span { font-size: .76rem; }
+.share-card-export-target .share-card-exercises { gap: 18px; }
+.share-card-export-target .share-card-exercise { gap: 9px; }
+.share-card-export-target .share-card-exercise-name strong { font-size: 1.04rem; }
+.share-card-export-target .share-card-e1rm { font-size: .84rem; }
+.share-card-export-target .share-card-exercise-sets { gap: 7px 8px; font-size: .88rem; }
+.share-card-export-target .share-card-exercise-sets span { padding: 4px 11px; }
+.share-card-export-target .workout-share-card footer { margin-top: 26px; padding-top: 14px; font-size: .7rem; }

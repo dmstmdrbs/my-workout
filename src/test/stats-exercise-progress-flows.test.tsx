@@ -61,6 +61,8 @@ async function addSessionDaysAgo(
           setType: 'working' as const,
           weightKg: set.weightKg,
           reps: set.reps,
+          durationSeconds: null,
+          distanceKm: null,
           targetRir: 2,
           actualRir: 2,
           restSeconds: 90,

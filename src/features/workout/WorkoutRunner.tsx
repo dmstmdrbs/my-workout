@@ -46,6 +46,8 @@ function lastCompletedSetQueryKey(exerciseId: string) { return ['last-completed-
 
 const WEIGHT_STEP = 2.5
 const REPS_STEP = 1
+const DURATION_STEP_SECONDS = 60
+const DISTANCE_STEP_KM = 0.1
 
 const rirChoices: Array<{ value: number; label: string }> = [
   { value: 0, label: '0' },
@@ -195,7 +197,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
             setOrder: exercise.sets.length + 1,
             setType: 'working',
             weightKg: reference?.weightKg ?? null,
-            reps: reference?.reps ?? null,
+            reps: reference?.reps ?? null, durationSeconds: null, distanceKm: null,
             targetRir: reference?.targetRir ?? null,
             actualRir: null,
             restSeconds: reference?.restSeconds ?? defaultRestSeconds,
@@ -509,6 +511,8 @@ function ExerciseCard({ exercise, weightUnit, equipment, onChangeSet, onComplete
   const previousSet = lastCompletedSetQuery.data ?? null
   const titleId = `exercise-title-${exercise.id}`
   const isBodyweight = equipment === 'bodyweight'
+  // 유산소는 중량 × 횟수로 적을 수 없다. 같은 자리에 시간과 거리를 받는다.
+  const isCardio = equipment === 'cardio'
   const weightShortLabel = isBodyweight ? '추가 중량' : '중량'
   const weightLabel = `${weightShortLabel} (${weightUnit})`
 
@@ -523,7 +527,7 @@ function ExerciseCard({ exercise, weightUnit, equipment, onChangeSet, onComplete
     </div>
 
     <div className="set-table" role="region" aria-label={`${exercise.exerciseName} 세트 기록`} tabIndex={0}>
-      <div className="set-row set-table-head" aria-hidden="true"><span>세트</span><span>{weightLabel}</span><span>횟수</span><span>목표 RIR</span><span>실제 RIR</span><span /></div>
+      <div className="set-row set-table-head" aria-hidden="true"><span>세트</span><span>{isCardio ? '시간 (분)' : weightLabel}</span><span>{isCardio ? '거리 (km)' : '횟수'}</span><span>목표 RIR</span><span>실제 RIR</span><span /></div>
       {exercise.sets.map((set) => <SetRow
         key={set.id}
         set={set}
@@ -531,6 +535,7 @@ function ExerciseCard({ exercise, weightUnit, equipment, onChangeSet, onComplete
         weightLabel={weightLabel}
         weightShortLabel={weightShortLabel}
         isBodyweight={isBodyweight}
+        isCardio={isCardio}
         onChange={(changes) => onChangeSet(set.id, changes)}
         onComplete={() => onCompleteSet(set)}
       />)}
@@ -610,7 +615,9 @@ function RoutineChoiceCard({ routine, isSelected, lastPerformedAt, onSelect }: {
   </button>
 }
 
-function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, onChange, onComplete }: { set: WorkoutSetRecord; weightUnit: string; weightLabel: string; weightShortLabel: string; isBodyweight: boolean; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
+function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, isCardio, onChange, onComplete }: { set: WorkoutSetRecord; weightUnit: string; weightLabel: string; weightShortLabel: string; isBodyweight: boolean; isCardio: boolean; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
+  if (isCardio) return <CardioSetRow set={set} onChange={onChange} onComplete={onComplete} />
+
   return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''}`}>
     <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
     <label>
@@ -640,6 +647,55 @@ function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, 
   </div>
 }
 
+/**
+ * 유산소 세트는 중량·횟수 대신 시간과 거리를 받는다. 시간은 초로 저장하고
+ * 화면에서는 분으로 다룬다 -- 러닝 기록을 "1800초"로 적는 사람은 없다.
+ * RIR 열은 그대로 두되 값이 없으면 비워 둔다. 유산소에 목표 RIR을 처방하는
+ * 경우는 드물지만, 넣고 싶은 사람의 자리를 없앨 이유도 없다.
+ */
+function CardioSetRow({ set, onChange, onComplete }: { set: WorkoutSetRecord; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
+  const minutes = set.durationSeconds === null ? '' : String(Math.round(set.durationSeconds / 60))
+  const stepDuration = (delta: number) => onChange({ durationSeconds: Math.max(0, (set.durationSeconds ?? 0) + delta) })
+  const stepDistance = (delta: number) => onChange({ distanceKm: roundDistance(Math.max(0, (set.distanceKm ?? 0) + delta)) })
+
+  return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''}`}>
+    <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
+    <label>
+      <span className="mobile-field-label">시간 (분)</span>
+      <div className="numeric-stepper">
+        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 시간 1분 감소`} onClick={() => stepDuration(-DURATION_STEP_SECONDS)}><Minus size={14} /></button>
+        <input aria-label={`${set.setOrder}세트 시간 (분)`} inputMode="numeric" type="number" min="0" step="1" value={minutes} onChange={(event) => onChange({ durationSeconds: toNullableMinutes(event.target.value) })} />
+        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 시간 1분 증가`} onClick={() => stepDuration(DURATION_STEP_SECONDS)}><Plus size={14} /></button>
+      </div>
+    </label>
+    <label>
+      <span className="mobile-field-label">거리 (km)</span>
+      <div className="numeric-stepper">
+        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 거리 0.1km 감소`} onClick={() => stepDistance(-DISTANCE_STEP_KM)}><Minus size={14} /></button>
+        <input aria-label={`${set.setOrder}세트 거리 (km)`} inputMode="decimal" type="number" min="0" step="0.1" value={set.distanceKm ?? ''} onChange={(event) => onChange({ distanceKm: toNullableNumber(event.target.value) })} />
+        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 거리 0.1km 증가`} onClick={() => stepDistance(DISTANCE_STEP_KM)}><Plus size={14} /></button>
+      </div>
+    </label>
+    <span className="target-rir"><small className="mobile-field-label">목표 RIR</small>{formatRir(set.targetRir)}</span>
+    <div className="actual-rir"><span className="mobile-field-label">실제 RIR</span><div className="rir-choice-row" role="group" aria-label={`${set.setOrder}세트 실제 RIR`}>
+      {rirChoices.map((choice) => <button className={set.actualRir === choice.value ? 'is-selected' : ''} type="button" key={choice.value} onClick={() => onChange({ actualRir: choice.value })}>{choice.label}</button>)}
+      <button className={set.actualRir === null ? 'is-selected is-empty' : 'is-empty'} type="button" onClick={() => onChange({ actualRir: null })}>–</button>
+    </div></div>
+    <button className={`complete-set-button ${set.isCompleted ? 'is-completed' : ''}`} type="button" onClick={onComplete} aria-label={`${set.setOrder}세트 ${set.isCompleted ? '완료 취소' : '완료'}`}>
+      {set.isCompleted ? <Check size={17} /> : '완료'}
+    </button>
+  </div>
+}
+
+/** 분 입력을 초로. 빈 칸과 음수는 값 없음으로 본다. */
+function toNullableMinutes(value: string) {
+  const parsed = toNullableInteger(value)
+  return parsed === null ? null : parsed * 60
+}
+
+/** 0.1km 단위 스테퍼가 부동소수 오차로 3.3000000000000003이 되지 않게 한다. */
+function roundDistance(value: number) { return Math.round(value * 10) / 10 }
+
 function RestTimer({ remaining, isRunning, onRestart, onStop, compact = false }: { remaining: number; isRunning: boolean; onRestart: () => void; onStop: () => void; compact?: boolean }) {
   return <article className={`rest-timer ${compact ? 'is-compact' : ''}`}>
     <div className="rest-timer-copy"><span><Clock3 size={16} /> 휴식 타이머</span><strong>{formatTimer(remaining)}</strong></div>
@@ -663,7 +719,7 @@ function createDraft(routine: Routine, exercises: Exercise[]): WorkoutDraft {
       primaryMuscle: exerciseById.get(routineExercise.exerciseId)?.primaryMuscle ?? 'full_body', exerciseOrder: routineExercise.exerciseOrder, notes: routineExercise.notes,
       sets: [...routineExercise.sets].sort((a, b) => a.setOrder - b.setOrder).map((prescription): WorkoutSetRecord => ({
         id: createId(), setOrder: prescription.setOrder, setType: prescription.setType, weightKg: prescription.targetWeightKg,
-        reps: prescription.targetRepsMax ?? prescription.targetRepsMin, targetRir: prescription.targetRir, actualRir: null,
+        reps: prescription.targetRepsMax ?? prescription.targetRepsMin, durationSeconds: null, distanceKm: null, targetRir: prescription.targetRir, actualRir: null,
         restSeconds: prescription.restSeconds, isCompleted: false, completedAt: null, notes: null,
       })),
     })),
@@ -680,7 +736,7 @@ function createFreeWorkoutExercise({ exercise, exerciseOrder, previousSet, defau
   return {
     id: createId(), exerciseId: exercise.id, exerciseName: snapshotExerciseName(exercise), primaryMuscle: exercise.primaryMuscle, exerciseOrder, notes: null,
     sets: [{
-      id: createId(), setOrder: 1, setType: 'working', weightKg: previousSet?.weightKg ?? null, reps: previousSet?.reps ?? null,
+      id: createId(), setOrder: 1, setType: 'working', weightKg: previousSet?.weightKg ?? null, reps: previousSet?.reps ?? null, durationSeconds: null, distanceKm: null,
       targetRir: defaultRir, actualRir: null, restSeconds: exercise.defaultRestSeconds || defaultRestSeconds, isCompleted: false, completedAt: null, notes: null,
     }],
   }
@@ -691,7 +747,16 @@ function normalizeExerciseOrder(exercises: WorkoutExercise[]) { return exercises
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `workout-${Date.now()}-${Math.random().toString(36).slice(2)}` }
 function toNullableNumber(value: string) { if (value.trim() === '') return null; const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? parsed : null }
 function toNullableInteger(value: string) { const number = toNullableNumber(value); return number === null ? null : Math.floor(number) }
-function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) { return set?.weightKg !== null && set?.weightKg !== undefined && set.reps !== null && set.reps !== undefined ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음' }
+function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) {
+  if (!set) return '기록 없음'
+  if (set.durationSeconds !== null || set.distanceKm !== null) {
+    const parts = []
+    if (set.durationSeconds !== null) parts.push(`${Math.round(set.durationSeconds / 60)}분`)
+    if (set.distanceKm !== null) parts.push(`${set.distanceKm}km`)
+    return parts.join(' · ')
+  }
+  return set.weightKg !== null && set.reps !== null ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음'
+}
 function formatRir(rir: Rir) { if (rir === null) return '–'; return rir >= 5 ? '5+' : String(rir) }
 function formatTimer(seconds: number) { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
 /** 볼륨은 kg 소수점을 보여줄 만큼 정밀하지 않아 정수로 끊고 천 단위만 구분한다. */

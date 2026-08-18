@@ -75,7 +75,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
             [100, 1, 0], [90, 5, 1], [90, 3, 2],
           ].map(([weightKg, reps, actualRir], index) => ({
             id: `test-progressive-overload-${index + 1}`, setOrder: index + 1, setType: 'working' as const,
-            weightKg, reps, targetRir: 2, actualRir, restSeconds: 90, isCompleted: true,
+            weightKg, reps, durationSeconds: null, distanceKm: null, targetRir: 2, actualRir, restSeconds: 90, isCompleted: true,
             completedAt: `2026-08-15T09:${10 + index * 4}:00.000+09:00`, notes: null,
           })),
         },
@@ -89,7 +89,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
           // Bodyweight exercises record no weight, so nothing can be estimated.
           sets: [12, 10, 8].map((reps, index) => ({
             id: `test-bodyweight-${index + 1}`, setOrder: index + 1, setType: 'working' as const,
-            weightKg: null, reps, targetRir: 2, actualRir: 1, restSeconds: 60, isCompleted: true,
+            weightKg: null, reps, durationSeconds: null, distanceKm: null, targetRir: 2, actualRir: 1, restSeconds: 60, isCompleted: true,
             completedAt: `2026-08-15T09:${25 + index * 3}:00.000+09:00`, notes: null,
           })),
         },
@@ -104,7 +104,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
           // estimate is `null` by design and the exercise shows no estimate.
           sets: [15, 16, 18].map((reps, index) => ({
             id: `test-high-rep-${index + 1}`, setOrder: index + 1, setType: 'working' as const,
-            weightKg: 50, reps, targetRir: 2, actualRir: 1, restSeconds: 60, isCompleted: true,
+            weightKg: 50, reps, durationSeconds: null, distanceKm: null, targetRir: 2, actualRir: 1, restSeconds: 60, isCompleted: true,
             completedAt: `2026-08-15T09:${36 + index * 3}:00.000+09:00`, notes: null,
           })),
         },
@@ -123,7 +123,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
           // non-estimable sets sit side by side, not just uniform fixtures.
           sets: [[null, 10], [60, 8], [50, 15]].map(([weightKg, reps], index) => ({
             id: `test-partial-mix-${index + 1}`, setOrder: index + 1, setType: 'working' as const,
-            weightKg, reps, targetRir: 2, actualRir: 1, restSeconds: 60, isCompleted: true,
+            weightKg, reps, durationSeconds: null, distanceKm: null, targetRir: 2, actualRir: 1, restSeconds: 60, isCompleted: true,
             completedAt: `2026-08-15T09:${45 + index * 3}:00.000+09:00`, notes: null,
           })),
         },

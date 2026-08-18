@@ -129,7 +129,7 @@ describe.sequential('저장소 조회 계약', () => {
           exerciseOrder: 1,
           notes: null,
           sets: [{
-            id: 'dup-test-first-set-1', setOrder: 1, setType: 'working', weightKg: 20, reps: 12,
+            id: 'dup-test-first-set-1', setOrder: 1, setType: 'working', weightKg: 20, reps: 12, durationSeconds: null, distanceKm: null,
             targetRir: 2, actualRir: 2, restSeconds: 60, isCompleted: true, completedAt: '2026-08-05T09:05:00.000+09:00', notes: null,
           }],
         },
@@ -144,7 +144,7 @@ describe.sequential('저장소 조회 계약', () => {
           exerciseOrder: 2,
           notes: null,
           sets: [{
-            id: 'dup-test-other-set-1', setOrder: 1, setType: 'working', weightKg: 100, reps: 10,
+            id: 'dup-test-other-set-1', setOrder: 1, setType: 'working', weightKg: 100, reps: 10, durationSeconds: null, distanceKm: null,
             targetRir: 2, actualRir: 2, restSeconds: 90, isCompleted: true, completedAt: '2026-08-05T09:15:00.000+09:00', notes: null,
           }],
         },
@@ -156,7 +156,7 @@ describe.sequential('저장소 조회 계약', () => {
           exerciseOrder: 3,
           notes: null,
           sets: [{
-            id: 'dup-test-second-set-1', setOrder: 1, setType: 'working', weightKg: 22.5, reps: 10,
+            id: 'dup-test-second-set-1', setOrder: 1, setType: 'working', weightKg: 22.5, reps: 10, durationSeconds: null, distanceKm: null,
             targetRir: 1, actualRir: 1, restSeconds: 60, isCompleted: true, completedAt: '2026-08-05T09:35:00.000+09:00', notes: null,
           }],
         },
