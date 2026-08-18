@@ -134,7 +134,7 @@ export function BodyMeasurements() {
       <section className="body-card" aria-labelledby="body-form-title">
         <h2 id="body-form-title">측정 추가</h2>
         <div className="body-form-grid">
-          <label className="body-field">
+          <label className="body-field body-field-date">
             <span>측정일</span>
             <input aria-label="측정일" type="date" value={form.measuredOn} onChange={(event) => setForm((current) => ({ ...current, measuredOn: event.target.value }))} />
           </label>
@@ -251,6 +251,7 @@ function BodySummaryCard({ measurements, weightUnit }: { measurements: BodyMeasu
   return (
     <section className="body-card" aria-labelledby="body-summary-title">
       <h2 id="body-summary-title">최근 체성분</h2>
+      <p className="body-hint">숫자 아래는 직전 측정 대비 변화예요.</p>
       <ul className="body-summary-grid">
         {summaries.map(({ definition, summary }) => (
           <li className="body-summary-item" key={definition.key}>
@@ -264,7 +265,7 @@ function BodySummaryCard({ measurements, weightUnit }: { measurements: BodyMeasu
                   <small>{definition.unit}</small>
                 </span>
                 <span className={`body-summary-delta tone-${summary.delta === null ? 'neutral' : metricTone(definition, summary.delta)}`}>
-                  {summary.delta === null ? '첫 기록' : `직전 대비 ${formatDelta(summary.delta)}${summary.delta === 0 ? '' : definition.unit}`}
+                  {summary.delta === null ? '첫 기록' : `${formatDelta(summary.delta)}${summary.delta === 0 ? '' : definition.unit}`}
                 </span>
                 <span className="body-summary-date">{summary.latestOn}</span>
               </>
@@ -283,12 +284,15 @@ function WeightTrendCard({ measurements, weightUnit }: { measurements: BodyMeasu
   const values = points.map((point) => point.weightKg)
   const max = Math.max(...values)
   const min = Math.min(...values)
-  // 체중은 0에서 시작하는 막대로 그리면 변화가 보이지 않는다(70kg -> 71kg은
-  // 1.4% 차이다). 그래서 관측 구간의 최소값 살짝 아래를 바닥으로 잡아
-  // 변화폭을 펼친다. 값이 하나뿐이거나 전부 같으면 범위가 0이라 모두 같은
-  // 높이로 그린다.
+  // 체중은 0에서 시작하는 축으로 그리면 변화가 보이지 않는다(70kg -> 71kg은
+  // 1.4% 차이다). 그래서 관측 구간에 맞춰 축을 자르는데, 축을 자른 그래프를
+  // 막대로 그리면 2.8kg 감량이 "6분의 1로 줄었다"처럼 읽힌다. 막대는 0을
+  // 바닥으로 읽히기 때문이다. 꺾은선은 그 약속이 없어 잘린 축에 맞는 형태다.
   const range = max - min
-  const floor = range === 0 ? max : min - range * 0.2
+  const top = range === 0 ? max + 1 : max + range * 0.15
+  const bottom = range === 0 ? max - 1 : min - range * 0.15
+  const toY = (value: number) => ((top - value) / (top - bottom)) * 100
+  const toX = (index: number) => ((index + 0.5) / points.length) * 100
 
   return (
     <section className="body-card" aria-labelledby="body-trend-title">
@@ -298,20 +302,31 @@ function WeightTrendCard({ measurements, weightUnit }: { measurements: BodyMeasu
           {points[0].measuredOn} · {formatMetricValue(points[0].weightKg)}{weightUnit} — 비교할 이전 기록이 없어 추이를 표시할 수 없어요.
         </p>
       ) : (
-        <div className="weight-trend-chart" role="group" aria-label="체중 추이">
-          {points.map((point) => (
-            <div className="weight-trend-column" key={point.measuredOn}>
-              <span
-                className="weight-trend-bar"
-                role="img"
-                aria-label={`${point.measuredOn} 체중 ${formatMetricValue(point.weightKg)}${weightUnit}`}
-                style={{ height: `${Math.max(8, range === 0 ? 60 : ((point.weightKg - floor) / (max - floor)) * 110)}px` }}
+        <>
+          <p className="body-hint">최저 {formatMetricValue(min)}{weightUnit} · 최고 {formatMetricValue(max)}{weightUnit}</p>
+          <div className="weight-trend-chart">
+            <svg
+              className="weight-trend-line"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label={`체중 추이 꺾은선. ${points.length}개 측정, ${formatMetricValue(points[0].weightKg)}${weightUnit}에서 ${formatMetricValue(points[points.length - 1].weightKg)}${weightUnit}로 변화.`}
+            >
+              <polyline
+                points={points.map((point, index) => `${toX(index)},${toY(point.weightKg)}`).join(' ')}
+                vectorEffect="non-scaling-stroke"
               />
-              <span className="weight-trend-value" aria-hidden="true">{formatMetricValue(point.weightKg)}</span>
-              <span className="weight-trend-date" aria-hidden="true">{point.measuredOn.slice(5)}</span>
-            </div>
-          ))}
-        </div>
+            </svg>
+            <ul className="weight-trend-labels" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
+              {points.map((point) => (
+                <li key={point.measuredOn} role="img" aria-label={`${point.measuredOn} 체중 ${formatMetricValue(point.weightKg)}${weightUnit}`}>
+                  <strong aria-hidden="true">{formatMetricValue(point.weightKg)}</strong>
+                  <span aria-hidden="true">{point.measuredOn.slice(5)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
       )}
     </section>
   )

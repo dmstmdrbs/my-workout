@@ -36,7 +36,7 @@ test('체중 기록이 하나뿐이면 그래프 대신 안내를 보여준다',
   )
 
   const trend = await screen.findByRole('region', { name: '체중 추이' })
-  expect(within(trend).queryByRole('group', { name: '체중 추이' })).toBeNull()
+  expect(within(trend).queryAllByRole('img')).toHaveLength(0)
   expect(trend.textContent).toContain('비교할 이전 기록이 없어')
   expect(trend.textContent).toContain('68kg')
 })

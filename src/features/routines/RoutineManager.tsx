@@ -332,7 +332,7 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
     <div className="routine-editor-scroll">
       <section className="routine-details-card" aria-label="루틴 기본 정보">
         <label className="routine-name-field"><span>루틴 이름</span><input value={draft.name} onChange={(event) => { onClearNotice(); onChange({ name: event.target.value }) }} placeholder="예: Pull Day" maxLength={80} /></label>
-        <label className="routine-description-field"><span>설명 <em>선택</em></span><input value={draft.description ?? ''} onChange={(event) => { onClearNotice(); onChange({ description: event.target.value || null }) }} placeholder="예: 등과 이두 중심" maxLength={180} /></label>
+        <label className="routine-description-field"><span>설명 <em>(선택)</em></span><input value={draft.description ?? ''} onChange={(event) => { onClearNotice(); onChange({ description: event.target.value || null }) }} placeholder="예: 등과 이두 중심" maxLength={180} /></label>
         <label className="routine-color-field"><span>색상</span><input aria-label="루틴 색상" type="color" value={draft.color ?? '#2563eb'} onChange={(event) => onChange({ color: event.target.value })} /></label>
       </section>
 

@@ -101,6 +101,8 @@ export function Settings() {
           <div><h2 id="settings-workout-title">운동 기본값</h2><p>새 종목을 추가할 때 쓰이는 초기값입니다.</p></div>
         </div>
 
+        {/* 값이 둘 다 짧아 한 줄씩 쓰면 카드만 길어진다. */}
+        <div className="settings-field-row">
         <RestSecondsField
           value={settings.defaultRestSeconds}
           onCommit={(seconds) => settingsMutation.mutate({ defaultRestSeconds: seconds })}
@@ -116,6 +118,7 @@ export function Settings() {
             {rirChoices.map((choice) => <option key={choice.label} value={choice.value}>{choice.label}</option>)}
           </select>
         </label>
+        </div>
       </section>
 
       <SignOutSection />

@@ -59,14 +59,17 @@ describe.sequential('UF-20: 신체 프로필 요약과 추이', () => {
     renderApp()
     const summary = await screen.findByRole('region', { name: '최근 체성분' })
 
+    // "직전 대비"는 카드마다 반복하지 않고 카드 제목 아래에서 한 번만 밝힌다.
+    expect(summary.textContent).toContain('직전 측정 대비')
+
     const weight = within(summary).getByText('체중').closest('li')!
     expect(weight.textContent).toContain('71')
-    expect(weight.textContent).toContain('직전 대비 +1kg')
+    expect(weight.textContent).toContain('+1kg')
     expect(weight.textContent).toContain('2025-03-15')
 
     const bodyFat = within(summary).getByText('체지방률').closest('li')!
     expect(bodyFat.textContent).toContain('18')
-    expect(bodyFat.textContent).toContain('직전 대비 −2%')
+    expect(bodyFat.textContent).toContain('−2%')
     expect(bodyFat.textContent).toContain('2025-03-08')
 
     // 한 번도 기록하지 않은 지표만 '기록 없음'이 된다.
@@ -76,11 +79,13 @@ describe.sequential('UF-20: 신체 프로필 요약과 추이', () => {
 
   test('체중 추이는 체중이 기록된 측정만 오래된 순으로 그린다', async () => {
     renderApp()
-    const chart = await screen.findByRole('group', { name: '체중 추이' })
-    const bars = within(chart).getAllByRole('img').map((bar) => bar.getAttribute('aria-label'))
+    const trend = await screen.findByRole('region', { name: '체중 추이' })
+    // 꺾은선 자체와 각 측정점 라벨이 모두 이름을 갖는다. 첫 항목이 그래프다.
+    const labels = within(trend).getAllByRole('img').map((point) => point.getAttribute('aria-label'))
 
     // 03-08은 체중이 없어 빠지고, 저장소의 최신순이 시간순으로 뒤집힌다.
-    expect(bars).toEqual(['2025-03-01 체중 70kg', '2025-03-15 체중 71kg'])
+    expect(labels.slice(1)).toEqual(['2025-03-01 체중 70kg', '2025-03-15 체중 71kg'])
+    expect(labels[0]).toContain('꺾은선')
   })
 
   test('1RM 계산기는 입력한 세트로 예상 1RM과 반복 수별 중량을 보여준다', async () => {
