@@ -175,7 +175,12 @@ describe.sequential('기록 화면 무한 스크롤', () => {
     const originalListSessions = services.workoutRepository.listSessions.bind(services.workoutRepository)
     let nextPageCallCount = 0
     const listSessionsSpy = vi.fn<WorkoutRepository['listSessions']>((options) => {
-      if (options?.startedBefore) {
+      // Scoped to the records list's own pagination signature (cursor +
+      // page-size limit) rather than any `startedBefore` call -- the
+      // calendar card on this same screen also queries a bounded range with
+      // `startedBefore` (the displayed month's exclusive upper bound), and
+      // that unrelated call must not be counted as a list page-2 fetch.
+      if (options?.startedBefore && options?.limit === recordsPageSize) {
         nextPageCallCount += 1
         return Promise.reject(new Error('page 2 network error'))
       }
