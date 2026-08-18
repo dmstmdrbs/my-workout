@@ -148,6 +148,8 @@ function mapRoutineSet(row: Row): RoutineSetPrescription {
     targetWeightKg: nullableNumber(row, 'target_weight_kg'),
     targetRepsMin: nullableNumber(row, 'target_reps_min'),
     targetRepsMax: nullableNumber(row, 'target_reps_max'),
+    targetDurationSeconds: nullableNumber(row, 'target_duration_seconds'),
+    targetDistanceKm: nullableNumber(row, 'target_distance_km'),
     targetRir: nullableNumber(row, 'target_rir') as Rir,
     restSeconds: nullableNumber(row, 'rest_seconds'),
   }

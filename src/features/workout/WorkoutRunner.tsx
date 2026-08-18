@@ -741,7 +741,11 @@ function createDraft(routine: Routine, exercises: Exercise[]): WorkoutDraft {
       primaryMuscle: exerciseById.get(routineExercise.exerciseId)?.primaryMuscle ?? 'full_body', exerciseOrder: routineExercise.exerciseOrder, notes: routineExercise.notes,
       sets: [...routineExercise.sets].sort((a, b) => a.setOrder - b.setOrder).map((prescription): WorkoutSetRecord => ({
         id: createId(), setOrder: prescription.setOrder, setType: prescription.setType, weightKg: prescription.targetWeightKg,
-        reps: prescription.targetRepsMax ?? prescription.targetRepsMin, durationSeconds: null, distanceKm: null, targetRir: prescription.targetRir, actualRir: null,
+        reps: prescription.targetRepsMax ?? prescription.targetRepsMin,
+        // 유산소 처방은 시간·거리로 들어온다. 처방이 없으면 null 그대로 두고
+        // 사용자가 채운다.
+        durationSeconds: prescription.targetDurationSeconds, distanceKm: prescription.targetDistanceKm,
+        targetRir: prescription.targetRir, actualRir: null,
         restSeconds: prescription.restSeconds, isCompleted: false, completedAt: null, notes: null,
       })),
     })),

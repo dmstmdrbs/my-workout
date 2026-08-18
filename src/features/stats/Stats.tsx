@@ -319,6 +319,14 @@ interface BodyweightProgressPoint {
   reps: number
 }
 
+interface CardioProgressPoint {
+  sessionId: string
+  startedAt: string
+  /** 세션 안 유산소 세트의 합계. 인터벌을 여러 세트로 나눠 적어도 하루치가 된다. */
+  durationSeconds: number
+  distanceKm: number | null
+}
+
 /**
  * 종목별 중량 추이 카드. 주간 통계와 달리 이 카드는 선택한 운동과 고정된
  * 조회 기간(`EXERCISE_PROGRESS_PERIOD_DAYS`)만 따르며, 주 이동과는 무관하게
@@ -350,14 +358,21 @@ function ExerciseProgressCard({ weightUnit }: { weightUnit: string }) {
   // Bodyweight exercises don't log a working weight, so "heaviest set" and
   // Brzycki e1RM don't mean anything for them -- see report for the reasoning.
   const isBodyweight = selectedExercise?.equipment === 'bodyweight'
+  // 유산소는 중량도 반복 수도 없어 위 둘 중 어느 쪽으로도 그릴 수 없다.
+  // 시간(과 있으면 거리)으로 그린다.
+  const isCardio = selectedExercise?.equipment === 'cardio'
 
   const weightedPoints = useMemo(
-    () => (progressQuery.data && !isBodyweight ? buildWeightedProgress(progressQuery.data) : []),
-    [progressQuery.data, isBodyweight],
+    () => (progressQuery.data && !isBodyweight && !isCardio ? buildWeightedProgress(progressQuery.data) : []),
+    [progressQuery.data, isBodyweight, isCardio],
   )
   const bodyweightPoints = useMemo(
     () => (progressQuery.data && isBodyweight ? buildBodyweightProgress(progressQuery.data) : []),
     [progressQuery.data, isBodyweight],
+  )
+  const cardioPoints = useMemo(
+    () => (progressQuery.data && isCardio ? buildCardioProgress(progressQuery.data) : []),
+    [progressQuery.data, isCardio],
   )
 
   return (
@@ -386,9 +401,11 @@ function ExerciseProgressCard({ weightUnit }: { weightUnit: string }) {
       )}
 
       {selectedExercise && progressQuery.isSuccess && (
-        isBodyweight
-          ? <BodyweightProgressView exercise={selectedExercise} points={bodyweightPoints} />
-          : <WeightedProgressView exercise={selectedExercise} points={weightedPoints} weightUnit={weightUnit} />
+        isCardio
+          ? <CardioProgressView exercise={selectedExercise} points={cardioPoints} />
+          : isBodyweight
+            ? <BodyweightProgressView exercise={selectedExercise} points={bodyweightPoints} />
+            : <WeightedProgressView exercise={selectedExercise} points={weightedPoints} weightUnit={weightUnit} />
       )}
 
       <ExercisePickerSheet
@@ -494,6 +511,48 @@ function getProgressPeriodStart(now: Date): Date {
  * (체중 운동, 혹은 기록 누락)는 최고 중량 후보에서 제외한다 -- 0으로 취급해
  * 그리면 실제로 무거웠던 세션이 빈 세션처럼 보이게 된다.
  */
+function CardioProgressView({ exercise, points }: { exercise: Exercise; points: CardioProgressPoint[] }) {
+  if (points.length === 0) {
+    return <p className="progress-empty">최근 {EXERCISE_PROGRESS_PERIOD_DAYS}일 동안 기록한 {exercise.name} 시간이 없어요.</p>
+  }
+
+  if (points.length === 1) {
+    const only = points[0]
+    return (
+      <div className="progress-single">
+        <p>{formatFullDate(only.startedAt)} · {formatCardioPoint(only)}</p>
+        <p className="progress-hint">비교할 이전 기록이 없어 추이를 표시할 수 없어요.</p>
+      </div>
+    )
+  }
+
+  const maxDuration = Math.max(...points.map((point) => point.durationSeconds), 1)
+  return (
+    <>
+      <p className="progress-hint">유산소는 중량이 없어, 세션별 총 운동 시간으로 추이를 보여드려요.</p>
+      <div className="progress-chart" role="group" aria-label={`${exercise.name} 운동 시간 추이`}>
+        {points.map((point) => (
+          <div className="progress-column" key={point.sessionId}>
+            <span
+              className="progress-bar"
+              role="img"
+              aria-label={`${formatFullDate(point.startedAt)} ${formatCardioPoint(point)}`}
+              style={{ height: `${Math.max(7, (point.durationSeconds / maxDuration) * 110)}px` }}
+            />
+            <span className="progress-column-value" aria-hidden="true">{Math.round(point.durationSeconds / 60)}분</span>
+            <span className="progress-column-date" aria-hidden="true">{formatShortDate(point.startedAt)}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function formatCardioPoint(point: CardioProgressPoint): string {
+  const minutes = `${Math.round(point.durationSeconds / 60)}분`
+  return point.distanceKm === null ? minutes : `${minutes} · ${point.distanceKm}km`
+}
+
 function buildWeightedProgress(entries: ExerciseProgressEntry[]): WeightedProgressPoint[] {
   const points: WeightedProgressPoint[] = []
   for (const entry of entries) {
@@ -527,6 +586,28 @@ function buildBodyweightProgress(entries: ExerciseProgressEntry[]): BodyweightPr
     }
     if (maxReps === null) continue
     points.push({ sessionId: entry.sessionId, startedAt: entry.startedAt, reps: maxReps })
+  }
+  return points
+}
+
+function buildCardioProgress(entries: ExerciseProgressEntry[]): CardioProgressPoint[] {
+  const points: CardioProgressPoint[] = []
+  for (const entry of entries) {
+    let durationSeconds = 0
+    let distanceKm = 0
+    let hasDistance = false
+    for (const set of entry.sets) {
+      if (set.durationSeconds !== null) durationSeconds += set.durationSeconds
+      if (set.distanceKm !== null) { distanceKm += set.distanceKm; hasDistance = true }
+    }
+    // 시간이 없으면 그릴 축이 없다. 거리만 적은 세션은 다음 단계에서 다룬다.
+    if (durationSeconds === 0) continue
+    points.push({
+      sessionId: entry.sessionId,
+      startedAt: entry.startedAt,
+      durationSeconds,
+      distanceKm: hasDistance ? Math.round(distanceKm * 10) / 10 : null,
+    })
   }
   return points
 }

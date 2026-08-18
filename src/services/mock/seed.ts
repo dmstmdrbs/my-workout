@@ -55,6 +55,8 @@ const threeWorkingSets = (prefix: string, weight: number, min: number, max: numb
     targetWeightKg: weight,
     targetRepsMin: min,
     targetRepsMax: max,
+    targetDurationSeconds: null,
+    targetDistanceKm: null,
     targetRir: rir,
     restSeconds: 120,
   }))

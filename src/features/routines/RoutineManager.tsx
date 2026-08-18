@@ -348,6 +348,7 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
             {orderedExercises.map((exercise, index) => <ExerciseEditor
               key={exercise.id}
               exercise={exercise}
+              isCardio={exercises.find((item) => item.id === exercise.exerciseId)?.equipment === 'cardio'}
               index={index}
               total={orderedExercises.length}
               applyRir={applyRir}
@@ -384,8 +385,9 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
   </>
 }
 
-function ExerciseEditor({ exercise, index, total, applyRir, onApplyRirChange, onApplyRir, onMove, onRemove, onUpdateSet, onAddSet, onRemoveSet }: {
+function ExerciseEditor({ exercise, isCardio, index, total, applyRir, onApplyRirChange, onApplyRir, onMove, onRemove, onUpdateSet, onAddSet, onRemoveSet }: {
   exercise: RoutineExercise
+  isCardio: boolean
   index: number
   total: number
   applyRir: Rir
@@ -410,8 +412,8 @@ function ExerciseEditor({ exercise, index, total, applyRir, onApplyRirChange, on
       </div>
     </header>
     <div className="routine-set-table" role="region" aria-label={`${exercise.exerciseName} 세트 처방`} tabIndex={0}>
-      <div className="routine-set-row routine-set-head" aria-hidden="true"><span>세트</span><span>유형</span><span>중량</span><span>반복 수</span><span>목표 RIR</span><span>휴식</span><span /></div>
-      {sets.map((set) => <PrescriptionSetRow key={set.id} set={set} onChange={(changes) => onUpdateSet(set.id, changes)} onRemove={() => onRemoveSet(set.id)} />)}
+      <div className="routine-set-row routine-set-head" aria-hidden="true"><span>세트</span><span>유형</span><span>{isCardio ? '시간' : '중량'}</span><span>{isCardio ? '거리' : '반복 수'}</span><span>목표 RIR</span><span>휴식</span><span /></div>
+      {sets.map((set) => <PrescriptionSetRow key={set.id} set={set} isCardio={isCardio} onChange={(changes) => onUpdateSet(set.id, changes)} onRemove={() => onRemoveSet(set.id)} />)}
     </div>
     <div className="routine-exercise-footer">
       <button className="text-add-set" type="button" onClick={onAddSet}><Plus size={16} aria-hidden="true" /> 작업 세트 추가</button>
@@ -420,12 +422,17 @@ function ExerciseEditor({ exercise, index, total, applyRir, onApplyRirChange, on
   </article>
 }
 
-function PrescriptionSetRow({ set, onChange, onRemove }: { set: RoutineSetPrescription; onChange: (changes: Partial<RoutineSetPrescription>) => void; onRemove: () => void }) {
+function PrescriptionSetRow({ set, isCardio, onChange, onRemove }: { set: RoutineSetPrescription; isCardio: boolean; onChange: (changes: Partial<RoutineSetPrescription>) => void; onRemove: () => void }) {
   return <div className="routine-set-row">
     <span className="prescription-set-number"><small>세트</small>{set.setOrder}</span>
     <label><span className="routine-mobile-field-label">유형</span><select aria-label={`${set.setOrder}세트 유형`} value={set.setType} onChange={(event) => onChange({ setType: event.target.value as SetType })}>{(Object.keys(setTypeLabels) as SetType[]).map((type) => <option value={type} key={type}>{setTypeLabels[type]}</option>)}</select></label>
-    <label><span className="routine-mobile-field-label">중량 kg</span><input aria-label={`${set.setOrder}세트 목표 중량`} type="number" inputMode="decimal" min="0" step="0.5" value={set.targetWeightKg ?? ''} onChange={(event) => onChange({ targetWeightKg: toNullableNumber(event.target.value) })} placeholder="–" /></label>
-    <label className="rep-range-input"><span className="routine-mobile-field-label">반복 수</span><input aria-label={`${set.setOrder}세트 최소 반복 수`} type="number" inputMode="numeric" min="0" step="1" value={set.targetRepsMin ?? ''} onChange={(event) => onChange({ targetRepsMin: toNullableInteger(event.target.value) })} placeholder="최소" /><i>~</i><input aria-label={`${set.setOrder}세트 최대 반복 수`} type="number" inputMode="numeric" min="0" step="1" value={set.targetRepsMax ?? ''} onChange={(event) => onChange({ targetRepsMax: toNullableInteger(event.target.value) })} placeholder="최대" /></label>
+    {isCardio ? <>
+      <label><span className="routine-mobile-field-label">시간 분</span><input aria-label={`${set.setOrder}세트 목표 시간(분)`} type="number" inputMode="numeric" min="0" step="1" value={set.targetDurationSeconds === null ? '' : Math.round(set.targetDurationSeconds / 60)} onChange={(event) => onChange({ targetDurationSeconds: minutesToSeconds(event.target.value) })} placeholder="–" /></label>
+      <label><span className="routine-mobile-field-label">거리 km</span><input aria-label={`${set.setOrder}세트 목표 거리(km)`} type="number" inputMode="decimal" min="0" step="0.1" value={set.targetDistanceKm ?? ''} onChange={(event) => onChange({ targetDistanceKm: toNullableNumber(event.target.value) })} placeholder="–" /></label>
+    </> : <>
+      <label><span className="routine-mobile-field-label">중량 kg</span><input aria-label={`${set.setOrder}세트 목표 중량`} type="number" inputMode="decimal" min="0" step="0.5" value={set.targetWeightKg ?? ''} onChange={(event) => onChange({ targetWeightKg: toNullableNumber(event.target.value) })} placeholder="–" /></label>
+      <label className="rep-range-input"><span className="routine-mobile-field-label">반복 수</span><input aria-label={`${set.setOrder}세트 최소 반복 수`} type="number" inputMode="numeric" min="0" step="1" value={set.targetRepsMin ?? ''} onChange={(event) => onChange({ targetRepsMin: toNullableInteger(event.target.value) })} placeholder="최소" /><i>~</i><input aria-label={`${set.setOrder}세트 최대 반복 수`} type="number" inputMode="numeric" min="0" step="1" value={set.targetRepsMax ?? ''} onChange={(event) => onChange({ targetRepsMax: toNullableInteger(event.target.value) })} placeholder="최대" /></label>
+    </>}
     <label><span className="routine-mobile-field-label">목표 RIR</span><select aria-label={`${set.setOrder}세트 목표 RIR`} value={rirValue(set.targetRir)} onChange={(event) => onChange({ targetRir: parseRir(event.target.value) })}>{rirOptions.map((option) => <option value={rirValue(option.value)} key={rirValue(option.value)}>{option.label}</option>)}</select></label>
     <label><span className="routine-mobile-field-label">휴식 초</span><input aria-label={`${set.setOrder}세트 휴식 시간(초)`} type="number" inputMode="numeric" min="0" step="5" value={set.restSeconds ?? ''} onChange={(event) => onChange({ restSeconds: toNullableInteger(event.target.value) })} placeholder="–" /></label>
     <button type="button" className="remove-set-button" onClick={onRemove} aria-label={`${set.setOrder}세트 제거`}><Trash2 size={15} aria-hidden="true" /></button>
@@ -456,7 +463,7 @@ function RoutineNotFound({ onBackToList }: { onBackToList: () => void }) { retur
 
 function toDraft(routine: Routine): RoutineDraft { return { id: routine.id, name: routine.name, description: routine.description, color: routine.color, exercises: structuredClone(routine.exercises) } }
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `routine-${Date.now()}-${Math.random().toString(36).slice(2)}` }
-function makeSet(setOrder: number, setType: SetType, restSeconds: number | null, reference?: RoutineSetPrescription): RoutineSetPrescription { return { id: createId(), setOrder, setType, targetWeightKg: reference?.targetWeightKg ?? null, targetRepsMin: reference?.targetRepsMin ?? null, targetRepsMax: reference?.targetRepsMax ?? null, targetRir: reference?.targetRir ?? null, restSeconds } }
+function makeSet(setOrder: number, setType: SetType, restSeconds: number | null, reference?: RoutineSetPrescription): RoutineSetPrescription { return { id: createId(), setOrder, setType, targetWeightKg: reference?.targetWeightKg ?? null, targetRepsMin: reference?.targetRepsMin ?? null, targetRepsMax: reference?.targetRepsMax ?? null, targetDurationSeconds: reference?.targetDurationSeconds ?? null, targetDistanceKm: reference?.targetDistanceKm ?? null, targetRir: reference?.targetRir ?? null, restSeconds } }
 function normalizeExerciseOrder(exercises: RoutineExercise[]) { return exercises.map((exercise, index) => ({ ...exercise, exerciseOrder: index + 1 })) }
 function normalizeSetOrder(sets: RoutineSetPrescription[]) { return sets.map((set, index) => ({ ...set, setOrder: index + 1 })) }
 function countSets(exercises: RoutineExercise[]) { return exercises.reduce((total, exercise) => total + exercise.sets.length, 0) }
@@ -490,4 +497,6 @@ function navigationLabel(navigation: PendingNavigation) { return navigation.kind
 function rirValue(rir: Rir) { return rir === null ? '' : String(rir) }
 function parseRir(value: string): Rir { if (value === '') return null; const parsed = Number(value); return Number.isInteger(parsed) && parsed >= 0 ? parsed : null }
 function toNullableNumber(value: string) { if (value.trim() === '') return null; const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? parsed : null }
+/** 분 입력을 초로. 기록 쪽과 같은 규칙이다. */
+function minutesToSeconds(value: string) { const parsed = toNullableInteger(value); return parsed === null ? null : parsed * 60 }
 function toNullableInteger(value: string) { const parsed = toNullableNumber(value); return parsed === null ? null : Math.floor(parsed) }

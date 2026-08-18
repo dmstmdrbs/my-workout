@@ -88,6 +88,13 @@ export interface RoutineSetPrescription {
   targetWeightKg: number | null
   targetRepsMin: number | null
   targetRepsMax: number | null
+  /**
+   * 유산소 종목의 처방. 장비가 `cardio`인 종목만 이 둘을 쓰고, 그 종목은
+   * 중량·반복 수 처방을 비워 둔다. 기록 쪽 `durationSeconds`/`distanceKm`와
+   * 같은 단위다(초, km).
+   */
+  targetDurationSeconds: number | null
+  targetDistanceKm: number | null
   targetRir: Rir
   restSeconds: number | null
 }
