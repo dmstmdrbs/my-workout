@@ -122,6 +122,13 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
 
     await user.click(firstExercise.getByRole('button', { name: '1세트 완료' }))
     expect(firstExercise.getByRole('button', { name: '1세트 완료 취소' })).toBeTruthy()
+
+    // 헤더의 누적 볼륨은 완료한 세트만 센다: 62.5kg × 9 = 562.5 → 563kg.
+    // 나머지 여덟 세트는 아직 완료가 아니라 합계에 들어가지 않는다.
+    const progress = document.querySelector('.workout-progress-line p')
+    expect(progress?.textContent).toContain('완료 1/9세트')
+    expect(progress?.textContent).toContain('563kg')
+
     await user.click(screen.getByRole('button', { name: '운동 종료' }))
 
     await screen.findByRole('heading', { name: /좋은 하루예요/ })

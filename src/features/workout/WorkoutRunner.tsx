@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
+import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { formatRelativeDay } from '../../lib/relativeDay'
 import { useAppServices, useSettings } from '../../services'
 import type { Equipment, Exercise, Id, IsoDateTime, Routine, Rir, SetType, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
@@ -276,7 +277,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
 
   const finishWorkout = () => {
     if (!draft || finishMutation.isPending) return
-    if (countCompletedSets(draft) === 0) {
+    if (completedSetCount(draft) === 0) {
       clearStoredWorkoutDraft()
       setDraft(null)
       setActiveExerciseId(null)
@@ -380,7 +381,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
           <p className="eyebrow">ACTIVE WORKOUT</p>
           <h1 id="workout-title">{draft.routineName ?? '자유 운동'}</h1>
           <div className="workout-progress-line">
-            <p>{draft.exercises.length}개 종목 · 완료 {countCompletedSets(draft)}세트 · {countCompletedSets(draft)}/{countAllSets(draft)}</p>
+            <p>{draft.exercises.length}개 종목 · 완료 {completedSetCount(draft)}/{countAllSets(draft)}세트 · <strong className="workout-volume">{formatVolume(getSessionVolume(draft))}{weightUnit}</strong></p>
             {draft.exercises.length > 1 && <button className="order-button" type="button" onClick={() => setIsReorderOpen(true)}><ListOrdered size={15} /> 순서 변경</button>}
           </div>
         </div>
@@ -429,9 +430,11 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
           onRemove={() => removeExercise(exercise.id)}
         />)}
 
-        {draft.exercises.length > 0 && <div className="exercise-adder-trailing">
-          <button className="secondary-button exercise-picker-trigger" type="button" onClick={() => setIsPickerOpen(true)}><Plus size={17} /> 종목 추가</button>
-        </div>}
+        {/* 목록 끝에 있던 인라인 버튼을 대신한다. 둘을 함께 두면 같은 이름의
+            버튼이 화면에 두 개가 되므로 하나만 렌더링한다. */}
+        {draft.exercises.length > 0 && <button className="exercise-add-fab" type="button" onClick={() => setIsPickerOpen(true)}>
+          <Plus size={18} aria-hidden="true" /> 종목 추가
+        </button>}
       </div>
 
       <div className="rest-timer-dock"><RestTimer remaining={remainingRest} isRunning={restIsRunning} onRestart={() => startRest(restartRestSeconds())} onStop={() => setRestEndsAt(null)} compact /></div>
@@ -691,7 +694,8 @@ function toNullableInteger(value: string) { const number = toNullableNumber(valu
 function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) { return set?.weightKg !== null && set?.weightKg !== undefined && set.reps !== null && set.reps !== undefined ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음' }
 function formatRir(rir: Rir) { if (rir === null) return '–'; return rir >= 5 ? '5+' : String(rir) }
 function formatTimer(seconds: number) { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
-function countCompletedSets(session: WorkoutDraft) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted).length }
+/** 볼륨은 kg 소수점을 보여줄 만큼 정밀하지 않아 정수로 끊고 천 단위만 구분한다. */
+function formatVolume(volume: number) { return Math.round(volume).toLocaleString('ko-KR') }
 function countAllSets(session: WorkoutDraft) { return session.exercises.reduce((count, exercise) => count + exercise.sets.length, 0) }
 function countRoutineSets(routine: Routine) { return routine.exercises.reduce((count, exercise) => count + exercise.sets.length, 0) }
 // A null field is treated as an empty 0 baseline: incrementing it once lands
