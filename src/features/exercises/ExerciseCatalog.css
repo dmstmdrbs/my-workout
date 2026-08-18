@@ -112,8 +112,8 @@
 .catalog-empty { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; color: var(--text-muted); font-size: .85rem; }
 
 .catalog-form-dialog { width: min(100%, 420px); }
-.catalog-form-dialog h2 { font-size: 1.1rem; }
-.catalog-form { display: grid; gap: 13px; margin-top: 16px; }
+.catalog-form-dialog h2 { padding: 21px 21px 0; font-size: 1.1rem; }
+.catalog-form { display: grid; gap: 13px; padding: 16px 21px 21px; }
 .catalog-form label { display: grid; gap: 6px; color: var(--text-muted); font-size: .73rem; font-weight: 700; }
 .catalog-form input,
 .catalog-form select {
@@ -137,6 +137,7 @@
 @media (max-width: 899px) {
   .catalog-page { width: min(100% - 32px, 860px); padding: 18px 0 110px; }
   .catalog-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catalog-filters label:last-of-type { grid-column: 1 / -1; }
   .catalog-heading { align-items: center; }
   .catalog-heading .primary-button { min-height: 38px; padding-inline: 11px; font-size: .76rem; }
   .catalog-heading p:not(.eyebrow) { display: none; }

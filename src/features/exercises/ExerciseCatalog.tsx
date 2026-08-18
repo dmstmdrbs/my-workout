@@ -40,7 +40,7 @@ export function ExerciseCatalog() {
     if (term && !exercise.name.toLowerCase().includes(term)) return false
     if (muscleFilter !== 'all' && exercise.primaryMuscle !== muscleFilter) return false
     if (equipmentFilter !== 'all' && exercise.equipment !== equipmentFilter) return false
-    if (brandFilter === 'none' && exercise.brand !== null) return false
+    if (brandFilter === 'none' && exercise.brand) return false
     if (brandFilter !== 'all' && brandFilter !== 'none' && exercise.brand !== brandFilter) return false
     return true
   })
