@@ -1,0 +1,54 @@
+.records-calendar { padding: 18px; margin-bottom: 17px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.calendar-nav { display: flex; align-items: center; gap: 4px; }
+.calendar-nav-button { width: 38px; height: 38px; }
+.calendar-nav-button:disabled { opacity: .35; cursor: not-allowed; }
+.calendar-month-label { min-width: 132px; color: var(--text); font-size: .95rem; font-weight: 750; text-align: center; }
+.calendar-toggle { display: none; align-items: center; gap: 5px; min-height: 38px; padding: 0 12px; color: var(--accent); background: var(--accent-subtle); border: 0; border-radius: 999px; font-size: .74rem; font-weight: 700; }
+.calendar-toggle-icon { transition: transform .15s ease; }
+.calendar-toggle-icon.is-open { transform: rotate(180deg); }
+
+.calendar-message { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 12px 14px; color: var(--danger); background: var(--danger-subtle); border-radius: var(--radius-sm); font-size: .78rem; }
+.calendar-retry { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 5px 10px; color: var(--danger); background: transparent; border: 1px solid currentColor; border-radius: 999px; font-size: .72rem; font-weight: 700; }
+
+.calendar-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.calendar-stat { display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--surface-subtle); border-radius: var(--radius-sm); }
+.calendar-stat > svg { flex: 0 0 auto; color: var(--accent); }
+.calendar-stat > div { display: grid; gap: 2px; min-width: 0; }
+.calendar-stat strong { overflow: hidden; color: var(--text); font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -.02em; }
+.calendar-stat span { overflow: hidden; color: var(--text-muted); font-size: .66rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-stat-caption { margin-top: 8px; color: var(--text-muted); font-size: .7rem; line-height: 1.5; }
+
+.calendar-hint { margin-top: 16px; color: var(--text-muted); font-size: .78rem; text-align: center; }
+.calendar-empty-note { margin-top: 10px; color: var(--text-muted); font-size: .74rem; text-align: center; }
+
+.calendar-body { margin-top: 14px; }
+.calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
+.calendar-weekdays span { color: var(--text-muted); font-size: .68rem; font-weight: 650; text-align: center; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.calendar-cell { aspect-ratio: 1; min-width: 36px; min-height: 36px; }
+.calendar-day { display: grid; position: relative; place-items: center; color: var(--text-muted); background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.calendar-day:disabled { color: var(--text-muted); background: transparent; cursor: default; }
+.calendar-day.has-workout { color: #fff; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.calendar-day.is-today { box-shadow: 0 0 0 2px var(--accent-border); }
+.calendar-day.has-workout.is-today { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+.calendar-day.is-selected { outline: 2px solid var(--text); outline-offset: 1px; }
+.calendar-day-mark { position: absolute; bottom: 4px; width: 4px; height: 4px; background: #fff; border-radius: 50%; }
+.calendar-cell.is-spacer { visibility: hidden; }
+
+@media (max-width: 899px) {
+  .calendar-toggle { display: inline-flex; }
+  /* The grid is the tall part of this card; the list below it is the primary
+     mobile interaction and must not be pushed under the fold by a calendar
+     nobody asked to see yet. Collapsed by default, the header/stats stay
+     visible as a compact summary, and the toggle reveals the full grid. */
+  .records-calendar[data-expanded="false"] .calendar-body { display: none; }
+}
+
+@media (max-width: 480px) {
+  .records-calendar { padding: 14px; }
+  .calendar-month-label { min-width: 0; font-size: .88rem; }
+  .calendar-stats { gap: 8px; }
+  .calendar-stat { padding: 9px 10px; }
+  .calendar-grid { gap: 5px; }
+}

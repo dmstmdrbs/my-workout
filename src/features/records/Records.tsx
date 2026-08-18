@@ -8,6 +8,7 @@ import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import { muscleLabel } from '../workout/exerciseLabels'
+import { RecordsCalendar } from './RecordsCalendar'
 import './Records.css'
 
 type ExportState = 'idle' | 'exporting' | 'sharing' | 'success' | 'error'
@@ -182,6 +183,22 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
 
   const nextPageFailed = recordsQuery.isError && Boolean(recordsQuery.data)
 
+  // Mirrors what a list-item click does: select immediately if the session is
+  // already among the loaded pages, and always notify `onSelectSession` so the
+  // URL stays in sync. A calendar day can name a session outside the loaded
+  // pages (an older month scrolled past), in which case `onSelectSession`
+  // navigates to `/records/:sessionId` and the existing direct-entry fallback
+  // (`directSessionQuery` above) takes it from there -- the same path already
+  // used for typed-in URLs.
+  const selectSessionFromCalendar = (sessionId: string) => {
+    if (sessions.some((session) => session.id === sessionId)) {
+      setSelectedId(sessionId)
+      setExportState('idle')
+      setExportMessage('')
+    }
+    onSelectSession?.(sessionId)
+  }
+
   return (
     <main className="records-page">
       <section className="records-heading" aria-labelledby="records-title">
@@ -193,94 +210,97 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
       </section>
 
       {sessions.length === 0 ? <RecordsEmpty /> : selectedSession && (
-        <div className="records-layout">
-          <aside className="records-list-panel" aria-label="완료한 운동 목록">
-            <div className="records-list-title"><h2>완료한 운동</h2><span>{sessions.length}회 불러옴</span></div>
-            <div className="records-list">
-              {sessions.map((session) => (
-                <button
-                  className={`record-list-item ${selectedSession.id === session.id ? 'is-selected' : ''}`}
-                  key={session.id}
-                  type="button"
-                  onClick={() => { setSelectedId(session.id); setExportState('idle'); setExportMessage(''); onSelectSession?.(session.id) }}
-                  aria-pressed={selectedSession.id === session.id}
-                >
-                  <span className="record-list-date">{formatDateShort(session.startedAt)}</span>
-                  <strong>{session.routineName ?? '자유 운동'}</strong>
-                  <span>{completedSetCount(session)}세트 · {formatDuration(session)}</span>
-                </button>
-              ))}
-              {/* This div must pre-exist so `aria-live` is registered before its
-                  content changes -- a live region mounted together with its
-                  text is not reliably announced. It also carries loadMoreRef,
-                  so it stays mounted across every page fetch regardless of
-                  status text. The failure branch is a separate sibling with
-                  role="alert" so an alert is never nested inside a status
-                  region. */}
-              <div className="records-list-status" ref={loadMoreRef} aria-live="polite">
-                {!nextPageFailed && (recordsQuery.isFetchingNextPage
-                  ? '불러오는 중…'
-                  : !recordsQuery.hasNextPage
-                    ? '모든 기록을 불러왔어요.'
-                    : null)}
-              </div>
-              {nextPageFailed && (
-                <div className="records-list-status" role="alert">
-                  다음 페이지를 불러오지 못했어요.
-                  <button type="button" className="records-status-retry" onClick={() => void recordsQuery.fetchNextPage()}>다시 시도</button>
+        <>
+          <RecordsCalendar onSelectDay={selectSessionFromCalendar} selectedSessionId={selectedSession.id} />
+          <div className="records-layout">
+            <aside className="records-list-panel" aria-label="완료한 운동 목록">
+              <div className="records-list-title"><h2>완료한 운동</h2><span>{sessions.length}회 불러옴</span></div>
+              <div className="records-list">
+                {sessions.map((session) => (
+                  <button
+                    className={`record-list-item ${selectedSession.id === session.id ? 'is-selected' : ''}`}
+                    key={session.id}
+                    type="button"
+                    onClick={() => { setSelectedId(session.id); setExportState('idle'); setExportMessage(''); onSelectSession?.(session.id) }}
+                    aria-pressed={selectedSession.id === session.id}
+                  >
+                    <span className="record-list-date">{formatDateShort(session.startedAt)}</span>
+                    <strong>{session.routineName ?? '자유 운동'}</strong>
+                    <span>{completedSetCount(session)}세트 · {formatDuration(session)}</span>
+                  </button>
+                ))}
+                {/* This div must pre-exist so `aria-live` is registered before its
+                    content changes -- a live region mounted together with its
+                    text is not reliably announced. It also carries loadMoreRef,
+                    so it stays mounted across every page fetch regardless of
+                    status text. The failure branch is a separate sibling with
+                    role="alert" so an alert is never nested inside a status
+                    region. */}
+                <div className="records-list-status" ref={loadMoreRef} aria-live="polite">
+                  {!nextPageFailed && (recordsQuery.isFetchingNextPage
+                    ? '불러오는 중…'
+                    : !recordsQuery.hasNextPage
+                      ? '모든 기록을 불러왔어요.'
+                      : null)}
                 </div>
-              )}
-            </div>
-          </aside>
-
-          <section className="record-detail" aria-labelledby="record-detail-title">
-            <header className="record-detail-heading">
-              <div>
-                <p className="eyebrow">{formatDateFull(selectedSession.startedAt)}</p>
-                <h2 id="record-detail-title">{selectedSession.routineName ?? '자유 운동'}</h2>
-                <p>{formatDuration(selectedSession)} · {selectedSession.exercises.length}개 종목 · 완료 {completedSetCount(selectedSession)}세트</p>
+                {nextPageFailed && (
+                  <div className="records-list-status" role="alert">
+                    다음 페이지를 불러오지 못했어요.
+                    <button type="button" className="records-status-retry" onClick={() => void recordsQuery.fetchNextPage()}>다시 시도</button>
+                  </div>
+                )}
               </div>
-              <div className="record-volume"><span>총 볼륨</span><strong>{formatNumber(getSessionVolume(selectedSession))} <small>{settingsQuery.data.weightUnit}</small></strong></div>
-            </header>
+            </aside>
 
-            <div className="record-exercises" aria-label="운동 상세">
-              {selectedSession.exercises.map((exercise) => {
-                const completed = exercise.sets.filter((set) => set.isCompleted)
-                if (!completed.length) return null
-                return (
-                  <article className="record-exercise" key={exercise.id}>
-                    <header><div><span className="muscle-label">{muscleLabel(exercise.primaryMuscle)}</span><h3>{exercise.exerciseName}</h3></div><span>{completed.length}세트</span></header>
-                    <div className="completed-set-list">
-                      {completed.map((set) => <CompletedSetRow key={set.id} set={set} weightUnit={settingsQuery.data.weightUnit} />)}
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-            {selectedSession.notes && <p className="record-note"><strong>메모</strong>{selectedSession.notes}</p>}
-          </section>
+            <section className="record-detail" aria-labelledby="record-detail-title">
+              <header className="record-detail-heading">
+                <div>
+                  <p className="eyebrow">{formatDateFull(selectedSession.startedAt)}</p>
+                  <h2 id="record-detail-title">{selectedSession.routineName ?? '자유 운동'}</h2>
+                  <p>{formatDuration(selectedSession)} · {selectedSession.exercises.length}개 종목 · 완료 {completedSetCount(selectedSession)}세트</p>
+                </div>
+                <div className="record-volume"><span>총 볼륨</span><strong>{formatNumber(getSessionVolume(selectedSession))} <small>{settingsQuery.data.weightUnit}</small></strong></div>
+              </header>
 
-          <section className="share-panel" aria-labelledby="share-title">
-            <div className="share-panel-heading"><div><p className="eyebrow">WORKOUT CARD</p><h2 id="share-title">공유 카드</h2></div><ImageDown size={19} aria-hidden="true" /></div>
-            <label className="rir-toggle">
-              <span><SlidersHorizontal size={16} aria-hidden="true" /> 실제 RIR 표시</span>
-              <input type="checkbox" checked={includeRir} onChange={(event) => setIncludeRir(event.target.checked)} />
-              <span className="toggle-visual" aria-hidden="true" />
-            </label>
+              <div className="record-exercises" aria-label="운동 상세">
+                {selectedSession.exercises.map((exercise) => {
+                  const completed = exercise.sets.filter((set) => set.isCompleted)
+                  if (!completed.length) return null
+                  return (
+                    <article className="record-exercise" key={exercise.id}>
+                      <header><div><span className="muscle-label">{muscleLabel(exercise.primaryMuscle)}</span><h3>{exercise.exerciseName}</h3></div><span>{completed.length}세트</span></header>
+                      <div className="completed-set-list">
+                        {completed.map((set) => <CompletedSetRow key={set.id} set={set} weightUnit={settingsQuery.data.weightUnit} />)}
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+              {selectedSession.notes && <p className="record-note"><strong>메모</strong>{selectedSession.notes}</p>}
+            </section>
 
-            <WorkoutShareCard session={selectedSession} weightUnit={settingsQuery.data.weightUnit} includeRir={includeRir} />
+            <section className="share-panel" aria-labelledby="share-title">
+              <div className="share-panel-heading"><div><p className="eyebrow">WORKOUT CARD</p><h2 id="share-title">공유 카드</h2></div><ImageDown size={19} aria-hidden="true" /></div>
+              <label className="rir-toggle">
+                <span><SlidersHorizontal size={16} aria-hidden="true" /> 실제 RIR 표시</span>
+                <input type="checkbox" checked={includeRir} onChange={(event) => setIncludeRir(event.target.checked)} />
+                <span className="toggle-visual" aria-hidden="true" />
+              </label>
 
-            <div className="share-actions">
-              <button className="primary-button" type="button" onClick={() => void shareCard()} disabled={exportState === 'exporting' || exportState === 'sharing'}>
-                <Share2 size={16} aria-hidden="true" /> {exportState === 'sharing' ? '준비 중…' : '공유하기'}
-              </button>
-              <button className="secondary-button share-download" type="button" onClick={() => void downloadCard()} disabled={exportState === 'exporting' || exportState === 'sharing'}>
-                <Download size={16} aria-hidden="true" /> {exportState === 'exporting' ? '생성 중…' : 'PNG 저장'}
-              </button>
-            </div>
-            <p className={`export-feedback ${exportState === 'error' ? 'is-error' : ''}`} role="status" aria-live="polite">{exportMessage || '공유 카드에는 개인 계정 정보가 포함되지 않아요.'}</p>
-          </section>
-        </div>
+              <WorkoutShareCard session={selectedSession} weightUnit={settingsQuery.data.weightUnit} includeRir={includeRir} />
+
+              <div className="share-actions">
+                <button className="primary-button" type="button" onClick={() => void shareCard()} disabled={exportState === 'exporting' || exportState === 'sharing'}>
+                  <Share2 size={16} aria-hidden="true" /> {exportState === 'sharing' ? '준비 중…' : '공유하기'}
+                </button>
+                <button className="secondary-button share-download" type="button" onClick={() => void downloadCard()} disabled={exportState === 'exporting' || exportState === 'sharing'}>
+                  <Download size={16} aria-hidden="true" /> {exportState === 'exporting' ? '생성 중…' : 'PNG 저장'}
+                </button>
+              </div>
+              <p className={`export-feedback ${exportState === 'error' ? 'is-error' : ''}`} role="status" aria-live="polite">{exportMessage || '공유 카드에는 개인 계정 정보가 포함되지 않아요.'}</p>
+            </section>
+          </div>
+        </>
       )}
       {selectedSession && (
         <div className="share-card-export-target" aria-hidden="true">
