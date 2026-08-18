@@ -79,7 +79,9 @@ describe.sequential('UF-13: 신체 측정 기록', () => {
     await waitFor(() => expect(readMeasurements()).toHaveLength(before + 1))
     const created = readMeasurements().find((item: { weightKg: number }) => item.weightKg === 72.4)
     expect(created).toMatchObject({ weightKg: 72.4, bodyFatPercentage: null })
-    expect(await screen.findByText(/72\.4/)).toBeTruthy()
+    // 요약 카드와 추이 안내에도 같은 숫자가 나오므로, 목록 안으로 좁혀서 확인한다.
+    const list = await screen.findByRole('region', { name: '최근 기록' })
+    expect(await within(list).findByText(/72\.4/)).toBeTruthy()
   })
 
   test('같은 날짜 재입력은 새 행을 만들지 않고 기존 행을 수정한다', async () => {

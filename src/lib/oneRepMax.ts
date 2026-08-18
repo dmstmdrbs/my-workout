@@ -64,3 +64,19 @@ export function bestEstimatedOneRepMax(completedSets: WorkoutSetRecord[]): numbe
 function roundToOneDecimal(value: number): number {
   return Math.round(value * 10) / 10
 }
+
+/**
+ * `estimateOneRepMax`의 역함수 -- 주어진 1RM으로 `reps`회를 수행할 때의
+ * 예상 중량. 계산기가 "8회 목표라면 몇 kg인가"를 답할 때 쓴다. 같은 Brzycki
+ * 계수를 반대로 적용하므로, 여기서 나온 중량을 다시 `estimateOneRepMax`에
+ * 넣으면 원래 1RM으로 돌아온다(반올림 오차 범위 내).
+ *
+ * `REP_CEILING`을 넘는 반복 수는 `estimateOneRepMax`와 같은 이유로 `null`을
+ * 반환한다 -- 그 구간의 추정은 신뢰할 수 없다.
+ */
+export function weightForReps(oneRepMax: number, reps: number): number | null {
+  if (!Number.isFinite(oneRepMax) || oneRepMax <= 0) return null
+  if (!Number.isFinite(reps) || reps <= 0) return null
+  if (reps > REP_CEILING) return null
+  return roundToOneDecimal(oneRepMax * (1.0278 - 0.0278 * reps))
+}

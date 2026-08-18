@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, RefreshCw, Scale } from 'lucide-react'
-import { useAppServices } from '../../services'
+import { useAppServices, useSettings } from '../../services'
 import type { BodyMeasurement } from '../../types/domain'
+import { OneRepMaxCalculator } from './OneRepMaxCalculator'
+import { summarizeMetric, weightTrendPoints } from './bodyTrend'
+import type { BodyMetricKey } from './bodyTrend'
 import './BodyMeasurements.css'
+
+/** 추이 그래프가 한 번에 그리는 최대 측정 수. 그 이상은 좁은 화면에서 읽히지 않는다. */
+const WEIGHT_TREND_LIMIT = 12
 
 const bodyMeasurementsQueryKey = ['body-measurements'] as const
 
@@ -33,6 +39,7 @@ function toNullableNumber(value: string): number | null {
 
 export function BodyMeasurements() {
   const { workoutRepository } = useAppServices()
+  const settingsQuery = useSettings()
   const queryClient = useQueryClient()
   const [form, setForm] = useState<MeasurementForm>(emptyForm)
   const [error, setError] = useState<string | null>(null)
@@ -105,6 +112,7 @@ export function BodyMeasurements() {
   }
 
   const measurements = measurementsQuery.data ?? []
+  const weightUnit = settingsQuery.data?.weightUnit ?? 'kg'
 
   return (
     <main className="body-page" aria-labelledby="body-title">
@@ -115,6 +123,13 @@ export function BodyMeasurements() {
       </section>
 
       {error && <p className="body-error" role="alert">{error}</p>}
+
+      {measurements.length > 0 && (
+        <>
+          <BodySummaryCard measurements={measurements} weightUnit={weightUnit} />
+          <WeightTrendCard measurements={measurements} weightUnit={weightUnit} />
+        </>
+      )}
 
       <section className="body-card" aria-labelledby="body-form-title">
         <h2 id="body-form-title">측정 추가</h2>
@@ -187,6 +202,117 @@ export function BodyMeasurements() {
           </ul>
         )}
       </section>
+
+      <OneRepMaxCalculator weightUnit={weightUnit} />
     </main>
+  )
+}
+
+interface MetricDefinition {
+  key: BodyMetricKey
+  label: string
+  /** 단위. 체중만 사용자 설정을 따르므로 렌더 시점에 채운다. */
+  unit: string
+  /** 값이 늘어나는 것이 좋은 방향인지. 증감 색을 정하는 데 쓴다. */
+  higherIsBetter: boolean
+}
+
+/**
+ * 체중은 좋고 나쁨을 앱이 판단하지 않는다 -- 증량이 목표인 사람과 감량이
+ * 목표인 사람이 같은 화면을 쓰기 때문이다. 그래서 체중의 증감은 중립 색으로
+ * 두고, 방향이 분명한 골격근량·체지방률만 색을 준다.
+ */
+type MetricTone = 'good' | 'bad' | 'neutral'
+
+function metricTone(definition: MetricDefinition, delta: number): MetricTone {
+  if (definition.key === 'weightKg' || delta === 0) return 'neutral'
+  return definition.higherIsBetter === delta > 0 ? 'good' : 'bad'
+}
+
+function formatMetricValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
+function formatDelta(delta: number): string {
+  if (delta === 0) return '변화 없음'
+  return `${delta > 0 ? '+' : '−'}${formatMetricValue(Math.abs(delta))}`
+}
+
+function BodySummaryCard({ measurements, weightUnit }: { measurements: BodyMeasurement[]; weightUnit: string }) {
+  const definitions: MetricDefinition[] = [
+    { key: 'weightKg', label: '체중', unit: weightUnit, higherIsBetter: false },
+    { key: 'skeletalMuscleMassKg', label: '골격근량', unit: weightUnit, higherIsBetter: true },
+    { key: 'bodyFatPercentage', label: '체지방률', unit: '%', higherIsBetter: false },
+  ]
+  const summaries = definitions.map((definition) => ({ definition, summary: summarizeMetric(measurements, definition.key) }))
+
+  if (summaries.every(({ summary }) => summary.latest === null)) return null
+
+  return (
+    <section className="body-card" aria-labelledby="body-summary-title">
+      <h2 id="body-summary-title">최근 체성분</h2>
+      <ul className="body-summary-grid">
+        {summaries.map(({ definition, summary }) => (
+          <li className="body-summary-item" key={definition.key}>
+            <span className="body-summary-label">{definition.label}</span>
+            {summary.latest === null ? (
+              <span className="body-summary-empty">기록 없음</span>
+            ) : (
+              <>
+                <span className="body-summary-value">
+                  <strong>{formatMetricValue(summary.latest)}</strong>
+                  <small>{definition.unit}</small>
+                </span>
+                <span className={`body-summary-delta tone-${summary.delta === null ? 'neutral' : metricTone(definition, summary.delta)}`}>
+                  {summary.delta === null ? '첫 기록' : `직전 대비 ${formatDelta(summary.delta)}${summary.delta === 0 ? '' : definition.unit}`}
+                </span>
+                <span className="body-summary-date">{summary.latestOn}</span>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function WeightTrendCard({ measurements, weightUnit }: { measurements: BodyMeasurement[]; weightUnit: string }) {
+  const points = weightTrendPoints(measurements, WEIGHT_TREND_LIMIT)
+  if (points.length === 0) return null
+
+  const values = points.map((point) => point.weightKg)
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  // 체중은 0에서 시작하는 막대로 그리면 변화가 보이지 않는다(70kg -> 71kg은
+  // 1.4% 차이다). 그래서 관측 구간의 최소값 살짝 아래를 바닥으로 잡아
+  // 변화폭을 펼친다. 값이 하나뿐이거나 전부 같으면 범위가 0이라 모두 같은
+  // 높이로 그린다.
+  const range = max - min
+  const floor = range === 0 ? max : min - range * 0.2
+
+  return (
+    <section className="body-card" aria-labelledby="body-trend-title">
+      <h2 id="body-trend-title">체중 추이</h2>
+      {points.length === 1 ? (
+        <p className="body-hint">
+          {points[0].measuredOn} · {formatMetricValue(points[0].weightKg)}{weightUnit} — 비교할 이전 기록이 없어 추이를 표시할 수 없어요.
+        </p>
+      ) : (
+        <div className="weight-trend-chart" role="group" aria-label="체중 추이">
+          {points.map((point) => (
+            <div className="weight-trend-column" key={point.measuredOn}>
+              <span
+                className="weight-trend-bar"
+                role="img"
+                aria-label={`${point.measuredOn} 체중 ${formatMetricValue(point.weightKg)}${weightUnit}`}
+                style={{ height: `${Math.max(8, range === 0 ? 60 : ((point.weightKg - floor) / (max - floor)) * 110)}px` }}
+              />
+              <span className="weight-trend-value" aria-hidden="true">{formatMetricValue(point.weightKg)}</span>
+              <span className="weight-trend-date" aria-hidden="true">{point.measuredOn.slice(5)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
