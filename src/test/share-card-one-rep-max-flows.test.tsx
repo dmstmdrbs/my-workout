@@ -47,6 +47,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
   const progressiveOverloadExerciseName = '테스트 프레스'
   const bodyweightExerciseName = '테스트 맨몸 운동'
   const highRepExerciseName = '테스트 고반복 운동'
+  const partialMixExerciseName = '테스트 혼합 운동'
   let sessionId = ''
 
   beforeAll(async () => {
@@ -107,6 +108,25 @@ describe.sequential('공유 카드 예상 1RM', () => {
             completedAt: `2026-08-15T09:${36 + index * 3}:00.000+09:00`, notes: null,
           })),
         },
+        {
+          id: 'test-partial-mix',
+          exerciseId: 'test-partial-mix-exercise',
+          exerciseName: partialMixExerciseName,
+          primaryMuscle: 'back',
+          exerciseOrder: 4,
+          notes: null,
+          // A mixed block, unlike the other fixtures which are each uniformly
+          // estimable/bodyweight/high-rep: one set missing a weight, one
+          // ordinary estimable set, one set over the rep ceiling. Only the
+          // middle set (60kg x 8 -> e1RM 74.5kg) can contribute -- this
+          // exercises the per-set filter on a block where estimable and
+          // non-estimable sets sit side by side, not just uniform fixtures.
+          sets: [[null, 10], [60, 8], [50, 15]].map(([weightKg, reps], index) => ({
+            id: `test-partial-mix-${index + 1}`, setOrder: index + 1, setType: 'working' as const,
+            weightKg, reps, targetRir: 2, actualRir: 1, restSeconds: 60, isCompleted: true,
+            completedAt: `2026-08-15T09:${45 + index * 3}:00.000+09:00`, notes: null,
+          })),
+        },
       ],
     })
     sessionId = saved.id
@@ -143,6 +163,18 @@ describe.sequential('공유 카드 예상 1RM', () => {
 
     const block = shareCardExerciseBlock(highRepExerciseName)
     expect(block.querySelector('.share-card-e1rm')).toBeNull()
+  })
+
+  test('추정 불가한 세트와 가능한 세트가 섞여 있으면, 추정 가능한 세트만으로 예상 1RM을 계산한다', async () => {
+    renderApp(`/records/${sessionId}`)
+    await screen.findByRole('heading', { name: '운동 기록' })
+
+    const onlyEstimableEstimate = estimateOneRepMax(60, 8) as number
+    // The other two sets (missing weight, over the rep ceiling) must not
+    // contribute -- if they leaked in as 0 or NaN the result would differ
+    // from the single estimable set's own e1RM.
+    const block = shareCardExerciseBlock(partialMixExerciseName)
+    expect(within(block).getByText(`예상 1RM ${formatWeightForAssertion(onlyEstimableEstimate)}kg`)).toBeTruthy()
   })
 
   test('예상 1RM 줄이 추가되어 카드가 길어져도 고정 폭 PNG 저장은 그대로 동작한다', async () => {
