@@ -338,7 +338,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(screen.getByRole('button', { name: 'PNG 저장' }))
     await screen.findByText('PNG 이미지를 저장했어요.')
     expect(toPngMock).toHaveBeenCalled()
-    expect(toPngMock.mock.calls.at(-1)?.[1]).toMatchObject({ width: 720, skipAutoScale: true })
+    expect(toPngMock.mock.calls.at(-1)?.[1]).toMatchObject({ width: 540, skipAutoScale: true })
     expect(downloadedFile).toMatch(/^trainlog-\d{4}-\d{2}-\d{2}\.png$/)
   })
 

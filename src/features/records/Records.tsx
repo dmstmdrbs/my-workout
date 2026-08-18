@@ -15,7 +15,12 @@ import './Records.css'
 type ExportState = 'idle' | 'exporting' | 'sharing' | 'success' | 'error'
 
 const emptySessions: WorkoutSession[] = []
-const shareCardExportWidth = 720
+/**
+ * 내보내는 이미지의 CSS 폭. pixelRatio 2와 곱해져 1080px PNG가 된다 -- 폰
+ * 갤러리와 공유 시트가 기대하는 세로형 카드 폭이다. 720px이던 시절에는
+ * 종목 이름과 세트가 양 끝으로 벌어져 가운데가 텅 빈 채로 뽑혔다.
+ */
+const shareCardExportWidth = 540
 const maxShareCardPixels = 32_000_000
 
 // Cursor-paginated page size for the records list. Exported so tests can

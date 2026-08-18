@@ -185,6 +185,6 @@ describe.sequential('공유 카드 예상 1RM', () => {
     await user.click(screen.getByRole('button', { name: 'PNG 저장' }))
     await screen.findByText('PNG 이미지를 저장했어요.')
     expect(toPngMock).toHaveBeenCalled()
-    expect(toPngMock.mock.calls.at(-1)?.[1]).toMatchObject({ width: 720, skipAutoScale: true })
+    expect(toPngMock.mock.calls.at(-1)?.[1]).toMatchObject({ width: 540, skipAutoScale: true })
   })
 })
