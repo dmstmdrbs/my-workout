@@ -1,10 +1,10 @@
 .records-calendar { padding: 18px; margin-bottom: 17px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
 .calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .calendar-nav { display: flex; align-items: center; gap: 4px; }
-.calendar-nav-button { width: 32px; height: 32px; }
+.calendar-nav-button { width: 38px; height: 38px; }
 .calendar-nav-button:disabled { opacity: .35; cursor: not-allowed; }
 .calendar-month-label { min-width: 132px; color: var(--text); font-size: .95rem; font-weight: 750; text-align: center; }
-.calendar-toggle { display: none; align-items: center; gap: 5px; min-height: 32px; padding: 0 12px; color: var(--accent); background: var(--accent-subtle); border: 0; border-radius: 999px; font-size: .74rem; font-weight: 700; }
+.calendar-toggle { display: none; align-items: center; gap: 5px; min-height: 38px; padding: 0 12px; color: var(--accent); background: var(--accent-subtle); border: 0; border-radius: 999px; font-size: .74rem; font-weight: 700; }
 .calendar-toggle-icon { transition: transform .15s ease; }
 .calendar-toggle-icon.is-open { transform: rotate(180deg); }
 
@@ -26,7 +26,7 @@
 .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
 .calendar-weekdays span { color: var(--text-muted); font-size: .68rem; font-weight: 650; text-align: center; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.calendar-cell { aspect-ratio: 1; min-height: 36px; }
+.calendar-cell { aspect-ratio: 1; min-width: 36px; min-height: 36px; }
 .calendar-day { display: grid; position: relative; place-items: center; color: var(--text-muted); background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .calendar-day:disabled { color: var(--text-muted); background: transparent; cursor: default; }
 .calendar-day.has-workout { color: #fff; background: var(--accent); border-color: var(--accent); font-weight: 700; }
