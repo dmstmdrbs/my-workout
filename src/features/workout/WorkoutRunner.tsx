@@ -18,6 +18,8 @@ import {
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { formatRelativeDay } from '../../lib/relativeDay'
+import { playRestFinishedAlert, primeRestAlert } from '../../lib/restAlert'
+import { requestScreenWakeLock } from '../../lib/wakeLock'
 import { useAppServices, useSettings } from '../../services'
 import type { Equipment, Exercise, Id, IsoDateTime, Routine, Rir, SetType, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
@@ -93,8 +95,22 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   }, [draft])
 
   useEffect(() => {
-    if (restEndsAt !== null && restEndsAt <= clock) setRestEndsAt(null)
+    if (restEndsAt !== null && restEndsAt <= clock) {
+      setRestEndsAt(null)
+      playRestFinishedAlert()
+    }
   }, [clock, restEndsAt])
+
+  // 설정은 이 아래 이른 반환보다 뒤에서 구조 분해되지만, 훅은 반환 위에
+  // 있어야 하므로 여기서 값만 꺼내 쓴다.
+  const keepScreenAwake = settingsQuery.data?.keepScreenAwake ?? false
+
+  // 운동 중에는 화면을 켜 둔다. 웹에는 백그라운드 알림을 예약할 방법이 없어,
+  // 휴식 알림이 들리려면 화면이 앞에 떠 있어야 한다.
+  useEffect(() => {
+    if (!draft || !keepScreenAwake) return
+    return requestScreenWakeLock()
+  }, [draft, keepScreenAwake])
 
   useEffect(() => {
     if (!draft) {
@@ -138,7 +154,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   }
 
   const { routines, exercises } = setupQuery.data
-  const { weightUnit, defaultRestSeconds, defaultRir } = settingsQuery.data
+  const { weightUnit, defaultRestSeconds, defaultRir, rirInputEnabled } = settingsQuery.data
   const selectedRoutine = routines.find((routine) => routine.id === selectedRoutineId) ?? routines[0]
   const remainingRest = restEndsAt === null ? 0 : Math.max(0, Math.ceil((restEndsAt - clock) / 1_000))
   const restIsRunning = remainingRest > 0
@@ -174,6 +190,9 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
 
   const startRest = (seconds: number | null) => {
     const duration = seconds ?? defaultRestSeconds
+    // 자동재생 정책은 제스처 없이 시작된 소리를 막는다. 휴식이 끝나는 순간은
+    // 타이머 콜백이라 제스처가 아니므로, 제스처인 지금 미리 깨워 둔다.
+    primeRestAlert()
     setClock(Date.now())
     setRestEndsAt(Date.now() + duration * 1_000)
   }
@@ -426,6 +445,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
           exercise={exercise}
           weightUnit={weightUnit}
           equipment={exercises.find((item) => item.id === exercise.exerciseId)?.equipment ?? 'other'}
+          rirInputEnabled={rirInputEnabled}
           onChangeSet={(setId, changes) => updateSet(exercise.id, setId, changes)}
           onCompleteSet={(set) => toggleSetComplete(exercise.id, set)}
           onAddSet={() => addWorkingSet(exercise.id)}
@@ -494,10 +514,11 @@ function ExerciseReorderDialog({ exercises, draggingExerciseId, onClose, onMove,
   </div>
 }
 
-function ExerciseCard({ exercise, weightUnit, equipment, onChangeSet, onCompleteSet, onAddSet, onRemove }: {
+function ExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChangeSet, onCompleteSet, onAddSet, onRemove }: {
   exercise: WorkoutExercise
   weightUnit: string
   equipment: Equipment
+  rirInputEnabled: boolean
   onChangeSet: (setId: string, changes: Partial<WorkoutSetRecord>) => void
   onCompleteSet: (set: WorkoutSetRecord) => void
   onAddSet: () => void
@@ -527,7 +548,7 @@ function ExerciseCard({ exercise, weightUnit, equipment, onChangeSet, onComplete
     </div>
 
     <div className="set-table" role="region" aria-label={`${exercise.exerciseName} 세트 기록`} tabIndex={0}>
-      <div className="set-row set-table-head" aria-hidden="true"><span>세트</span><span>{isCardio ? '시간 (분)' : weightLabel}</span><span>{isCardio ? '거리 (km)' : '횟수'}</span><span>목표 RIR</span><span>실제 RIR</span><span /></div>
+      <div className={`set-row set-table-head ${rirInputEnabled ? '' : 'is-rir-hidden'}`} aria-hidden="true"><span>세트</span><span>{isCardio ? '시간 (분)' : weightLabel}</span><span>{isCardio ? '거리 (km)' : '횟수'}</span><span>목표 RIR</span>{rirInputEnabled && <span>실제 RIR</span>}<span /></div>
       {exercise.sets.map((set) => <SetRow
         key={set.id}
         set={set}
@@ -536,6 +557,7 @@ function ExerciseCard({ exercise, weightUnit, equipment, onChangeSet, onComplete
         weightShortLabel={weightShortLabel}
         isBodyweight={isBodyweight}
         isCardio={isCardio}
+        rirInputEnabled={rirInputEnabled}
         onChange={(changes) => onChangeSet(set.id, changes)}
         onComplete={() => onCompleteSet(set)}
       />)}
@@ -615,10 +637,10 @@ function RoutineChoiceCard({ routine, isSelected, lastPerformedAt, onSelect }: {
   </button>
 }
 
-function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, isCardio, onChange, onComplete }: { set: WorkoutSetRecord; weightUnit: string; weightLabel: string; weightShortLabel: string; isBodyweight: boolean; isCardio: boolean; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
-  if (isCardio) return <CardioSetRow set={set} onChange={onChange} onComplete={onComplete} />
+function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, isCardio, rirInputEnabled, onChange, onComplete }: { set: WorkoutSetRecord; weightUnit: string; weightLabel: string; weightShortLabel: string; isBodyweight: boolean; isCardio: boolean; rirInputEnabled: boolean; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
+  if (isCardio) return <CardioSetRow set={set} rirInputEnabled={rirInputEnabled} onChange={onChange} onComplete={onComplete} />
 
-  return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''}`}>
+  return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''} ${rirInputEnabled ? '' : 'is-rir-hidden'}`}>
     <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
     <label>
       <span className="mobile-field-label">{weightLabel}</span>
@@ -637,10 +659,10 @@ function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, 
       </div>
     </label>
     <span className="target-rir"><small className="mobile-field-label">목표 RIR</small>{formatRir(set.targetRir)}</span>
-    <div className="actual-rir"><span className="mobile-field-label">실제 RIR</span><div className="rir-choice-row" role="group" aria-label={`${set.setOrder}세트 실제 RIR`}>
+    {rirInputEnabled && <div className="actual-rir"><span className="mobile-field-label">실제 RIR</span><div className="rir-choice-row" role="group" aria-label={`${set.setOrder}세트 실제 RIR`}>
       {rirChoices.map((choice) => <button className={set.actualRir === choice.value ? 'is-selected' : ''} type="button" key={choice.value} onClick={() => onChange({ actualRir: choice.value })}>{choice.label}</button>)}
       <button className={set.actualRir === null ? 'is-selected is-empty' : 'is-empty'} type="button" onClick={() => onChange({ actualRir: null })}>–</button>
-    </div></div>
+    </div></div>}
     <button className={`complete-set-button ${set.isCompleted ? 'is-completed' : ''}`} type="button" onClick={onComplete} aria-label={`${set.setOrder}세트 ${set.isCompleted ? '완료 취소' : '완료'}`}>
       {set.isCompleted ? <Check size={17} /> : '완료'}
     </button>
@@ -653,12 +675,12 @@ function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, 
  * RIR 열은 그대로 두되 값이 없으면 비워 둔다. 유산소에 목표 RIR을 처방하는
  * 경우는 드물지만, 넣고 싶은 사람의 자리를 없앨 이유도 없다.
  */
-function CardioSetRow({ set, onChange, onComplete }: { set: WorkoutSetRecord; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
+function CardioSetRow({ set, rirInputEnabled, onChange, onComplete }: { set: WorkoutSetRecord; rirInputEnabled: boolean; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
   const minutes = set.durationSeconds === null ? '' : String(Math.round(set.durationSeconds / 60))
   const stepDuration = (delta: number) => onChange({ durationSeconds: Math.max(0, (set.durationSeconds ?? 0) + delta) })
   const stepDistance = (delta: number) => onChange({ distanceKm: roundDistance(Math.max(0, (set.distanceKm ?? 0) + delta)) })
 
-  return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''}`}>
+  return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''} ${rirInputEnabled ? '' : 'is-rir-hidden'}`}>
     <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
     <label>
       <span className="mobile-field-label">시간 (분)</span>
@@ -677,10 +699,10 @@ function CardioSetRow({ set, onChange, onComplete }: { set: WorkoutSetRecord; on
       </div>
     </label>
     <span className="target-rir"><small className="mobile-field-label">목표 RIR</small>{formatRir(set.targetRir)}</span>
-    <div className="actual-rir"><span className="mobile-field-label">실제 RIR</span><div className="rir-choice-row" role="group" aria-label={`${set.setOrder}세트 실제 RIR`}>
+    {rirInputEnabled && <div className="actual-rir"><span className="mobile-field-label">실제 RIR</span><div className="rir-choice-row" role="group" aria-label={`${set.setOrder}세트 실제 RIR`}>
       {rirChoices.map((choice) => <button className={set.actualRir === choice.value ? 'is-selected' : ''} type="button" key={choice.value} onClick={() => onChange({ actualRir: choice.value })}>{choice.label}</button>)}
       <button className={set.actualRir === null ? 'is-selected is-empty' : 'is-empty'} type="button" onClick={() => onChange({ actualRir: null })}>–</button>
-    </div></div>
+    </div></div>}
     <button className={`complete-set-button ${set.isCompleted ? 'is-completed' : ''}`} type="button" onClick={onComplete} aria-label={`${set.setOrder}세트 ${set.isCompleted ? '완료 취소' : '완료'}`}>
       {set.isCompleted ? <Check size={17} /> : '완료'}
     </button>

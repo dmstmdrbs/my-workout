@@ -62,3 +62,10 @@
 @media (max-width: 899px) {
   .exercise-add-fab { bottom: calc(150px + max(7px, env(safe-area-inset-bottom, 0px))); }
 }
+
+/* 실제 RIR 입력을 끄면 열 하나가 사라진다. 열 수를 그대로 두면 완료 버튼이
+   한 칸 앞으로 밀려 표가 어긋난다. 560px 이하는 세로로 접힌 전혀 다른 배치라
+   해당하지 않으므로, 클래스 특이도가 모바일 규칙을 덮지 않게 범위를 막는다. */
+@media (min-width: 561px) {
+  .set-row.is-rir-hidden { grid-template-columns: 53px 1.35fr 1.1fr .7fr 68px; min-width: 520px; }
+}

@@ -119,10 +119,37 @@ export function Settings() {
           </select>
         </label>
         </div>
+
+        <div className="settings-toggle-list">
+          <SettingToggle
+            label="운동 중 화면 켜 두기"
+            description="휴식 알림은 화면이 켜져 있을 때만 울려요. 웹에서는 화면이 꺼진 뒤의 알림을 예약할 방법이 없습니다."
+            checked={settings.keepScreenAwake}
+            onChange={(keepScreenAwake) => settingsMutation.mutate({ keepScreenAwake })}
+          />
+          <SettingToggle
+            label="실제 RIR 입력"
+            description="끄면 운동 화면에서 실제 RIR을 묻지 않아요. 목표 RIR은 그대로 보여줍니다."
+            checked={settings.rirInputEnabled}
+            onChange={(rirInputEnabled) => settingsMutation.mutate({ rirInputEnabled })}
+          />
+        </div>
       </section>
 
       <SignOutSection />
     </main>
+  )
+}
+
+function SettingToggle({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <label className="settings-toggle">
+      <span className="settings-toggle-copy">
+        <strong>{label}</strong>
+        <small>{description}</small>
+      </span>
+      <input type="checkbox" role="switch" aria-label={label} checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    </label>
   )
 }
 

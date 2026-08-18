@@ -93,3 +93,47 @@
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 42%, transparent);
 }
+
+.settings-toggle-list { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.settings-toggle-copy { display: grid; gap: 3px; min-width: 0; }
+.settings-toggle-copy strong { font-size: 14px; font-weight: 700; }
+.settings-toggle-copy small { color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+
+/* 기본 체크박스를 스위치 모양으로. accent-color만으로는 네모가 남아 나머지
+   카드와 겉돈다. */
+.settings-toggle input[type="checkbox"] {
+  appearance: none;
+  flex: none;
+  width: 46px;
+  height: 27px;
+  margin: 0;
+  background: var(--surface-emphasis);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: background .16s ease, border-color .16s ease;
+}
+
+.settings-toggle input[type="checkbox"]::after {
+  content: '';
+  display: block;
+  width: 21px;
+  height: 21px;
+  margin: 2px;
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: var(--shadow-card);
+  transition: transform .16s ease;
+}
+
+.settings-toggle input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+.settings-toggle input[type="checkbox"]:checked::after { transform: translateX(19px); }
+.settings-toggle input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
