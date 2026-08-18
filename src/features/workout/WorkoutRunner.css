@@ -67,7 +67,7 @@
    한 칸 앞으로 밀려 표가 어긋난다. 560px 이하는 세로로 접힌 전혀 다른 배치라
    해당하지 않으므로, 클래스 특이도가 모바일 규칙을 덮지 않게 범위를 막는다. */
 @media (min-width: 561px) {
-  .set-row.is-rir-hidden { grid-template-columns: 53px 1.35fr 1.1fr .7fr 68px; min-width: 520px; }
+  .set-row.is-rir-hidden { grid-template-columns: 53px minmax(0, 220px) minmax(0, 200px) minmax(0, 1fr) 68px; min-width: 520px; }
 }
 
 /* RIR 기반 중량 제안. 종목 헤딩과 세트 표 사이에 끼우되, 배너가 표보다
