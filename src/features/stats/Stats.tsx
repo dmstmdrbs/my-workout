@@ -1,14 +1,26 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, ChevronLeft, ChevronRight, Dumbbell, Minus, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react'
+import { BarChart3, ChevronDown, ChevronLeft, ChevronRight, Dumbbell, LineChart, Minus, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react'
+import { estimateOneRepMax } from '../../lib/oneRepMax'
 import { getSessionVolume } from '../../lib/volume'
 import { getMondayIndex, getWeekEnd, getWeekStart } from '../../lib/week'
 import { useAppServices, useSettings } from '../../services'
-import type { MuscleGroup, WorkoutSession } from '../../types/domain'
+import type { ExerciseProgressEntry } from '../../services'
+import type { Exercise, MuscleGroup, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
+import { ExercisePickerSheet } from '../workout/ExercisePicker'
 import { muscleLabel } from '../workout/exerciseLabels'
 import './Stats.css'
 
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
+
+/**
+ * 종목별 진행 추이 조회 기간(일). AGENTS.md 11번 규칙은 세션 목록을
+ * 무제한으로 훑는 걸 금지하는데, 세션 전체를 걸어 차트를 그리는 조회는
+ * 정확히 그 규칙이 막으려는 모양이다. 180일(약 6개월)이면 개인 사용자가
+ * 실제로 궁금해하는 최근 중량 변화는 대부분 포함하면서도, 조회 범위가
+ * 유한하도록 고정한다.
+ */
+const EXERCISE_PROGRESS_PERIOD_DAYS = 180
 
 interface WeeklyStatsData {
   currentSessions: WorkoutSession[]
@@ -209,6 +221,8 @@ function StatsContent({
           </article>
         </div>
       )}
+
+      <ExerciseProgressCard weightUnit={weightUnit} />
     </main>
   )
 }
@@ -274,6 +288,243 @@ function StatsEmpty() {
       <p>운동을 완료하면 이 주의 볼륨과 부위별 분포를 확인할 수 있어요.</p>
     </section>
   )
+}
+
+interface WeightedProgressPoint {
+  sessionId: string
+  startedAt: string
+  weightKg: number
+  reps: number
+  oneRepMax: number | null
+}
+
+interface BodyweightProgressPoint {
+  sessionId: string
+  startedAt: string
+  reps: number
+}
+
+/**
+ * 종목별 중량 추이 카드. 주간 통계와 달리 이 카드는 선택한 운동과 고정된
+ * 조회 기간(`EXERCISE_PROGRESS_PERIOD_DAYS`)만 따르며, 주 이동과는 무관하게
+ * 항상 같은 내용을 보여준다.
+ */
+function ExerciseProgressCard({ weightUnit }: { weightUnit: string }) {
+  const { workoutRepository } = useAppServices()
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
+
+  const exercisesQuery = useQuery({
+    queryKey: ['stats-exercise-catalog'],
+    queryFn: () => workoutRepository.listExercises(),
+  })
+
+  // Deliberately not memoized -- recomputed each render like `thisWeekStart`
+  // above, so a tab left open for days doesn't freeze the lookback window at
+  // whatever "now" happened to be at mount time.
+  const periodStart = getProgressPeriodStart(new Date())
+
+  const progressQuery = useQuery({
+    queryKey: ['exercise-progress', selectedExerciseId, periodStart.toISOString().slice(0, 10)],
+    queryFn: () => workoutRepository.listExerciseProgress(selectedExerciseId!, { completedAfter: periodStart.toISOString() }),
+    enabled: selectedExerciseId !== null,
+  })
+
+  const exercises = exercisesQuery.data ?? []
+  const selectedExercise = exercises.find((exercise) => exercise.id === selectedExerciseId) ?? null
+  // Bodyweight exercises don't log a working weight, so "heaviest set" and
+  // Brzycki e1RM don't mean anything for them -- see report for the reasoning.
+  const isBodyweight = selectedExercise?.equipment === 'bodyweight'
+
+  const weightedPoints = useMemo(
+    () => (progressQuery.data && !isBodyweight ? buildWeightedProgress(progressQuery.data) : []),
+    [progressQuery.data, isBodyweight],
+  )
+  const bodyweightPoints = useMemo(
+    () => (progressQuery.data && isBodyweight ? buildBodyweightProgress(progressQuery.data) : []),
+    [progressQuery.data, isBodyweight],
+  )
+
+  return (
+    <article className="stats-card progress-card">
+      <div className="card-heading">
+        <div><span className="card-kicker">EXERCISE PROGRESS</span><h2>종목별 중량 추이</h2></div>
+        <LineChart size={18} aria-hidden="true" />
+      </div>
+
+      <button type="button" className="secondary-button progress-exercise-trigger" onClick={() => setIsPickerOpen(true)}>
+        {selectedExercise ? selectedExercise.name : '운동 선택'}
+        <ChevronDown size={16} aria-hidden="true" />
+      </button>
+
+      {!selectedExercise && (
+        <p className="progress-hint">운동을 선택하면 최근 {EXERCISE_PROGRESS_PERIOD_DAYS}일 동안의 진행 추이를 보여드려요.</p>
+      )}
+
+      {selectedExercise && progressQuery.isPending && <p className="progress-hint">불러오는 중…</p>}
+
+      {selectedExercise && progressQuery.isError && (
+        <p className="progress-hint progress-error" role="alert">
+          진행 추이를 불러오지 못했어요.
+          <button className="secondary-button" type="button" onClick={() => void progressQuery.refetch()}>다시 시도</button>
+        </p>
+      )}
+
+      {selectedExercise && progressQuery.isSuccess && (
+        isBodyweight
+          ? <BodyweightProgressView exercise={selectedExercise} points={bodyweightPoints} />
+          : <WeightedProgressView exercise={selectedExercise} points={weightedPoints} weightUnit={weightUnit} />
+      )}
+
+      <ExercisePickerSheet
+        isOpen={isPickerOpen}
+        exercises={exercises}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={(exercise) => { setSelectedExerciseId(exercise.id); setIsPickerOpen(false) }}
+      />
+    </article>
+  )
+}
+
+function WeightedProgressView({ exercise, points, weightUnit }: { exercise: Exercise; points: WeightedProgressPoint[]; weightUnit: string }) {
+  if (points.length === 0) {
+    return <p className="progress-empty">최근 {EXERCISE_PROGRESS_PERIOD_DAYS}일 동안 완료한 {exercise.name} 세트가 없어요.</p>
+  }
+
+  if (points.length === 1) {
+    const only = points[0]
+    return (
+      <div className="progress-single">
+        <p>
+          {formatFullDate(only.startedAt)} · {formatWeightValue(only.weightKg)}{weightUnit} × {only.reps}회
+          {only.oneRepMax !== null && ` · 예상 1RM ${formatWeightValue(only.oneRepMax)}${weightUnit}`}
+        </p>
+        <p className="progress-hint">비교할 이전 기록이 없어 추이를 표시할 수 없어요.</p>
+      </div>
+    )
+  }
+
+  const maxWeight = Math.max(...points.map((point) => point.weightKg), 1)
+  return (
+    <div className="progress-chart" role="group" aria-label={`${exercise.name} 최고 중량 추이`}>
+      {points.map((point) => (
+        <div className="progress-column" key={point.sessionId}>
+          <span
+            className="progress-bar"
+            role="img"
+            aria-label={buildWeightedPointLabel(point, weightUnit)}
+            style={{ height: `${Math.max(7, (point.weightKg / maxWeight) * 110)}px` }}
+          />
+          <span className="progress-column-value" aria-hidden="true">
+            {point.oneRepMax !== null ? `1RM ${formatWeightValue(point.oneRepMax)}` : '—'}
+          </span>
+          <span className="progress-column-date" aria-hidden="true">{formatShortDate(point.startedAt)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BodyweightProgressView({ exercise, points }: { exercise: Exercise; points: BodyweightProgressPoint[] }) {
+  if (points.length === 0) {
+    return <p className="progress-empty">최근 {EXERCISE_PROGRESS_PERIOD_DAYS}일 동안 완료한 {exercise.name} 세트가 없어요.</p>
+  }
+
+  if (points.length === 1) {
+    const only = points[0]
+    return (
+      <div className="progress-single">
+        <p>{formatFullDate(only.startedAt)} · 최고 반복 {only.reps}회</p>
+        <p className="progress-hint">비교할 이전 기록이 없어 추이를 표시할 수 없어요.</p>
+      </div>
+    )
+  }
+
+  const maxReps = Math.max(...points.map((point) => point.reps), 1)
+  return (
+    <>
+      <p className="progress-hint">체중 운동은 기록된 중량이 없어, 중량 대신 세션별 최고 반복 수로 추이를 보여드려요.</p>
+      <div className="progress-chart" role="group" aria-label={`${exercise.name} 최고 반복 수 추이`}>
+        {points.map((point) => (
+          <div className="progress-column" key={point.sessionId}>
+            <span
+              className="progress-bar"
+              role="img"
+              aria-label={`${formatFullDate(point.startedAt)} 최고 반복 ${point.reps}회`}
+              style={{ height: `${Math.max(7, (point.reps / maxReps) * 110)}px` }}
+            />
+            <span className="progress-column-date" aria-hidden="true">{formatShortDate(point.startedAt)}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function getProgressPeriodStart(now: Date): Date {
+  const start = new Date(now)
+  start.setDate(start.getDate() - EXERCISE_PROGRESS_PERIOD_DAYS)
+  return start
+}
+
+/**
+ * 세션별로 이 종목의 완료 세트 중 가장 무거운(동률이면 반복이 더 많은) 세트
+ * 하나를 골라 그 세트의 중량·반복·Brzycki e1RM으로 포인트를 만든다. 중량이나
+ * 반복이 null인 세트(체중 운동, 혹은 기록 누락)는 후보에서 제외한다 -- 0으로
+ * 취급해 그리면 실제로 무거웠던 세션이 빈 세션처럼 보이게 된다.
+ */
+function buildWeightedProgress(entries: ExerciseProgressEntry[]): WeightedProgressPoint[] {
+  const points: WeightedProgressPoint[] = []
+  for (const entry of entries) {
+    let best: WorkoutSetRecord | null = null
+    for (const set of entry.sets) {
+      if (set.weightKg === null || set.reps === null) continue
+      if (!best || set.weightKg > (best.weightKg as number) || (set.weightKg === best.weightKg && set.reps > (best.reps as number))) {
+        best = set
+      }
+    }
+    if (!best || best.weightKg === null || best.reps === null) continue
+    points.push({
+      sessionId: entry.sessionId,
+      startedAt: entry.startedAt,
+      weightKg: best.weightKg,
+      reps: best.reps,
+      oneRepMax: estimateOneRepMax(best.weightKg, best.reps),
+    })
+  }
+  return points
+}
+
+/** 체중 운동은 중량이 항상 null이므로, 세션별 최고 반복 수로 진행을 추적한다. */
+function buildBodyweightProgress(entries: ExerciseProgressEntry[]): BodyweightProgressPoint[] {
+  const points: BodyweightProgressPoint[] = []
+  for (const entry of entries) {
+    let maxReps: number | null = null
+    for (const set of entry.sets) {
+      if (set.reps === null) continue
+      if (maxReps === null || set.reps > maxReps) maxReps = set.reps
+    }
+    if (maxReps === null) continue
+    points.push({ sessionId: entry.sessionId, startedAt: entry.startedAt, reps: maxReps })
+  }
+  return points
+}
+
+function buildWeightedPointLabel(point: WeightedProgressPoint, weightUnit: string): string {
+  const base = `${formatFullDate(point.startedAt)} 최고 중량 ${formatWeightValue(point.weightKg)}${weightUnit} × ${point.reps}회`
+  return point.oneRepMax !== null ? `${base} · 예상 1RM ${formatWeightValue(point.oneRepMax)}${weightUnit}` : base
+}
+
+function formatShortDate(iso: string): string {
+  return new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric' }).format(new Date(iso))
+}
+
+function formatFullDate(iso: string): string {
+  return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(iso))
+}
+
+function formatWeightValue(value: number): string {
+  return new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 }).format(value)
 }
 
 function getWeeklyOverview(sessions: WorkoutSession[]): WeeklyOverview {

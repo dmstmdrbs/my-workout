@@ -7,7 +7,7 @@ import type {
   UserSettings,
   WorkoutSession,
 } from '../../types/domain'
-import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, WorkoutRepository } from '../contracts'
+import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, WorkoutRepository } from '../contracts'
 import { mockExercises, mockRoutines, mockSessions, mockSettings, mockUser } from './seed'
 
 interface LocalStore {
@@ -158,6 +158,23 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
       if (set) return set
     }
     return null
+  }
+  async listExerciseProgress(exerciseId: Id, options: { completedAfter: string }): Promise<ExerciseProgressEntry[]> {
+    const at = (value: string) => new Date(value).getTime()
+    const threshold = at(options.completedAfter)
+    const sessions = clone(this.requireStore().sessions)
+      .filter((session) => session.status === 'completed' && at(session.startedAt) >= threshold)
+      .sort((a, b) => at(a.startedAt) - at(b.startedAt))
+
+    const entries: ExerciseProgressEntry[] = []
+    for (const session of sessions) {
+      const exercise = session.exercises.find((item) => item.exerciseId === exerciseId)
+      if (!exercise) continue
+      const sets = exercise.sets.filter((set) => set.isCompleted)
+      if (sets.length === 0) continue
+      entries.push({ sessionId: session.id, startedAt: session.startedAt, sets })
+    }
+    return entries
   }
   async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'pausedSeconds'> & { id?: Id; pausedSeconds?: number }) {
     const store = this.requireStore(); const existing = input.id ? store.sessions.find((item) => item.id === input.id) : undefined; const timestamp = now()

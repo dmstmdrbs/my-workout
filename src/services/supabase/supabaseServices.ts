@@ -19,7 +19,7 @@ import type {
   WorkoutSession,
   WorkoutSetRecord,
 } from '../../types/domain'
-import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, WorkoutRepository } from '../contracts'
+import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, WorkoutRepository } from '../contracts'
 
 type Row = Record<string, unknown>
 
@@ -463,6 +463,36 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
       .maybeSingle()
     if (error) throw toError(error, '지난 기록을 불러오지 못했어요.')
     return data ? mapWorkoutSet(data as Row) : null
+  }
+
+  async listExerciseProgress(exerciseId: Id, options: { completedAfter: string }): Promise<ExerciseProgressEntry[]> {
+    await this.requireUser()
+    const { data, error } = await this.client
+      .from('workout_set_records')
+      .select('*, workout_exercises!inner(exercise_id, session_id, workout_sessions!inner(started_at, status))')
+      .eq('workout_exercises.exercise_id', exerciseId)
+      .eq('workout_exercises.workout_sessions.status', 'completed')
+      .gte('workout_exercises.workout_sessions.started_at', options.completedAfter)
+      .eq('is_completed', true)
+      .order('completed_at', { ascending: true, nullsFirst: false })
+    if (error) throw toError(error, '중량 추이를 불러오지 못했어요.')
+
+    // Rows arrive one-per-set; group them back into one entry per session so
+    // callers get the same shape the mock adapter returns.
+    const bySession = new Map<string, { startedAt: string; sets: WorkoutSetRecord[] }>()
+    for (const row of asRows(data)) {
+      const workoutExercise = asRow(row.workout_exercises)
+      const session = workoutExercise ? asRow(workoutExercise.workout_sessions) : null
+      const sessionId = workoutExercise ? stringValue(workoutExercise, 'session_id') : ''
+      if (!sessionId || !session) continue
+      const entry = bySession.get(sessionId) ?? { startedAt: stringValue(session, 'started_at'), sets: [] }
+      entry.sets.push(mapWorkoutSet(row))
+      bySession.set(sessionId, entry)
+    }
+
+    return [...bySession.entries()]
+      .map(([sessionId, entry]) => ({ sessionId, startedAt: entry.startedAt, sets: entry.sets }))
+      .sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
   }
 
   async getSession(id: Id) {

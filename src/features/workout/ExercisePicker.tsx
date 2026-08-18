@@ -15,7 +15,14 @@ interface ExercisePickerSheetProps {
   exercises: Exercise[]
   onClose: () => void
   onSelect: (exercise: Exercise) => void
-  onOpenCreate: () => void
+  /**
+   * 운동 진행 화면은 즉석에서 새 운동을 만들 수 있어야 하지만, 통계처럼
+   * 기존 운동의 기록을 조회하기만 하는 화면에는 만들기 동작 자체가 없다
+   * (막 만든 운동은 어차피 완료 기록이 없어 보여줄 추이가 없다). 그런
+   * 화면에서 시트를 두 번째로 구현하는 대신, 이 콜백을 선택으로 두고
+   * 생략되면 "새 운동 만들기" 버튼 자체를 렌더링하지 않는다.
+   */
+  onOpenCreate?: () => void
 }
 
 export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOpenCreate }: ExercisePickerSheetProps) {
@@ -42,7 +49,7 @@ export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOp
     <header className="exercise-picker-header">
       <div><p className="eyebrow">ADD EXERCISE</p><h2 id="exercise-picker-title">종목 추가</h2></div>
       <div className="exercise-picker-header-actions">
-        <button className="icon-button" type="button" onClick={onOpenCreate} aria-label="새 운동 만들기"><Plus size={19} /></button>
+        {onOpenCreate && <button className="icon-button" type="button" onClick={onOpenCreate} aria-label="새 운동 만들기"><Plus size={19} /></button>}
         <button className="icon-button" type="button" onClick={onClose} aria-label="종목 추가 닫기"><X size={19} /></button>
       </div>
     </header>
