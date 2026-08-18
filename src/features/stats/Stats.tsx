@@ -93,22 +93,39 @@ export function Stats() {
   const goToPreviousWeek = () => setWeekOffset((offset) => offset - 1)
   const goToNextWeek = () => setWeekOffset((offset) => Math.min(0, offset + 1))
 
-  if (statsQuery.isPending || settingsQuery.isPending) return <StatsLoading />
-  if (statsQuery.isError || !statsQuery.data || settingsQuery.isError || !settingsQuery.data) {
-    return <StatsError onRetry={() => { void statsQuery.refetch(); void settingsQuery.refetch() }} />
-  }
+  const isLoading = statsQuery.isPending || settingsQuery.isPending
+  const isError = statsQuery.isError || !statsQuery.data || settingsQuery.isError || !settingsQuery.data
 
+  // `ExerciseProgressCard` renders as a sibling of the weekly loading/error/
+  // content branches below, at a fixed position in this single, persistent
+  // <main> -- not nested inside whichever of those three components happens
+  // to be showing. `statsQuery`'s key includes the selected week, so paging
+  // to a different week flips it back to `isPending` on every click; if the
+  // progress card lived inside the weekly-content branch (a different
+  // component instance each time the branch switches), React would unmount
+  // and remount it -- and its picked exercise -- on every ordinary week
+  // navigation, even though the progress card's own period is completely
+  // independent of the week being viewed.
   return (
-    <StatsContent
-      data={statsQuery.data}
-      weightUnit={settingsQuery.data.weightUnit}
-      weekStart={selectedWeekStart}
-      weekEnd={selectedWeekEnd}
-      isCurrentWeek={isCurrentWeek}
-      canGoToNextWeek={canGoToNextWeek}
-      onPreviousWeek={goToPreviousWeek}
-      onNextWeek={goToNextWeek}
-    />
+    <main className="stats-page" aria-label={isLoading ? '통계 불러오는 중' : undefined} aria-labelledby={isLoading ? undefined : 'stats-title'}>
+      {isLoading ? (
+        <StatsLoading />
+      ) : isError ? (
+        <StatsError onRetry={() => { void statsQuery.refetch(); void settingsQuery.refetch() }} />
+      ) : (
+        <StatsContent
+          data={statsQuery.data}
+          weightUnit={settingsQuery.data.weightUnit}
+          weekStart={selectedWeekStart}
+          weekEnd={selectedWeekEnd}
+          isCurrentWeek={isCurrentWeek}
+          canGoToNextWeek={canGoToNextWeek}
+          onPreviousWeek={goToPreviousWeek}
+          onNextWeek={goToNextWeek}
+        />
+      )}
+      <ExerciseProgressCard weightUnit={settingsQuery.data?.weightUnit ?? 'kg'} />
+    </main>
   )
 }
 
@@ -142,7 +159,7 @@ function StatsContent({
   const topMuscleVolume = overview.muscleDistribution[0]?.volume ?? 0
 
   return (
-    <main className="stats-page" aria-labelledby="stats-title">
+    <>
       <section className="stats-heading">
         <p className="eyebrow">STATISTICS</p>
         <h1 id="stats-title">주간 통계</h1>
@@ -221,9 +238,7 @@ function StatsContent({
           </article>
         </div>
       )}
-
-      <ExerciseProgressCard weightUnit={weightUnit} />
-    </main>
+    </>
   )
 }
 
@@ -254,7 +269,7 @@ function ComparisonBadge({ comparison }: { comparison: VolumeComparison }) {
 
 function StatsLoading() {
   return (
-    <main className="stats-page" aria-label="통계 불러오는 중">
+    <>
       <section className="stats-heading skeleton-heading">
         <div className="skeleton-line small" />
         <div className="skeleton-line title" />
@@ -264,19 +279,19 @@ function StatsLoading() {
         <div className="skeleton-card metric" />
         <div className="skeleton-card metric" />
       </section>
-    </main>
+    </>
   )
 }
 
 function StatsError({ onRetry }: { onRetry: () => void }) {
   return (
-    <main className="stats-page stats-message">
+    <div className="stats-message">
       <div className="message-icon"><RefreshCw size={22} /></div>
       <p className="eyebrow">CONNECTION ISSUE</p>
       <h1>통계를 불러오지 못했어요.</h1>
       <p>잠시 후 다시 시도해 주세요.</p>
       <button className="primary-button" type="button" onClick={onRetry}><RefreshCw size={16} /> 다시 시도</button>
-    </main>
+    </div>
   )
 }
 

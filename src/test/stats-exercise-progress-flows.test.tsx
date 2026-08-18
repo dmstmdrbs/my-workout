@@ -142,6 +142,30 @@ describe.sequential('통계: 종목별 중량 추이', () => {
     expect(screen.getByRole('img', { name: /최고 중량 125kg × 6회 · 예상 1RM 145\.2kg/ })).toBeTruthy()
   })
 
+  test('주 이동을 해도 선택한 종목과 추이가 그대로 유지된다', async () => {
+    const user = userEvent.setup()
+    renderApp('/stats')
+    await screen.findByRole('heading', { name: '주간 통계' })
+
+    await selectExercise(user, '레그 프레스')
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: '레그 프레스 최고 중량 추이' })).toBeTruthy()
+    })
+
+    // The progress card's own period is independent of the week being
+    // viewed, but the weekly section's query key includes the selected
+    // week, so paging it must not reset (unmount) the exercise picked here.
+    const rangeBeforeNav = document.querySelector('.stats-week-range')?.textContent
+    await user.click(screen.getByRole('button', { name: '이전 주' }))
+    await waitFor(() => {
+      expect(document.querySelector('.stats-week-range')?.textContent).not.toBe(rangeBeforeNav)
+    })
+
+    expect(screen.getByRole('button', { name: '레그 프레스' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: '레그 프레스 최고 중량 추이' })).toBeTruthy()
+    expect(screen.getByRole('img', { name: /최고 중량 125kg × 6회 · 예상 1RM 145\.2kg/ })).toBeTruthy()
+  })
+
   test('기록이 한 건뿐인 종목은 추이 차트 대신 단일 기록 요약을 보여준다', async () => {
     const user = userEvent.setup()
     renderApp('/stats')
