@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, ChevronDown, ChevronLeft, ChevronRight, Dumbbell, LineChart, Minus, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react'
-import { estimateOneRepMax } from '../../lib/oneRepMax'
+import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { getSessionVolume } from '../../lib/volume'
 import { getMondayIndex, getWeekEnd, getWeekStart } from '../../lib/week'
 import { useAppServices, useSettings } from '../../services'
@@ -484,9 +484,15 @@ function getProgressPeriodStart(now: Date): Date {
 
 /**
  * 세션별로 이 종목의 완료 세트 중 가장 무거운(동률이면 반복이 더 많은) 세트
- * 하나를 골라 그 세트의 중량·반복·Brzycki e1RM으로 포인트를 만든다. 중량이나
- * 반복이 null인 세트(체중 운동, 혹은 기록 누락)는 후보에서 제외한다 -- 0으로
- * 취급해 그리면 실제로 무거웠던 세션이 빈 세션처럼 보이게 된다.
+ * 하나를 골라 그 세트의 중량·반복으로 최고 중량 포인트를 만든다 -- 이건
+ * "이 세션에서 든 가장 무거운 무게"를 추적하는 값이라 세트 선택이 그대로다.
+ *
+ * 예상 1RM(oneRepMax)은 다른 질문이라 다르게 고른다: 그 무거운 세트만의
+ * 추정치가 아니라, 세션의 완료 세트 전체 중 e1RM이 가장 높은 값을 쓴다
+ * (`bestEstimatedOneRepMax`, 공유 카드와 동일한 규칙) -- 가벼운 세트가 반복
+ * 수 덕분에 더 높은 추정치를 낼 수 있어서다. 중량이나 반복이 null인 세트
+ * (체중 운동, 혹은 기록 누락)는 최고 중량 후보에서 제외한다 -- 0으로 취급해
+ * 그리면 실제로 무거웠던 세션이 빈 세션처럼 보이게 된다.
  */
 function buildWeightedProgress(entries: ExerciseProgressEntry[]): WeightedProgressPoint[] {
   const points: WeightedProgressPoint[] = []
@@ -504,7 +510,7 @@ function buildWeightedProgress(entries: ExerciseProgressEntry[]): WeightedProgre
       startedAt: entry.startedAt,
       weightKg: best.weightKg,
       reps: best.reps,
-      oneRepMax: estimateOneRepMax(best.weightKg, best.reps),
+      oneRepMax: bestEstimatedOneRepMax(entry.sets),
     })
   }
   return points

@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
 import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
 import { getSessionDurationMinutes } from '../../lib/duration'
+import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
@@ -320,7 +321,16 @@ const ShareCard = ({ session, weightUnit, includeRir, cardRef }: { session: Work
       {session.exercises.map((exercise) => {
         const completed = exercise.sets.filter((set) => set.isCompleted)
         if (!completed.length) return null
-        return <div className="share-card-exercise" key={exercise.id}><strong>{exercise.exerciseName}</strong><div>{completed.map((set) => <span key={set.id}>{formatSet(set, weightUnit)}{includeRir && set.actualRir !== null ? ` · RIR ${formatRir(set.actualRir)}` : ''}</span>)}</div></div>
+        const bestEstimate = bestEstimatedOneRepMax(completed)
+        return (
+          <div className="share-card-exercise" key={exercise.id}>
+            <div className="share-card-exercise-name">
+              <strong>{exercise.exerciseName}</strong>
+              {bestEstimate !== null && <span className="share-card-e1rm">예상 1RM {formatWeight(bestEstimate)}{weightUnit}</span>}
+            </div>
+            <div className="share-card-exercise-sets">{completed.map((set) => <span key={set.id}>{formatSet(set, weightUnit)}{includeRir && set.actualRir !== null ? ` · RIR ${formatRir(set.actualRir)}` : ''}</span>)}</div>
+          </div>
+        )
       })}
     </div>
     <footer>TRAIN WITH INTENTION</footer>
