@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus, ListX, LoaderCircle, Plus, Save, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useAppServices, useSettings } from '../../services'
 import type { Exercise, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
+import { CreateExerciseDialog, ExercisePickerSheet } from '../workout/ExercisePicker'
 import './RoutineManager.css'
 
 interface RoutineManagerData {
@@ -244,15 +245,14 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
   onSave: () => void
   onClearNotice: () => void
 }) {
-  const [exerciseToAdd, setExerciseToAdd] = useState('')
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [applyRir, setApplyRir] = useState<Rir>(2)
   const orderedExercises = useMemo(() => [...draft.exercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder), [draft.exercises])
 
   const updateExercises = (nextExercises: RoutineExercise[]) => onChange({ exercises: normalizeExerciseOrder(nextExercises) })
 
-  const addExercise = () => {
-    const exercise = exercises.find((item) => item.id === exerciseToAdd)
-    if (!exercise) return
+  const addExercise = (exercise: Exercise) => {
     const newExercise: RoutineExercise = {
       id: createId(),
       exerciseId: exercise.id,
@@ -262,7 +262,19 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
       sets: [makeSet(1, 'working', exercise.defaultRestSeconds || defaultRestSeconds)],
     }
     updateExercises([...draft.exercises, newExercise])
-    setExerciseToAdd('')
+  }
+
+  const selectExerciseFromPicker = (exercise: Exercise) => {
+    setIsPickerOpen(false)
+    addExercise(exercise)
+  }
+
+  // 새로 만든 종목은 시트로 돌아가지 않고 곧장 루틴에 들어간다 -- 방금 만든
+  // 이유가 그것이므로, 목록에서 한 번 더 찾게 하지 않는다.
+  const addCreatedExercise = (exercise: Exercise) => {
+    setIsCreateOpen(false)
+    setIsPickerOpen(false)
+    addExercise(exercise)
   }
 
   const updateExercise = (exerciseId: string, changes: Partial<RoutineExercise>) => {
@@ -330,7 +342,7 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
       <section className="routine-exercise-section" aria-labelledby="routine-exercises-title">
         <div className="routine-section-heading"><div><p className="eyebrow">EXERCISES</p><h2 id="routine-exercises-title">운동 구성</h2></div><span>{orderedExercises.length}개 종목 · {countSets(orderedExercises)}세트</span></div>
 
-        {orderedExercises.length === 0 ? <div className="routine-empty-exercises"><Dumbbell size={22} aria-hidden="true" /><strong>첫 운동을 추가해 보세요.</strong><p>운동을 추가한 뒤 세트별 목표와 RIR을 설계할 수 있어요.</p></div> : (
+        {orderedExercises.length === 0 ? <div className="routine-empty-exercises"><Dumbbell size={22} aria-hidden="true" /><strong>첫 운동을 추가해 보세요.</strong><p>운동을 추가한 뒤 세트별 목표와 RIR을 설계할 수 있어요.</p><button className="primary-button" type="button" onClick={() => setIsPickerOpen(true)}><ListPlus size={16} aria-hidden="true" /> 종목 추가</button></div> : (
           <div className="routine-exercise-list">
             {orderedExercises.map((exercise, index) => <ExerciseEditor
               key={exercise.id}
@@ -349,12 +361,25 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
           </div>
         )}
 
-        <div className="add-exercise-control">
-          <label htmlFor="routine-exercise-select">운동 추가</label>
-          <div><select id="routine-exercise-select" value={exerciseToAdd} onChange={(event) => setExerciseToAdd(event.target.value)}><option value="">운동 종목을 선택하세요</option>{exercises.map((exercise) => <option value={exercise.id} key={exercise.id}>{exercise.name}</option>)}</select><button className="secondary-button routine-add-exercise-button" type="button" disabled={!exerciseToAdd} onClick={addExercise}><ListPlus size={16} aria-hidden="true" /> 추가</button></div>
-        </div>
+        {orderedExercises.length > 0 && <div className="add-exercise-control">
+          <button className="secondary-button routine-add-exercise-button" type="button" onClick={() => setIsPickerOpen(true)}><ListPlus size={16} aria-hidden="true" /> 종목 추가</button>
+        </div>}
       </section>
     </div>
+
+    <ExercisePickerSheet
+      isOpen={isPickerOpen}
+      exercises={exercises}
+      onClose={() => setIsPickerOpen(false)}
+      onSelect={selectExerciseFromPicker}
+      onOpenCreate={() => setIsCreateOpen(true)}
+    />
+    <CreateExerciseDialog
+      isOpen={isCreateOpen}
+      defaultRestSeconds={defaultRestSeconds}
+      onClose={() => setIsCreateOpen(false)}
+      onCreated={addCreatedExercise}
+    />
   </>
 }
 

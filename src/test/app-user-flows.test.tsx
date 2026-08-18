@@ -297,8 +297,9 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     const nameInput = screen.getByRole('textbox', { name: '루틴 이름' })
     await user.clear(nameInput)
     await user.type(nameInput, 'E2E 루틴')
-    await user.selectOptions(screen.getByLabelText('운동 추가'), 'barbell-bench-press')
-    await user.click(screen.getByRole('button', { name: '추가' }))
+    // 종목은 시트에서 고른다. 빈 루틴이라 트리거는 빈 상태 안내 안의 버튼이다.
+    await user.click(screen.getByRole('button', { name: '종목 추가' }))
+    await user.click(await screen.findByRole('button', { name: '바벨 벤치프레스' }))
 
     const weightInput = screen.getByRole('spinbutton', { name: '1세트 목표 중량' })
     await user.clear(weightInput)
