@@ -1,5 +1,5 @@
 export { AppServicesProvider } from './AppServicesProvider'
 export { useAppServices } from './useAppServices'
-export type { AppServices, AuthAdapter, AuthSession, WorkoutRepository } from './contracts'
+export type { AppServices, AuthAdapter, AuthSession, ExerciseProgressEntry, WorkoutRepository } from './contracts'
 export { createLocalStorageServices } from './mock/localStorageServices'
 export { useSettings, userSettingsQueryKey } from './useSettings'

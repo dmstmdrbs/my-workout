@@ -6,8 +6,9 @@ import type {
   UserProfile,
   UserSettings,
   WorkoutSession,
+  WorkoutSetRecord,
 } from '../../types/domain'
-import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, WorkoutRepository } from '../contracts'
+import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, WorkoutRepository } from '../contracts'
 import { mockExercises, mockRoutines, mockSessions, mockSettings, mockUser } from './seed'
 
 interface LocalStore {
@@ -26,6 +27,25 @@ let inMemoryStore: LocalStore | null = null
 const clone = <T,>(value: T): T => structuredClone(value)
 const now = () => new Date().toISOString()
 const newId = () => globalThis.crypto?.randomUUID?.() ?? `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+/**
+ * A session can log the same exercise twice (e.g. a deliberate second round
+ * late in the workout, added via `WorkoutRunner`'s "종목 추가" -- nothing
+ * stops that). `session.exercises.find(...)` would silently keep only the
+ * first matching instance and drop a second instance's sets entirely, which
+ * would make the mock adapter disagree with the Supabase adapter (which
+ * queries set rows directly and naturally picks up every instance). This
+ * collects completed sets across *all* matching instances, ordered by
+ * `exerciseOrder` so sets stay in the same chronological sequence they'd
+ * have if the two instances' sets were recorded back to back.
+ */
+function completedSetsForExerciseInSession(session: WorkoutSession, exerciseId: Id): WorkoutSetRecord[] {
+  return session.exercises
+    .filter((exercise) => exercise.exerciseId === exerciseId)
+    .sort((a, b) => a.exerciseOrder - b.exerciseOrder)
+    .flatMap((exercise) => exercise.sets)
+    .filter((set) => set.isCompleted)
+}
 
 function createStore(): LocalStore {
   return {
@@ -153,11 +173,25 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
       .filter((session) => session.status === 'completed')
       .sort((a, b) => at(b.startedAt) - at(a.startedAt))
     for (const session of sessions) {
-      const exercise = session.exercises.find((item) => item.exerciseId === exerciseId)
-      const set = exercise?.sets.filter((item) => item.isCompleted).at(-1)
+      const set = completedSetsForExerciseInSession(session, exerciseId).at(-1)
       if (set) return set
     }
     return null
+  }
+  async listExerciseProgress(exerciseId: Id, options: { completedAfter: string }): Promise<ExerciseProgressEntry[]> {
+    const at = (value: string) => new Date(value).getTime()
+    const threshold = at(options.completedAfter)
+    const sessions = clone(this.requireStore().sessions)
+      .filter((session) => session.status === 'completed' && at(session.startedAt) >= threshold)
+      .sort((a, b) => at(a.startedAt) - at(b.startedAt))
+
+    const entries: ExerciseProgressEntry[] = []
+    for (const session of sessions) {
+      const sets = completedSetsForExerciseInSession(session, exerciseId)
+      if (sets.length === 0) continue
+      entries.push({ sessionId: session.id, startedAt: session.startedAt, sets })
+    }
+    return entries
   }
   async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'pausedSeconds'> & { id?: Id; pausedSeconds?: number }) {
     const store = this.requireStore(); const existing = input.id ? store.sessions.find((item) => item.id === input.id) : undefined; const timestamp = now()

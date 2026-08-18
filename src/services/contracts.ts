@@ -30,6 +30,13 @@ export interface AuthAdapter {
   onAuthStateChange(listener: AuthStateListener): () => void
 }
 
+/** 하나의 세션에서 어떤 종목이 낸 완료 세트 묶음. 진행 추이 차트의 단위. */
+export interface ExerciseProgressEntry {
+  sessionId: Id
+  startedAt: IsoDateTime
+  sets: WorkoutSetRecord[]
+}
+
 export interface WorkoutRepository {
   getProfile(): Promise<UserProfile>
   updateProfile(changes: Pick<UserProfile, 'displayName' | 'avatarUrl'>): Promise<UserProfile>
@@ -63,6 +70,16 @@ export interface WorkoutRepository {
   deleteSession(id: Id): Promise<void>
   /** 지난 기록 표시용. 세션 목록 전체를 받지 않고 필요한 한 세트만 가져온다. */
   getLastCompletedSetForExercise(exerciseId: Id): Promise<WorkoutSetRecord | null>
+  /**
+   * 종목별 완료 세트의 시계열(통계 화면의 중량 추이 차트용). 위
+   * `getLastCompletedSetForExercise`가 한 건만 주는 것과 달리 기간 전체가
+   * 필요하지만, 11번 규칙과 같은 이유로 무제한 조회는 막는다.
+   * `completedAfter`를 선택이 아닌 필수 인자로 둬 호출부가 실수로 전체
+   * 기록을 요청할 수 없게 한다. 세션 목록 커서(`listSessions`)와 달리
+   * 오래된 것부터 최신순으로 정렬해 돌려준다 -- 차트를 왼쪽에서 오른쪽으로
+   * 시간순으로 그리기 위함이다.
+   */
+  listExerciseProgress(exerciseId: Id, options: { completedAfter: IsoDateTime }): Promise<ExerciseProgressEntry[]>
 
   listBodyMeasurements(): Promise<BodyMeasurement[]>
   saveBodyMeasurement(measurement: Omit<BodyMeasurement, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }): Promise<BodyMeasurement>
