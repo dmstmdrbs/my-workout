@@ -29,3 +29,26 @@
 .free-workout-empty .exercise-picker-trigger { margin-top: 22px; }
 .exercise-reorder-backdrop { display: grid; position: fixed; z-index: 40; inset: 0; place-items: center; padding: 20px; background: rgb(16 24 40 / .42); }.exercise-reorder-dialog { width: min(100%, 480px); max-height: min(680px, calc(100dvh - 40px)); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-float); }.exercise-reorder-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 21px 21px 15px; border-bottom: 1px solid var(--border); }.exercise-reorder-dialog h2 { margin-top: 5px; font-size: 1.12rem; }.exercise-reorder-dialog header p:not(.eyebrow) { max-width: 330px; margin-top: 7px; color: var(--text-muted); font-size: .76rem; line-height: 1.5; }.exercise-reorder-list { display: grid; gap: 7px; margin: 0; padding: 14px 16px; list-style: none; }.exercise-reorder-list li { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto; align-items: center; min-height: 55px; gap: 9px; padding: 7px 7px 7px 10px; background: var(--surface-subtle); border: 1px solid transparent; border-radius: 9px; transition: opacity .15s ease, border-color .15s ease; }.exercise-reorder-list li.is-dragging { opacity: .62; border-color: var(--accent); }.exercise-reorder-list strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }.exercise-reorder-index { color: var(--text-muted); font-size: .72rem; font-weight: 800; }.exercise-reorder-actions { display: flex; align-items: center; gap: 3px; }.reorder-move-button, .reorder-drag-handle { display: inline-grid; place-items: center; width: 29px; height: 31px; padding: 0; color: var(--text-muted); background: transparent; border: 0; border-radius: 6px; font-weight: 800; }.reorder-move-button:hover:not(:disabled), .reorder-drag-handle:hover { color: var(--text); background: var(--surface-emphasis); }.reorder-move-button:disabled { opacity: .28; }.reorder-drag-handle { cursor: grab; touch-action: none; }.reorder-drag-handle:active { cursor: grabbing; }.exercise-reorder-dialog footer { display: flex; justify-content: flex-end; padding: 12px 16px 16px; border-top: 1px solid var(--border); }
 @media (max-width: 560px) { .begin-workout-actions { display: grid; }.begin-workout-actions .begin-workout-button { width: 100%; }.free-workout-empty { min-height: 320px; padding: 25px 17px; }.exercise-workspace-actions { justify-items: start; margin-top: 13px; }.exercise-reorder-backdrop { align-items: end; padding: 0; }.exercise-reorder-dialog { width: 100%; max-height: min(76dvh, 680px); border-bottom: 0; border-radius: 18px 18px 0 0; }.exercise-reorder-dialog header { padding: 18px 17px 13px; }.exercise-reorder-list { padding: 12px; } }
+
+.routine-choice-last { color: var(--text-muted); font-size: .74rem; font-weight: 650; }
+
+/* 하단 탭바가 나타나는 폭에서는 시작 버튼도 화면 아래에 고정한다. 루틴이
+   많으면 목록을 끝까지 스크롤해야 버튼에 닿기 때문이다. 탭바 위로 올리는
+   오프셋은 휴식 타이머 독과 같은 값을 쓴다. */
+@media (max-width: 899px) {
+  .routine-picker-page .begin-workout-actions {
+    display: grid;
+    position: fixed;
+    z-index: 14;
+    right: 0;
+    bottom: calc(70px + max(7px, env(safe-area-inset-bottom, 0px)));
+    left: 0;
+    gap: 8px;
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--surface) 93%, transparent);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+  }
+
+  .routine-picker-page .begin-workout-actions .begin-workout-button { width: 100%; min-width: 0; margin-top: 0; }
+}

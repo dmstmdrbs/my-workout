@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Check,
@@ -16,8 +16,9 @@ import {
   X,
 } from 'lucide-react'
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
+import { formatRelativeDay } from '../../lib/relativeDay'
 import { useAppServices, useSettings } from '../../services'
-import type { Equipment, Exercise, Routine, Rir, SetType, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
+import type { Equipment, Exercise, Id, IsoDateTime, Routine, Rir, SetType, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
   readStoredWorkoutDraft,
@@ -117,6 +118,8 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
       void queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
       void queryClient.invalidateQueries({ queryKey: ['completed-workout-records'] })
       void queryClient.invalidateQueries({ queryKey: ['workout-runner-setup'] })
+      // 방금 끝낸 운동이 루틴 선택 화면의 "마지막 수행"에 바로 반영되도록.
+      void queryClient.invalidateQueries({ queryKey: routineLastPerformedQueryKey })
       // Prefix match (no `exact: true`) so every exercise id under
       // 'last-completed-set' is covered, not just the one active when this
       // workout finished -- otherwise a workout started within the 30s
@@ -534,20 +537,74 @@ function ExerciseCard({ exercise, weightUnit, equipment, onChangeSet, onComplete
 }
 
 function RoutinePicker({ routines, selectedRoutine, onSelect, onBegin, onBeginFree, onCancel }: { routines: Routine[]; selectedRoutine: Routine | undefined; onSelect: (id: string) => void; onBegin: () => void; onBeginFree: () => void; onCancel: () => void }) {
+  const lastPerformed = useRoutineLastPerformed()
+
   return <main className="routine-picker-page" aria-labelledby="routine-picker-title">
     <section className="routine-picker-heading"><div><p className="eyebrow">START TRAINING</p><h1 id="routine-picker-title">오늘 어떤 운동을 할까요?</h1><p>루틴의 처방을 따르거나, 자유 운동에서 원하는 종목을 바로 추가해 보세요.</p></div><button className="runner-text-button" type="button" onClick={onCancel}>대시보드로 돌아가기</button></section>
     {routines.length === 0 ? <div className="runner-empty"><Dumbbell size={24} /><h2>아직 저장된 루틴이 없어요.</h2><p>자유 운동은 지금 바로 시작할 수 있고, 필요하면 루틴을 만들어 둘 수도 있어요.</p></div> : <div className="routine-choice-grid">
-      {routines.map((routine) => <button className={`routine-choice ${selectedRoutine?.id === routine.id ? 'is-selected' : ''}`} type="button" key={routine.id} onClick={() => onSelect(routine.id)}>
-        <span className="routine-choice-marker" style={{ background: routine.color ?? 'var(--accent)' }} />
-        <span className="routine-choice-copy"><strong>{routine.name}</strong><small>{routine.description ?? '나만의 운동 구성'}</small><em>{routine.exercises.length}개 종목 · {countRoutineSets(routine)}세트</em></span>
-        {selectedRoutine?.id === routine.id && <span className="choice-check"><Check size={16} /></span>}
-      </button>)}
+      {routines.map((routine) => <RoutineChoiceCard
+        key={routine.id}
+        routine={routine}
+        isSelected={selectedRoutine?.id === routine.id}
+        lastPerformedAt={lastPerformed.get(routine.id) ?? null}
+        onSelect={() => onSelect(routine.id)}
+      />)}
     </div>}
     <div className="begin-workout-actions">
       <button className="primary-button begin-workout-button" type="button" disabled={!selectedRoutine} onClick={onBegin}><Play size={17} fill="currentColor" /> {selectedRoutine?.name ?? '루틴'} 시작</button>
       <button className="secondary-button begin-workout-button" type="button" onClick={onBeginFree}><Dumbbell size={17} /> 자유 운동으로 시작</button>
     </div>
   </main>
+}
+
+const routineLastPerformedQueryKey = ['routine-last-performed'] as const
+
+/** 카드가 미리 보여주는 종목 수. 넘치면 "외 N개"로 접는다. */
+const ROUTINE_PREVIEW_EXERCISES = 3
+
+/**
+ * 마지막 수행일을 채우기 위해 훑는 완료 세션 수. 전부 조회하면 이 화면
+ * 하나 때문에 전 기간 세션·세트를 받게 되므로 최근 것만 본다. 이 범위 밖의
+ * 루틴은 날짜를 표시하지 않을 뿐이며(없다고 단정하지 않는다), 조회가 실패해도
+ * 카드는 나머지 정보로 그대로 그려진다.
+ */
+const LAST_PERFORMED_SESSION_SCAN = 40
+
+function useRoutineLastPerformed(): Map<Id, IsoDateTime> {
+  const { workoutRepository } = useAppServices()
+  const query = useQuery({
+    queryKey: routineLastPerformedQueryKey,
+    queryFn: () => workoutRepository.listSessions({ status: 'completed', limit: LAST_PERFORMED_SESSION_SCAN }),
+  })
+
+  return useMemo(() => {
+    const latest = new Map<Id, IsoDateTime>()
+    for (const session of query.data ?? []) {
+      if (!session.routineId) continue
+      const seen = latest.get(session.routineId)
+      // listSessions는 최신순이지만, 어댑터가 바뀌어도 옳도록 실제 시각을 비교한다.
+      if (!seen || new Date(session.startedAt).getTime() > new Date(seen).getTime()) {
+        latest.set(session.routineId, session.startedAt)
+      }
+    }
+    return latest
+  }, [query.data])
+}
+
+function RoutineChoiceCard({ routine, isSelected, lastPerformedAt, onSelect }: { routine: Routine; isSelected: boolean; lastPerformedAt: IsoDateTime | null; onSelect: () => void }) {
+  const preview = routine.exercises.slice(0, ROUTINE_PREVIEW_EXERCISES).map((exercise) => exercise.exerciseName).join(' · ')
+  const remaining = routine.exercises.length - ROUTINE_PREVIEW_EXERCISES
+
+  return <button className={`routine-choice ${isSelected ? 'is-selected' : ''}`} type="button" onClick={onSelect}>
+    <span className="routine-choice-marker" style={{ background: routine.color ?? 'var(--accent)' }} />
+    <span className="routine-choice-copy">
+      <strong>{routine.name}</strong>
+      <small>{preview ? `${preview}${remaining > 0 ? ` 외 ${remaining}개` : ''}` : routine.description ?? '나만의 운동 구성'}</small>
+      <em>{routine.exercises.length}개 종목 · {countRoutineSets(routine)}세트</em>
+      {lastPerformedAt && <span className="routine-choice-last">마지막 수행 {formatRelativeDay(lastPerformedAt, new Date())}</span>}
+    </span>
+    {isSelected && <span className="choice-check"><Check size={16} /></span>}
+  </button>
 }
 
 function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, onChange, onComplete }: { set: WorkoutSetRecord; weightUnit: string; weightLabel: string; weightShortLabel: string; isBodyweight: boolean; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
