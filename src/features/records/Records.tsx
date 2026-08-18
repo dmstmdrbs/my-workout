@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
 import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
 import { getSessionDurationMinutes } from '../../lib/duration'
+import { estimateOneRepMax } from '../../lib/oneRepMax'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
@@ -320,7 +321,16 @@ const ShareCard = ({ session, weightUnit, includeRir, cardRef }: { session: Work
       {session.exercises.map((exercise) => {
         const completed = exercise.sets.filter((set) => set.isCompleted)
         if (!completed.length) return null
-        return <div className="share-card-exercise" key={exercise.id}><strong>{exercise.exerciseName}</strong><div>{completed.map((set) => <span key={set.id}>{formatSet(set, weightUnit)}{includeRir && set.actualRir !== null ? ` · RIR ${formatRir(set.actualRir)}` : ''}</span>)}</div></div>
+        const bestEstimate = bestEstimatedOneRepMax(completed)
+        return (
+          <div className="share-card-exercise" key={exercise.id}>
+            <div className="share-card-exercise-name">
+              <strong>{exercise.exerciseName}</strong>
+              {bestEstimate !== null && <span className="share-card-e1rm">예상 1RM {formatWeight(bestEstimate)}{weightUnit}</span>}
+            </div>
+            <div className="share-card-exercise-sets">{completed.map((set) => <span key={set.id}>{formatSet(set, weightUnit)}{includeRir && set.actualRir !== null ? ` · RIR ${formatRir(set.actualRir)}` : ''}</span>)}</div>
+          </div>
+        )
       })}
     </div>
     <footer>TRAIN WITH INTENTION</footer>
@@ -339,6 +349,23 @@ function RecordsLoading() { return <main className="records-page" aria-label="�
 function RecordsError({ onRetry }: { onRetry: () => void }) { return <main className="records-page records-message"><div className="message-icon"><RefreshCw size={22} /></div><p className="eyebrow">CONNECTION ISSUE</p><h1>운동 기록을 불러오지 못했어요.</h1><p>잠시 후 다시 시도해 주세요.</p><button className="primary-button" type="button" onClick={onRetry}><RefreshCw size={16} /> 다시 시도</button></main> }
 function RecordsNotFound() { return <main className="records-page records-message"><div className="message-icon"><ImageDown size={22} /></div><p className="eyebrow">NOT FOUND</p><h1>기록을 찾을 수 없어요.</h1><p>주소가 잘못되었거나 삭제된 기록일 수 있어요.</p></main> }
 function RecordsEmpty() { return <section className="records-empty"><ImageDown size={23} aria-hidden="true" /><h2>아직 완료한 운동이 없어요.</h2><p>운동을 완료하면 이곳에서 세부 기록을 보고 공유 카드도 만들 수 있어요.</p></section> }
+
+/**
+ * Highest estimated 1RM across a set of completed sets, not the heaviest
+ * set's own estimate -- a lighter set at more reps can estimate higher than
+ * a heavier, lower-rep set. Sets missing a weight (bodyweight exercises) or
+ * reps, and sets above `estimateOneRepMax`'s rep ceiling, contribute `null`
+ * and are simply skipped rather than rendered as zero or a dash.
+ */
+function bestEstimatedOneRepMax(completedSets: WorkoutSetRecord[]): number | null {
+  let best: number | null = null
+  for (const set of completedSets) {
+    if (set.weightKg === null || set.reps === null) continue
+    const estimate = estimateOneRepMax(set.weightKg, set.reps)
+    if (estimate !== null && (best === null || estimate > best)) best = estimate
+  }
+  return best
+}
 
 function getActualRirs(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted && set.actualRir !== null).map((set) => set.actualRir as number) }
 function formatAverageRir(session: WorkoutSession) { const rirs = getActualRirs(session); if (!rirs.length) return '–'; const average = rirs.reduce((sum, value) => sum + value, 0) / rirs.length; return average >= 5 ? '5+' : average.toFixed(1) }
