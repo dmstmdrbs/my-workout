@@ -69,3 +69,46 @@
 @media (min-width: 561px) {
   .set-row.is-rir-hidden { grid-template-columns: 53px 1.35fr 1.1fr .7fr 68px; min-width: 520px; }
 }
+
+/* RIR 기반 중량 제안. 종목 헤딩과 세트 표 사이에 끼우되, 배너가 표보다
+   눈에 띄면 안 되므로 색은 얇게만 쓴다. */
+.load-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 24px 4px;
+  padding: 11px 14px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-muted);
+  border-radius: 10px;
+}
+
+.load-suggestion.tone-harder { border-left-color: var(--danger); }
+.load-suggestion.tone-easier { border-left-color: var(--success); }
+.load-suggestion.tone-onPlan { border-left-color: var(--accent); }
+
+.load-suggestion-copy { display: grid; gap: 3px; min-width: 0; }
+.load-suggestion-copy strong { font-size: .82rem; font-weight: 750; }
+.load-suggestion-copy small { color: var(--text-muted); font-size: .71rem; }
+
+.load-suggestion-apply {
+  flex: none;
+  min-height: 38px;
+  padding: 0 13px;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--accent-border);
+  border-radius: 9px;
+  font-size: .76rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.load-suggestion-apply:hover { background: var(--accent-subtle); }
+
+@media (max-width: 560px) {
+  .load-suggestion { align-items: stretch; flex-direction: column; gap: 9px; margin-inline: 15px; }
+  .load-suggestion-apply { width: 100%; }
+}
