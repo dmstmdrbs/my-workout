@@ -319,7 +319,7 @@ function AppShell() {
           />} />
           <Route path="/routines/:routineId?" element={<RoutineRoute onRoutineChange={(routineId) => navigate(routineId === 'new' ? '/routines/new' : routineId ? `/routines/${routineId}` : '/routines')} />} />
           <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
-          <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
+          <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} onClearSelection={() => navigate('/records', { replace: true })} />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/body" element={<BodyMeasurements />} />
           <Route path="/exercises" element={<ExerciseCatalog />} />
@@ -400,9 +400,9 @@ function BrandIcon() {
   return <span className="brand-symbol" aria-hidden="true"><img src="/trainlog-icon.png" alt="" /></span>
 }
 
-function RecordRoute({ onSelectSession }: { onSelectSession: (sessionId: string) => void }) {
+function RecordRoute({ onSelectSession, onClearSelection }: { onSelectSession: (sessionId: string) => void; onClearSelection: () => void }) {
   const sessionId = useLocationPathId('/records/')
-  return <Records initialSelectedSessionId={sessionId} onSelectSession={onSelectSession} />
+  return <Records initialSelectedSessionId={sessionId} onSelectSession={onSelectSession} onClearSelection={onClearSelection} />
 }
 
 function RoutineRoute({ onRoutineChange }: { onRoutineChange: (routineId: string | 'new' | null) => void }) {

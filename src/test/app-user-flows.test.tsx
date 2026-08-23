@@ -464,6 +464,29 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(screen.getAllByText('자유 운동').length).toBeGreaterThan(0)
   })
 
+  test('UF-15: 완료 운동 기록은 확인 후 삭제되고 상세 URL이 남지 않는다', async () => {
+    const user = userEvent.setup()
+    const sessionId = 'session-2026-08-14'
+    renderApp(`/records/${sessionId}`)
+
+    await screen.findByRole('heading', { name: '운동 기록' })
+    expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions.some((session: { id: string }) => session.id === sessionId)).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: '기록 삭제' }))
+    const dialog = await screen.findByRole('dialog', { name: '운동 기록을 삭제할까요?' })
+    expect(dialog.textContent).toContain('되돌릴 수 없어요.')
+
+    await user.click(within(dialog).getByRole('button', { name: '취소' }))
+    expect(screen.queryByRole('dialog', { name: '운동 기록을 삭제할까요?' })).toBeNull()
+    expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions.some((session: { id: string }) => session.id === sessionId)).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: '기록 삭제' }))
+    await user.click(within(await screen.findByRole('dialog', { name: '운동 기록을 삭제할까요?' })).getByRole('button', { name: '삭제하기' }))
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions.some((session: { id: string }) => session.id === sessionId)).toBe(false))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '운동 기록을 삭제할까요?' })).toBeNull())
+    await screen.findByRole('heading', { name: '운동 기록' })
+  })
+
   test('하단 내비게이션의 더보기 버튼으로 팝오버를 열고 닫을 수 있다', async () => {
     const user = userEvent.setup()
     renderApp()

@@ -1,8 +1,9 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import type { Ref } from 'react'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
-import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
+import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { Overlay } from '../../components/Overlay'
 import { getSessionDurationMinutes } from '../../lib/duration'
 import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
@@ -28,13 +29,19 @@ const maxShareCardPixels = 32_000_000
 // number that would silently go stale if this changes.
 export const recordsPageSize = 20
 
-export function Records({ initialSelectedSessionId = null, onSelectSession }: { initialSelectedSessionId?: string | null; onSelectSession?: (sessionId: string) => void }) {
+export function Records({ initialSelectedSessionId = null, onSelectSession, onClearSelection }: {
+  initialSelectedSessionId?: string | null
+  onSelectSession?: (sessionId: string) => void
+  onClearSelection?: () => void
+}) {
   const { workoutRepository } = useAppServices()
+  const queryClient = useQueryClient()
   const settingsQuery = useSettings()
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedSessionId)
   const [includeRir, setIncludeRir] = useState(true)
   const [exportState, setExportState] = useState<ExportState>('idle')
   const [exportMessage, setExportMessage] = useState('')
+  const [sessionPendingDelete, setSessionPendingDelete] = useState<WorkoutSession | null>(null)
   const shareCardRef = useRef<HTMLElement>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
@@ -100,6 +107,51 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
     setExportState('idle')
     setExportMessage('')
   }, [initialSelectedSessionId])
+
+  const deleteMutation = useMutation({
+    mutationFn: (sessionId: string) => workoutRepository.deleteSession(sessionId),
+    onSuccess: async (_result, deletedId) => {
+      // Determine the next visible record before React Query refetches and
+      // removes the current selection. The list route can then choose it as
+      // its fallback selection without retaining a deleted detail URL.
+      const nextSession = sessions.find((session) => session.id !== deletedId) ?? null
+      setSessionPendingDelete(null)
+      setSelectedId(nextSession?.id ?? null)
+      setExportState('idle')
+      setExportMessage('')
+
+      queryClient.removeQueries({ queryKey: ['workout-record', deletedId] })
+      // Do not wait for every dependent query to refetch before leaving a
+      // deleted detail URL. During that wait `getSession(deletedId)` resolves
+      // to null and creates a visible not-found flash.
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['completed-workout-records'] }),
+        queryClient.invalidateQueries({ queryKey: ['records-calendar-month'] }),
+        queryClient.invalidateQueries({ queryKey: ['records-calendar-streak'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] }),
+        queryClient.invalidateQueries({ queryKey: ['weekly-stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['exercise-progress'] }),
+        queryClient.invalidateQueries({ queryKey: ['last-completed-set'] }),
+      ])
+
+      // A direct `/records/:id` must leave that URL after its resource is
+      // deleted. Returning to `/records` also avoids a stale single-record
+      // query briefly racing the freshly invalidated list query.
+      if (onClearSelection) onClearSelection()
+      else if (nextSession) onSelectSession?.(nextSession.id)
+    },
+  })
+
+  const requestDelete = (session: WorkoutSession) => {
+    deleteMutation.reset()
+    setSessionPendingDelete(session)
+  }
+
+  const closeDeleteDialog = () => {
+    if (deleteMutation.isPending) return
+    deleteMutation.reset()
+    setSessionPendingDelete(null)
+  }
 
   async function makeCardPng() {
     if (!shareCardRef.current) throw new Error('공유 카드를 준비하지 못했어요.')
@@ -216,10 +268,10 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
       </section>
 
       {sessions.length === 0 ? <RecordsEmpty /> : selectedSession && (
-        <>
-          <RecordsCalendar onSelectDay={selectSessionFromCalendar} selectedSessionId={selectedSession.id} />
-          <div className="records-layout">
-            <aside className="records-list-panel" aria-label="완료한 운동 목록">
+        <div className="records-workspace">
+          <aside className="records-navigation" aria-label="운동 기록 탐색">
+            <RecordsCalendar onSelectDay={selectSessionFromCalendar} selectedSessionId={selectedSession.id} />
+            <section className="records-list-panel" aria-label="완료한 운동 목록">
               <div className="records-list-title"><h2>완료한 운동</h2><span>{sessions.length}회 불러옴</span></div>
               <div className="records-list">
                 {sessions.map((session) => (
@@ -256,8 +308,10 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
                   </div>
                 )}
               </div>
-            </aside>
+            </section>
 
+          </aside>
+          <div className="records-content">
             <section className="record-detail" aria-labelledby="record-detail-title">
               <header className="record-detail-heading">
                 <div>
@@ -265,7 +319,12 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
                   <h2 id="record-detail-title">{selectedSession.routineName ?? '자유 운동'}</h2>
                   <p>{formatDuration(selectedSession)} · {selectedSession.exercises.length}개 종목 · 완료 {completedSetCount(selectedSession)}세트</p>
                 </div>
-                <div className="record-volume"><span>총 볼륨</span><strong>{formatNumber(getSessionVolume(selectedSession))} <small>{settingsQuery.data.weightUnit}</small></strong></div>
+                <div className="record-detail-actions">
+                  <div className="record-volume"><span>총 볼륨</span><strong>{formatNumber(getSessionVolume(selectedSession))} <small>{settingsQuery.data.weightUnit}</small></strong></div>
+                  <button className="record-delete-button" type="button" onClick={() => requestDelete(selectedSession)}>
+                    <Trash2 size={15} aria-hidden="true" /> 기록 삭제
+                  </button>
+                </div>
               </header>
 
               <div className="record-exercises" aria-label="운동 상세">
@@ -306,13 +365,20 @@ export function Records({ initialSelectedSessionId = null, onSelectSession }: { 
               <p className={`export-feedback ${exportState === 'error' ? 'is-error' : ''}`} role="status" aria-live="polite">{exportMessage || '공유 카드에는 개인 계정 정보가 포함되지 않아요.'}</p>
             </section>
           </div>
-        </>
+        </div>
       )}
       {selectedSession && (
         <div className="share-card-export-target" aria-hidden="true">
           <WorkoutShareCard ref={shareCardRef} session={selectedSession} weightUnit={settingsQuery.data.weightUnit} includeRir={includeRir} />
         </div>
       )}
+      <DeleteRecordDialog
+        session={sessionPendingDelete}
+        isDeleting={deleteMutation.isPending}
+        isError={deleteMutation.isError}
+        onCancel={closeDeleteDialog}
+        onConfirm={() => { if (sessionPendingDelete) deleteMutation.mutate(sessionPendingDelete.id) }}
+      />
     </main>
   )
 }
@@ -354,6 +420,30 @@ function RecordsLoading() { return <main className="records-page" aria-label="�
 function RecordsError({ onRetry }: { onRetry: () => void }) { return <main className="records-page records-message"><div className="message-icon"><RefreshCw size={22} /></div><p className="eyebrow">CONNECTION ISSUE</p><h1>운동 기록을 불러오지 못했어요.</h1><p>잠시 후 다시 시도해 주세요.</p><button className="primary-button" type="button" onClick={onRetry}><RefreshCw size={16} /> 다시 시도</button></main> }
 function RecordsNotFound() { return <main className="records-page records-message"><div className="message-icon"><ImageDown size={22} /></div><p className="eyebrow">NOT FOUND</p><h1>기록을 찾을 수 없어요.</h1><p>주소가 잘못되었거나 삭제된 기록일 수 있어요.</p></main> }
 function RecordsEmpty() { return <section className="records-empty"><ImageDown size={23} aria-hidden="true" /><h2>아직 완료한 운동이 없어요.</h2><p>운동을 완료하면 이곳에서 세부 기록을 보고 공유 카드도 만들 수 있어요.</p></section> }
+
+function DeleteRecordDialog({ session, isDeleting, isError, onCancel, onConfirm }: {
+  session: WorkoutSession | null
+  isDeleting: boolean
+  isError: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const isOpen = session !== null
+  return (
+    <Overlay isOpen={isOpen} onClose={onCancel} presentation="dialog" labelledBy="delete-record-title" describedBy="delete-record-description" className="record-delete-dialog">
+      <p className="eyebrow">DELETE WORKOUT</p>
+      <h2 id="delete-record-title">운동 기록을 삭제할까요?</h2>
+      <p id="delete-record-description"><strong>{session?.routineName ?? '자유 운동'}</strong> 기록과 세트 정보가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없어요.</p>
+      {isError && <p className="record-delete-error" role="alert">기록을 삭제하지 못했어요. 네트워크를 확인한 뒤 다시 시도해 주세요.</p>}
+      <div className="record-delete-actions">
+        <button className="secondary-button" type="button" onClick={onCancel} disabled={isDeleting}>취소</button>
+        <button className="record-delete-confirm" type="button" onClick={onConfirm} disabled={isDeleting} data-overlay-initial-focus>
+          <Trash2 size={16} aria-hidden="true" /> {isDeleting ? '삭제 중…' : '삭제하기'}
+        </button>
+      </div>
+    </Overlay>
+  )
+}
 
 function getActualRirs(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted && set.actualRir !== null).map((set) => set.actualRir as number) }
 function formatAverageRir(session: WorkoutSession) { const rirs = getActualRirs(session); if (!rirs.length) return '–'; const average = rirs.reduce((sum, value) => sum + value, 0) / rirs.length; return average >= 5 ? '5+' : average.toFixed(1) }
