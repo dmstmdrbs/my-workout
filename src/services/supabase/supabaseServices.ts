@@ -227,6 +227,10 @@ function mapWorkoutSession(row: Row): WorkoutSession {
     startedAt: stringValue(row, 'started_at'),
     completedAt: nullableString(row, 'completed_at'),
     pausedSeconds: numberValue(row, 'paused_seconds'),
+    // 마이그레이션(20260827090000)이 아직 적용되지 않은 DB에서는 이 컬럼이
+    // 없다. select('*')이라 키 자체가 없고 nullableString이 null을 주므로,
+    // 프론트를 먼저 배포해도 "수정됨" 표시만 뜨지 않고 나머지는 그대로 돈다.
+    editedAt: nullableString(row, 'edited_at'),
     notes: nullableString(row, 'notes'),
     exercises,
     createdAt: stringValue(row, 'created_at'),

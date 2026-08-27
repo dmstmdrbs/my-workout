@@ -160,6 +160,12 @@ export interface WorkoutSession {
   completedAt: IsoDateTime | null
   /** 운동을 일시정지한 누적 시간(초). 경과/소요 시간 계산에서 항상 제외한다. */
   pausedSeconds: number
+  /**
+   * 이미 완료된 기록을 나중에 고친 시각. 한 번도 고치지 않았으면 null이다.
+   * `updatedAt`과 다르다 -- `updatedAt`은 운동 진행 중 저장으로도 갱신되므로
+   * "손으로 고쳤다"는 신호가 되지 못한다. 값은 저장소가 정한다(어댑터/RPC).
+   */
+  editedAt: IsoDateTime | null
   notes: string | null
   exercises: WorkoutExercise[]
   createdAt: IsoDateTime

@@ -65,8 +65,12 @@ export interface WorkoutRepository {
   /**
    * `pausedSeconds`는 선택 입력이다. 이 필드가 생기기 전에 저장을 호출하던
    * 코드도 계속 컴파일되고, 어댑터가 누락 시 0으로 채운다.
+   *
+   * `editedAt`은 호출부가 보내지 않는다. "이미 완료로 저장돼 있던 세션을 다시
+   * 저장했다"는 판정은 저장소만 할 수 있고, 클라이언트가 정하게 하면 고친
+   * 흔적을 지운 채 저장하는 것도 가능해진다.
    */
-  saveSession(session: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'pausedSeconds'> & { id?: Id; pausedSeconds?: number }): Promise<WorkoutSession>
+  saveSession(session: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'pausedSeconds' | 'editedAt'> & { id?: Id; pausedSeconds?: number }): Promise<WorkoutSession>
   deleteSession(id: Id): Promise<void>
   /** 지난 기록 표시용. 세션 목록 전체를 받지 않고 필요한 한 세트만 가져온다. */
   getLastCompletedSetForExercise(exerciseId: Id): Promise<WorkoutSetRecord | null>

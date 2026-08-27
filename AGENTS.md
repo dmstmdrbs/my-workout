@@ -90,6 +90,7 @@ docs/user-flow-test-plan.md       수동/자동 검증 기준
 - `/workout` 운동 시작/진행/재개
 - `/routines`, `/routines/new`, `/routines/:routineId` 루틴
 - `/records`, `/records/:sessionId` 기록/공유
+- `/records/:sessionId/edit` 완료된 기록 편집(완료 세트의 값·세트 수·메모만)
 - `/settings` 설정
 - `/body` 신체 측정 기록
 - `/stats` 주간 통계(총 볼륨/전주 대비, 요일별, 부위별)와 종목별 중량 추이(최고 중량·예상 1RM, 최근 180일)

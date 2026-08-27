@@ -1,6 +1,8 @@
 import type { WorkoutSession } from '../../types/domain'
 
-export type WorkoutDraft = Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id: string }
+// `editedAt`은 초안에 없다. 진행 중인 운동은 "완료된 기록을 고친 것"이 될 수
+// 없고, 그 값은 저장소만 정한다.
+export type WorkoutDraft = Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'editedAt'> & { id: string }
 
 export interface StoredWorkoutDraft {
   draft: WorkoutDraft

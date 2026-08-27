@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { MemoryRouter, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { MemoryRouter, Navigate, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   BarChart3,
   CalendarDays,
@@ -18,6 +18,7 @@ import { BodyMeasurements } from './features/body/BodyMeasurements'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { ExerciseCatalog } from './features/exercises/ExerciseCatalog'
 import { Records } from './features/records/Records'
+import { RecordEditor } from './features/records/RecordEditor'
 import { RoutineManager } from './features/routines/RoutineManager'
 import { Settings } from './features/settings/Settings'
 import { Stats } from './features/stats/Stats'
@@ -82,6 +83,9 @@ function AppShell() {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false)
   const [activeWorkoutDraft, setActiveWorkoutDraft] = useState<StoredWorkoutDraft | null>(() => readStoredWorkoutDraft())
   const [activeWorkoutClock, setActiveWorkoutClock] = useState(Date.now())
+  // 편집 중 고친 내용이 남아 있는지. 기록 편집 화면이 알려 주고, 아래
+  // navigateTo가 다른 화면으로 나가려는 조작을 막는 데 쓴다.
+  const [hasUnsavedRecordEdit, setHasUnsavedRecordEdit] = useState(false)
   const [authState, setAuthState] = useState<{ isLoading: boolean; session: AuthSession | null; error: string | null }>({
     isLoading: true,
     session: null,
@@ -198,6 +202,11 @@ function AppShell() {
     if (activePage === 'workout' && to !== pagePaths.workout && activeWorkoutDraft) {
       const shouldLeave = window.confirm('진행 중인 운동이 있습니다. 초안은 이 기기에 임시 저장되며, 다시 운동 시작 메뉴에서 이어서 할 수 있습니다. 나갈까요?')
       if (!shouldLeave) return
+    }
+    if (hasUnsavedRecordEdit) {
+      const shouldLeave = window.confirm('고친 기록을 저장하지 않았습니다. 나가면 수정한 내용이 사라집니다. 나갈까요?')
+      if (!shouldLeave) return
+      setHasUnsavedRecordEdit(false)
     }
     navigate(to)
     setIsMobileMenuOpen(false)
@@ -318,8 +327,12 @@ function AppShell() {
             onDraftStateChange={handleDraftStateChange}
           />} />
           <Route path="/routines/:routineId?" element={<RoutineRoute onRoutineChange={(routineId) => navigate(routineId === 'new' ? '/routines/new' : routineId ? `/routines/${routineId}` : '/routines')} />} />
-          <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
-          <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} onClearSelection={() => navigate('/records', { replace: true })} />} />
+          <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} onEditSession={(sessionId) => navigate(`/records/${sessionId}/edit`)} />} />
+          <Route path="/records/:sessionId/edit" element={<RecordEditRoute
+            onDone={(sessionId) => navigate(`/records/${sessionId}`, { replace: true })}
+            onDirtyChange={setHasUnsavedRecordEdit}
+          />} />
+          <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} onEditSession={(sessionId) => navigate(`/records/${sessionId}/edit`)} onClearSelection={() => navigate('/records', { replace: true })} />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/body" element={<BodyMeasurements />} />
           <Route path="/exercises" element={<ExerciseCatalog />} />
@@ -400,9 +413,15 @@ function BrandIcon() {
   return <span className="brand-symbol" aria-hidden="true"><img src="/trainlog-icon.png" alt="" /></span>
 }
 
-function RecordRoute({ onSelectSession, onClearSelection }: { onSelectSession: (sessionId: string) => void; onClearSelection: () => void }) {
+function RecordRoute({ onSelectSession, onEditSession, onClearSelection }: { onSelectSession: (sessionId: string) => void; onEditSession: (sessionId: string) => void; onClearSelection: () => void }) {
   const sessionId = useLocationPathId('/records/')
-  return <Records initialSelectedSessionId={sessionId} onSelectSession={onSelectSession} onClearSelection={onClearSelection} />
+  return <Records initialSelectedSessionId={sessionId} onSelectSession={onSelectSession} onEditSession={onEditSession} onClearSelection={onClearSelection} />
+}
+
+function RecordEditRoute({ onDone, onDirtyChange }: { onDone: (sessionId: string) => void; onDirtyChange: (isDirty: boolean) => void }) {
+  const { sessionId } = useParams()
+  if (!sessionId) return <Navigate replace to="/records" />
+  return <RecordEditor sessionId={sessionId} onDone={() => onDone(sessionId)} onDirtyChange={onDirtyChange} />
 }
 
 function RoutineRoute({ onRoutineChange }: { onRoutineChange: (routineId: string | 'new' | null) => void }) {

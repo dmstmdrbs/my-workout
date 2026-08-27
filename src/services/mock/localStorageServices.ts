@@ -195,7 +195,12 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
   }
   async saveSession(input: Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'pausedSeconds'> & { id?: Id; pausedSeconds?: number }) {
     const store = this.requireStore(); const existing = input.id ? store.sessions.find((item) => item.id === input.id) : undefined; const timestamp = now()
-    const saved: WorkoutSession = { ...input, id: input.id ?? newId(), userId: store.profile.id, pausedSeconds: input.pausedSeconds ?? 0, createdAt: existing?.createdAt ?? timestamp, updatedAt: timestamp }
+    // 이미 완료로 저장돼 있던 세션을 다시 저장하는 것은 "완료된 기록을 손으로
+    // 고쳤다"는 뜻이므로 editedAt을 찍는다. 운동을 끝내며 처음 저장하는 경우
+    // (existing이 없거나 아직 in_progress였던 경우)는 편집이 아니다. Supabase
+    // 쪽 save_workout_session도 같은 규칙을 쓴다.
+    const isEditOfCompleted = existing?.status === 'completed'
+    const saved: WorkoutSession = { ...input, id: input.id ?? newId(), userId: store.profile.id, pausedSeconds: input.pausedSeconds ?? 0, editedAt: isEditOfCompleted ? timestamp : existing?.editedAt ?? null, createdAt: existing?.createdAt ?? timestamp, updatedAt: timestamp }
     updateStore((next) => { const index = next.sessions.findIndex((item) => item.id === saved.id); if (index >= 0) next.sessions[index] = saved; else next.sessions.push(saved) })
     return clone(saved)
   }

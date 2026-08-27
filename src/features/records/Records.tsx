@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import type { Ref } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toPng } from 'html-to-image'
-import { Download, ImageDown, RefreshCw, Share2, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { Download, ImageDown, Pencil, RefreshCw, Share2, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { Overlay } from '../../components/Overlay'
 import { getSessionDurationMinutes } from '../../lib/duration'
 import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
@@ -11,6 +11,7 @@ import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import { muscleLabel } from '../workout/exerciseLabels'
 import { RecordsCalendar } from './RecordsCalendar'
+import { invalidateRecordQueries } from './recordQueries'
 import './Records.css'
 
 type ExportState = 'idle' | 'exporting' | 'sharing' | 'success' | 'error'
@@ -29,9 +30,10 @@ const maxShareCardPixels = 32_000_000
 // number that would silently go stale if this changes.
 export const recordsPageSize = 20
 
-export function Records({ initialSelectedSessionId = null, onSelectSession, onClearSelection }: {
+export function Records({ initialSelectedSessionId = null, onSelectSession, onEditSession, onClearSelection }: {
   initialSelectedSessionId?: string | null
   onSelectSession?: (sessionId: string) => void
+  onEditSession?: (sessionId: string) => void
   onClearSelection?: () => void
 }) {
   const { workoutRepository } = useAppServices()
@@ -124,15 +126,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onCl
       // Do not wait for every dependent query to refetch before leaving a
       // deleted detail URL. During that wait `getSession(deletedId)` resolves
       // to null and creates a visible not-found flash.
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['completed-workout-records'] }),
-        queryClient.invalidateQueries({ queryKey: ['records-calendar-month'] }),
-        queryClient.invalidateQueries({ queryKey: ['records-calendar-streak'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] }),
-        queryClient.invalidateQueries({ queryKey: ['weekly-stats'] }),
-        queryClient.invalidateQueries({ queryKey: ['exercise-progress'] }),
-        queryClient.invalidateQueries({ queryKey: ['last-completed-set'] }),
-      ])
+      void invalidateRecordQueries(queryClient)
 
       // A direct `/records/:id` must leave that URL after its resource is
       // deleted. Returning to `/records` also avoids a stale single-record
@@ -317,13 +311,21 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onCl
                 <div>
                   <p className="eyebrow">{formatDateFull(selectedSession.startedAt)}</p>
                   <h2 id="record-detail-title">{selectedSession.routineName ?? '자유 운동'}</h2>
-                  <p>{formatDuration(selectedSession)} · {selectedSession.exercises.length}개 종목 · 완료 {completedSetCount(selectedSession)}세트</p>
+                  <p>
+                    {formatDuration(selectedSession)} · {selectedSession.exercises.length}개 종목 · 완료 {completedSetCount(selectedSession)}세트
+                    {selectedSession.editedAt && <span className="record-edited-badge" title={`${formatDateFull(selectedSession.editedAt)}에 수정`}>수정됨</span>}
+                  </p>
                 </div>
                 <div className="record-detail-actions">
                   <div className="record-volume"><span>총 볼륨</span><strong>{formatNumber(getSessionVolume(selectedSession))} <small>{settingsQuery.data.weightUnit}</small></strong></div>
-                  <button className="record-delete-button" type="button" onClick={() => requestDelete(selectedSession)}>
-                    <Trash2 size={15} aria-hidden="true" /> 기록 삭제
-                  </button>
+                  <div className="record-detail-buttons">
+                    <button className="record-edit-button" type="button" onClick={() => onEditSession?.(selectedSession.id)}>
+                      <Pencil size={15} aria-hidden="true" /> 기록 수정
+                    </button>
+                    <button className="record-delete-button" type="button" onClick={() => requestDelete(selectedSession)}>
+                      <Trash2 size={15} aria-hidden="true" /> 기록 삭제
+                    </button>
+                  </div>
                 </div>
               </header>
 
