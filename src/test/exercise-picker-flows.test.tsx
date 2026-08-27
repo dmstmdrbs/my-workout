@@ -70,7 +70,7 @@ describe.sequential('운동 화면: 종목 추가 시트 검색·필터·즉석 
     await screen.findByRole('heading', { name: '첫 운동을 추가해 주세요.' })
 
     const sheet = await openPickerSheet(user)
-    await user.selectOptions(sheet.getByRole('combobox', { name: '부위로 필터' }), 'back')
+    await user.click(sheet.getByRole('button', { name: '등' }))
 
     // 등(back) 종목만 남고, 가슴 종목은 사라진다.
     expect(sheet.getByRole('button', { name: '체스트 서포티드 시티드 로우' })).toBeTruthy()
@@ -95,6 +95,42 @@ describe.sequential('운동 화면: 종목 추가 시트 검색·필터·즉석 
     expect(sheet.queryByRole('button', { name: '바벨 벤치프레스' })).toBeNull()
     expect(sheet.queryByRole('button', { name: '레그 프레스' })).toBeNull()
     expect(sheet.queryByRole('button', { name: '이지바 컬' })).toBeNull()
+  })
+
+  test('여러 종목은 필터를 바꿔도 선택 순서가 유지되고 한 번에 추가된다', async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByRole('heading', { name: '오늘 어떤 운동을 할까요?' })
+    await user.click(screen.getByRole('button', { name: '자유 운동으로 시작' }))
+    await screen.findByRole('heading', { name: '첫 운동을 추가해 주세요.' })
+
+    const sheet = await openPickerSheet(user)
+    await user.click(sheet.getByRole('button', { name: '바벨 벤치프레스' }))
+    expect(sheet.getByRole('button', { name: '바벨 벤치프레스' }).getAttribute('aria-pressed')).toBe('true')
+
+    await user.click(sheet.getByRole('button', { name: '등' }))
+    await user.click(sheet.getByRole('button', { name: '와이드 그립 랫 풀다운' }))
+    await user.click(sheet.getByRole('button', { name: '전체' }))
+    await user.click(sheet.getByRole('button', { name: '레그 프레스' }))
+
+    const selectedOrder = within(sheet.getByRole('list', { name: '선택한 운동 순서' }))
+    expect(selectedOrder.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '1바벨 벤치프레스',
+      '2와이드 그립 랫 풀다운',
+      '3레그 프레스',
+    ])
+
+    await user.click(sheet.getByRole('button', { name: '선택한 3개 추가' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '종목 추가' })).toBeNull())
+    await waitFor(() => {
+      const draft = JSON.parse(localStorage.getItem(workoutDraftKey) ?? '{}')
+      expect(draft.draft.exercises.map((exercise: { exerciseId: string; exerciseOrder: number }) => [exercise.exerciseId, exercise.exerciseOrder])).toEqual([
+        ['barbell-bench-press', 1],
+        ['lat-pulldown', 2],
+        ['leg-press', 3],
+      ])
+    })
   })
 
   test('검색 조건에 맞는 운동이 없으면 새로 만들라는 안내가 보인다', async () => {
@@ -215,6 +251,7 @@ describe.sequential('운동 화면: 종목 추가 시트 위에 뜨는 새 운�
     expect(sheet.queryByRole('button', { name: '바벨 벤치프레스' })).toBeNull()
 
     await user.click(sheet.getByRole('button', { name: '와이드 그립 랫 풀다운' }))
+    await user.click(sheet.getByRole('button', { name: '선택한 1개 추가' }))
     // 시트는 종목 이름만 보여주지만(브랜드는 배지로 따로), 기록에 들어갈 때는
     // 브랜드를 합친 이름으로 복사된다.
     await screen.findByRole('heading', { name: '노틸러스 와이드 그립 랫 풀다운' })
@@ -248,7 +285,7 @@ describe.sequential('운동 화면: 종목 추가 시트는 열려 있는 동안
     localStorage.clear()
   })
 
-  test('경과 시간을 갱신하는 1초 간격 타이머가 한 번 돌아도 필터 select의 포커스가 유지된다', async () => {
+  test('경과 시간을 갱신하는 1초 간격 타이머가 한 번 돌아도 부위 필터의 포커스가 유지된다', async () => {
     const user = userEvent.setup()
     renderApp()
 
@@ -257,15 +294,15 @@ describe.sequential('운동 화면: 종목 추가 시트는 열려 있는 동안
     await screen.findByRole('heading', { name: '첫 운동을 추가해 주세요.' })
 
     const sheet = await openPickerSheet(user)
-    const muscleSelect = sheet.getByRole('combobox', { name: '부위로 필터' })
+    const muscleFilterButton = sheet.getByRole('button', { name: '등' })
 
     // Move focus off the sheet's own initial-focus target (the search box)
     // onto a control that isn't it. The initial-focus target would trivially
     // "stay" focused even if the mount effect re-ran, since re-running it
     // re-focuses that very same element -- this control is the one that
     // actually exposes the bug.
-    act(() => { muscleSelect.focus() })
-    expect(document.activeElement).toBe(muscleSelect)
+    act(() => { muscleFilterButton.focus() })
+    expect(document.activeElement).toBe(muscleFilterButton)
 
     // WorkoutRunner runs `setInterval(() => setClock(Date.now()), 1_000)` for
     // as long as a draft exists -- exactly the state the sheet can be open
@@ -279,6 +316,6 @@ describe.sequential('운동 화면: 종목 추가 시트는 열려 있는 동안
       await new Promise((resolve) => setTimeout(resolve, 1_100))
     })
 
-    expect(document.activeElement).toBe(muscleSelect)
+    expect(document.activeElement).toBe(muscleFilterButton)
   })
 })

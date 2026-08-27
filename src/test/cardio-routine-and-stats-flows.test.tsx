@@ -62,6 +62,7 @@ describe.sequential('UF-27: 루틴의 유산소 처방과 통계', () => {
     await user.click(await screen.findByRole('button', { name: '종목 추가' }))
     const sheet = within(await screen.findByRole('dialog', { name: '종목 추가' }))
     await user.click(sheet.getByRole('button', { name: '트레드밀' }))
+    await user.click(sheet.getByRole('button', { name: '선택한 1개 추가' }))
 
     // 중량·반복 수 처방 칸은 나오지 않는다.
     await waitFor(() => expect(screen.queryByRole('spinbutton', { name: '1세트 목표 중량' })).toBeNull())

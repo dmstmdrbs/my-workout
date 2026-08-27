@@ -35,11 +35,16 @@ function formatWeightForAssertion(weight: number) {
   return Number.isInteger(weight) ? String(weight) : weight.toFixed(1)
 }
 
-/** Scopes to the visible share panel's card, not the hidden PNG export-target duplicate that renders alongside it. */
-function shareCardExerciseBlock(exerciseName: string) {
-  const panel = document.querySelector('.share-panel')
-  expect(panel).toBeTruthy()
-  const nameEl = within(panel as HTMLElement).getByText(exerciseName, { selector: 'strong' })
+async function openShareLayer(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: '공유' }))
+  return screen.findByRole('dialog', { name: '운동 기록 공유' })
+}
+
+/** Scopes to the visible full-screen card, not the hidden PNG export-target duplicate. */
+function shareCardExerciseBlock(layer: HTMLElement, exerciseName: string) {
+  const shareSection = layer.querySelector('.workout-complete-share')
+  expect(shareSection).toBeTruthy()
+  const nameEl = within(shareSection as HTMLElement).getByText(exerciseName, { selector: 'strong' })
   return nameEl.closest('.share-card-exercise') as HTMLElement
 }
 
@@ -133,8 +138,10 @@ describe.sequential('공유 카드 예상 1RM', () => {
   })
 
   test('가장 무거운 세트가 아니라, 완료 세트 중 e1RM이 가장 높은 세트 기준으로 예상 1RM을 표시한다', async () => {
+    const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
     await screen.findByRole('heading', { name: '운동 기록' })
+    const shareLayer = await openShareLayer(user)
 
     const bestEstimate = Math.max(
       estimateOneRepMax(100, 1) as number,
@@ -145,35 +152,59 @@ describe.sequential('공유 카드 예상 1RM', () => {
     // figure is the higher, lighter-but-more-reps estimate instead.
     expect(bestEstimate).toBeGreaterThan(estimateOneRepMax(100, 1) as number)
 
-    const block = shareCardExerciseBlock(progressiveOverloadExerciseName)
+    const block = shareCardExerciseBlock(shareLayer, progressiveOverloadExerciseName)
     expect(within(block).getByText(`예상 1RM ${formatWeightForAssertion(bestEstimate)}kg`)).toBeTruthy()
   })
 
-  test('체중 운동은 예상 1RM을 표시하지 않는다', async () => {
+  test('완료 세트를 칩 대신 순서가 있는 세로 행 목록으로 표시한다', async () => {
+    const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
     await screen.findByRole('heading', { name: '운동 기록' })
+    const shareLayer = await openShareLayer(user)
 
-    const block = shareCardExerciseBlock(bodyweightExerciseName)
+    const block = shareCardExerciseBlock(shareLayer, progressiveOverloadExerciseName)
+    const setList = block.querySelector('.share-card-exercise-sets')
+    const setRows = block.querySelectorAll('.share-card-set-row')
+
+    expect(setList?.tagName).toBe('OL')
+    expect(setRows).toHaveLength(3)
+    expect(setRows[0]?.tagName).toBe('LI')
+    expect(setRows[0]?.textContent).toContain('S1')
+    expect(setRows[0]?.textContent).toContain('100 kg × 1')
+    expect(setRows[0]?.textContent).toContain('RIR 0')
+  })
+
+  test('체중 운동은 예상 1RM을 표시하지 않는다', async () => {
+    const user = userEvent.setup()
+    renderApp(`/records/${sessionId}`)
+    await screen.findByRole('heading', { name: '운동 기록' })
+    const shareLayer = await openShareLayer(user)
+
+    const block = shareCardExerciseBlock(shareLayer, bodyweightExerciseName)
     expect(block.querySelector('.share-card-e1rm')).toBeNull()
   })
 
   test('완료 세트가 모두 반복 상한을 넘으면 예상 1RM을 표시하지 않는다', async () => {
+    const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
     await screen.findByRole('heading', { name: '운동 기록' })
+    const shareLayer = await openShareLayer(user)
 
-    const block = shareCardExerciseBlock(highRepExerciseName)
+    const block = shareCardExerciseBlock(shareLayer, highRepExerciseName)
     expect(block.querySelector('.share-card-e1rm')).toBeNull()
   })
 
   test('추정 불가한 세트와 가능한 세트가 섞여 있으면, 추정 가능한 세트만으로 예상 1RM을 계산한다', async () => {
+    const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
     await screen.findByRole('heading', { name: '운동 기록' })
+    const shareLayer = await openShareLayer(user)
 
     const onlyEstimableEstimate = estimateOneRepMax(60, 8) as number
     // The other two sets (missing weight, over the rep ceiling) must not
     // contribute -- if they leaked in as 0 or NaN the result would differ
     // from the single estimable set's own e1RM.
-    const block = shareCardExerciseBlock(partialMixExerciseName)
+    const block = shareCardExerciseBlock(shareLayer, partialMixExerciseName)
     expect(within(block).getByText(`예상 1RM ${formatWeightForAssertion(onlyEstimableEstimate)}kg`)).toBeTruthy()
   })
 
@@ -181,8 +212,9 @@ describe.sequential('공유 카드 예상 1RM', () => {
     const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
     await screen.findByRole('heading', { name: '운동 기록' })
+    const shareLayer = await openShareLayer(user)
 
-    await user.click(screen.getByRole('button', { name: 'PNG 저장' }))
+    await user.click(within(shareLayer).getByRole('button', { name: 'PNG 저장' }))
     await screen.findByText('PNG 이미지를 저장했어요.')
     expect(toPngMock).toHaveBeenCalled()
     expect(toPngMock.mock.calls.at(-1)?.[1]).toMatchObject({ width: 540, skipAutoScale: true })

@@ -39,6 +39,7 @@ src/
   App.tsx                         앱 셸, 라우트, 로그인 게이트, 진행 중 운동 토스트
   features/
     dashboard/                    대시보드
+    programs/                     프로그램 카탈로그·템플릿·회차·고정 7일 일정
     workout/                      운동 선택·진행·휴식·초안 복원
     routines/                     루틴 편집
     records/                      운동 기록·공유 PNG 카드
@@ -54,6 +55,7 @@ src/
   types/domain.ts                 앱의 도메인 모델
   test/
     app-user-flows.test.tsx       핵심 사용자 플로우 회귀 테스트
+    program-flows.test.tsx        프로그램 시작·기록·중도 하차·재시작
     settings-flows.test.tsx       UF-12 설정 변경
     signout-flows.test.tsx        UF-12 로그아웃
     body-flows.test.tsx           UF-13 신체 측정 기록
@@ -81,12 +83,14 @@ docs/user-flow-test-plan.md       수동/자동 검증 기준
 9. 테마는 `src/lib/theme.ts`의 `applyTheme()`을 통해서만 적용됩니다. 컴포넌트는 DOM에 `data-theme`이나 `color-scheme`을 직접 설정하거나 `trainlog:theme:v1` localStorage 미러를 직접 쓰면 안 됩니다. 데이터베이스가 진실의 원천이며, 미러는 첫 페인트 깜빡임을 방지하기 위해서만 존재하고, `src/main.tsx`가 React 렌더링 전에 미러를 적용합니다.
 10. 여러 테이블을 함께 바꾸는 저장은 Postgres 함수(RPC)로 한 트랜잭션에 담습니다. 어댑터에서 DELETE 후 INSERT를 나눠 호출하지 않습니다. 함수는 `security invoker`로 정의하고 함수 안에서도 `auth.uid()` 소유권을 검증합니다.
 11. 세션 목록은 필요한 범위만 조회합니다. `listSessions`를 옵션 없이 호출해 전체를 받지 않습니다. 목록은 커서(`startedBefore`), 기간 집계는 `startedAfter`, 단건 참조는 전용 조회(`getLastCompletedSetForExercise`)를 씁니다.
+12. 프로그램 카탈로그는 정적 템플릿이고, 시작한 프로그램만 `program_runs` 회차와 56개의 `program_run_days` 스냅샷으로 저장합니다. 활성 회차의 현재 Day는 내 루틴에 가상 카드로 합치며, 개인 `routines` 행으로 복제하지 않습니다. 중도 하차·완료 시 연결된 `workout_sessions`는 삭제하지 않습니다.
 
 ## 라우팅과 UX
 
 현재 주요 URL은 다음과 같습니다.
 
 - `/` 대시보드
+- `/programs` 8주 프로그램 시작·진행·회차 기록
 - `/workout` 운동 시작/진행/재개
 - `/routines`, `/routines/new`, `/routines/:routineId` 루틴
 - `/records`, `/records/:sessionId` 기록/공유

@@ -51,6 +51,7 @@ describe.sequential('UF-24: 유산소 종목의 시간·거리 기록', () => {
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     const sheet = within(await screen.findByRole('dialog', { name: '종목 추가' }))
     await user.click(sheet.getByRole('button', { name: '트레드밀' }))
+    await user.click(sheet.getByRole('button', { name: '선택한 1개 추가' }))
     await screen.findByRole('heading', { name: '트레드밀' })
   }
 

@@ -130,8 +130,14 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(progress?.textContent).toContain('563kg')
 
     await user.click(screen.getByRole('button', { name: '운동 종료' }))
-
-    await screen.findByRole('heading', { name: /좋은 하루예요/ })
+    const finishDialog = await screen.findByRole('dialog', { name: '운동을 종료할까요?' })
+    expect(localStorage.getItem(workoutDraftKey)).not.toBeNull()
+    await user.click(within(finishDialog).getByRole('button', { name: '계속 운동' }))
+    expect(screen.getByRole('heading', { name: 'Pull Day' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: '운동 종료' }))
+    await user.click(within(await screen.findByRole('dialog', { name: '운동을 종료할까요?' })).getByRole('button', { name: '종료하고 저장' }))
+    await screen.findByRole('heading', { name: '운동을 완료했어요' })
+    expect(screen.getByRole('button', { name: '운동 기록 공유' })).toBeTruthy()
     expect(localStorage.getItem(workoutDraftKey)).toBeNull()
 
     const store = JSON.parse(localStorage.getItem(storeKey) ?? '{}')
@@ -307,6 +313,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     // 종목은 시트에서 고른다. 빈 루틴이라 트리거는 빈 상태 안내 안의 버튼이다.
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await user.click(await screen.findByRole('button', { name: '바벨 벤치프레스' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
 
     const weightInput = screen.getByRole('spinbutton', { name: '1세트 목표 중량' })
     await user.clear(weightInput)
@@ -336,17 +343,24 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(sideNavButton('기록'))
     await screen.findByRole('heading', { name: '운동 기록' })
 
-    const toggle = screen.getByRole('checkbox', { name: '실제 RIR 표시' })
+    expect(document.querySelector('.share-panel')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '공유' }))
+    const shareLayer = await screen.findByRole('dialog', { name: '운동 기록 공유' })
+    const toggle = within(shareLayer).getByRole('checkbox', { name: '실제 RIR 표시' })
     expect((toggle as HTMLInputElement).checked).toBe(true)
+    expect(shareLayer.querySelector('.workout-complete-share .share-card-set-row em')).not.toBeNull()
     await user.click(toggle)
     expect((toggle as HTMLInputElement).checked).toBe(false)
-    expect(document.querySelector('.share-panel .share-card-summary')?.className).toContain('without-rir')
+    expect(shareLayer.querySelector('.workout-complete-share .share-card-summary')?.className).toContain('without-rir')
+    expect(shareLayer.querySelector('.workout-complete-share .share-card-set-row em')).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: 'PNG 저장' }))
+    await user.click(within(shareLayer).getByRole('button', { name: 'PNG 저장' }))
     await screen.findByText('PNG 이미지를 저장했어요.')
     expect(toPngMock).toHaveBeenCalled()
     expect(toPngMock.mock.calls.at(-1)?.[1]).toMatchObject({ width: 540, skipAutoScale: true })
     expect(downloadedFile).toMatch(/^trainlog-\d{4}-\d{2}-\d{2}\.png$/)
+    await user.click(within(shareLayer).getByRole('button', { name: '공유 화면 닫기' }))
+    expect(screen.queryByRole('dialog', { name: '운동 기록 공유' })).toBeNull()
   })
 
   test('UF-04: 진행 중 운동 초안은 화면 재진입 후 복원되고 명시적 취소 시 삭제된다', async () => {
@@ -407,6 +421,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
 
     const sessionCountBeforeEmptyFinish = (JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions ?? []).length
     await user.click(screen.getByRole('button', { name: '운동 종료' }))
+    await user.click(within(await screen.findByRole('dialog', { name: '운동을 종료할까요?' })).getByRole('button', { name: '기록 없이 종료' }))
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
     expect(localStorage.getItem(workoutDraftKey)).toBeNull()
     expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions ?? []).toHaveLength(sessionCountBeforeEmptyFinish)
@@ -419,11 +434,13 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
     await user.click(screen.getByRole('button', { name: '와이드 그립 랫 풀다운' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await user.click(screen.getByRole('button', { name: '순서 변경' }))
     await screen.findByRole('dialog', { name: '운동 순서 변경' })
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스 아래로' }))
@@ -453,7 +470,8 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
 
     await user.click(screen.getByRole('button', { name: '1세트 완료' }))
     await user.click(screen.getByRole('button', { name: '운동 종료' }))
-    await screen.findByRole('heading', { name: /좋은 하루예요/ })
+    await user.click(within(await screen.findByRole('dialog', { name: '운동을 종료할까요?' })).getByRole('button', { name: '종료하고 저장' }))
+    await screen.findByRole('heading', { name: '운동을 완료했어요' })
 
     const store = JSON.parse(localStorage.getItem(storeKey) ?? '{}')
     const savedSession = store.sessions.findLast((session: { routineId: string | null; exercises: Array<{ exerciseName: string }> }) => session.routineId === null && session.exercises[0]?.exerciseName === '노틸러스 와이드 그립 랫 풀다운')

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus, ListX, LoaderCircle, Plus, Save, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { getDateInTimeZone } from '../../lib/localDate'
 import { useAppServices, useSettings } from '../../services'
-import type { Exercise, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
+import type { Exercise, ProgramRun, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
 import { CreateExerciseDialog, ExercisePickerSheet } from '../workout/ExercisePicker'
 import { snapshotExerciseName } from '../workout/exerciseLabels'
 import './RoutineManager.css'
@@ -10,6 +11,7 @@ import './RoutineManager.css'
 interface RoutineManagerData {
   routines: Routine[]
   exercises: Exercise[]
+  activeProgramRun: ProgramRun | null
 }
 
 type RoutineDraft = Omit<Routine, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: string }
@@ -31,7 +33,7 @@ const rirOptions: Array<{ value: Rir; label: string }> = [
 
 const setTypeLabels: Record<SetType, string> = { warmup: '워밍업', working: '작업', dropset: '드롭' }
 
-export function RoutineManager({ initialSelectedRoutineId = null, initialCreate = false, onRoutineChange }: { initialSelectedRoutineId?: string | null; initialCreate?: boolean; onRoutineChange?: (routineId: string | 'new' | null) => void }) {
+export function RoutineManager({ initialSelectedRoutineId = null, initialCreate = false, onRoutineChange, onStartProgramDay }: { initialSelectedRoutineId?: string | null; initialCreate?: boolean; onRoutineChange?: (routineId: string | 'new' | null) => void; onStartProgramDay?: (dayId: string) => void }) {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
   const settingsQuery = useSettings()
@@ -45,11 +47,12 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
   const setupQuery = useQuery({
     queryKey: ['routine-manager-data'],
     queryFn: async (): Promise<RoutineManagerData> => {
-      const [routines, exercises] = await Promise.all([
+      const [routines, exercises, activeProgramRun] = await Promise.all([
         workoutRepository.listRoutines(),
         workoutRepository.listExercises(),
+        workoutRepository.getActiveProgramRun(),
       ])
-      return { routines, exercises }
+      return { routines, exercises, activeProgramRun }
     },
   })
 
@@ -106,7 +109,7 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
     },
   })
 
-  const routineCount = setupQuery.data?.routines.length ?? 0
+  const routineCount = (setupQuery.data?.routines.length ?? 0) + (setupQuery.data?.activeProgramRun ? 1 : 0)
   const isDirty = draft !== null && (lastSavedDraft === null || draftFingerprint(draft) !== draftFingerprint(lastSavedDraft))
 
   const performNavigation = (navigation: PendingNavigation) => {
@@ -148,7 +151,11 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
     return <RoutineManagerError onRetry={() => { void setupQuery.refetch(); void settingsQuery.refetch() }} />
   }
 
-  const { routines, exercises } = setupQuery.data
+  const { routines, exercises, activeProgramRun } = setupQuery.data
+  const today = getDateInTimeZone(settingsQuery.data.timezone)
+  const programDay = activeProgramRun?.days.find((day) => day.scheduledOn === today)
+    ?? (activeProgramRun && today < activeProgramRun.startDate ? activeProgramRun.days[0] : null)
+  const canStartProgramDay = Boolean(programDay && programDay.scheduledOn === today && programDay.dayType !== 'rest' && !programDay.workoutSession)
 
   // Gated on `setupQuery.data` above (not just truthy `routines`) so this
   // never fires during the loading window before the routine list has
@@ -178,10 +185,15 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
       <div className={`routine-manager-layout ${isMobileEditorOpen ? 'is-editor-open' : ''}`}>
         <aside className="routine-list-pane" aria-label="루틴 목록">
           <div className="routine-list-heading"><span>내 루틴</span><strong>{routineCount}</strong></div>
-          {routines.length === 0 ? (
+          {routines.length === 0 && !programDay ? (
             <div className="routine-list-empty"><Dumbbell size={20} aria-hidden="true" /><p>아직 만든 루틴이 없어요.</p></div>
           ) : (
             <div className="routine-list">
+              {programDay && <button className="routine-list-item program-routine-list-item" type="button" onClick={() => canStartProgramDay && onStartProgramDay?.(programDay.id)} disabled={!canStartProgramDay}>
+                <span className="routine-color-dot" aria-hidden="true" />
+                <span className="routine-list-copy"><span>PROGRAM DAY {programDay.dayNumber}</span><strong>{programDay.title}</strong><small>{activeProgramRun!.programName} · {programDay.workoutSession ? '완료' : programDay.dayType === 'rest' ? '휴식일' : programDay.scheduledOn === today ? '오늘 수행' : `${programDay.scheduledOn} 시작`}</small></span>
+                <ChevronRight size={17} aria-hidden="true" />
+              </button>}
               {routines.map((routine) => (
                 <button
                   className={`routine-list-item ${selectedRoutineId === routine.id ? 'is-selected' : ''}`}
@@ -253,21 +265,21 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
 
   const updateExercises = (nextExercises: RoutineExercise[]) => onChange({ exercises: normalizeExerciseOrder(nextExercises) })
 
-  const addExercise = (exercise: Exercise) => {
-    const newExercise: RoutineExercise = {
+  const addExercises = (selectedExercises: Exercise[]) => {
+    const newExercises: RoutineExercise[] = selectedExercises.map((exercise, index) => ({
       id: createId(),
       exerciseId: exercise.id,
       exerciseName: snapshotExerciseName(exercise),
-      exerciseOrder: draft.exercises.length + 1,
+      exerciseOrder: draft.exercises.length + index + 1,
       notes: null,
       sets: [makeSet(1, 'working', exercise.defaultRestSeconds || defaultRestSeconds)],
-    }
-    updateExercises([...draft.exercises, newExercise])
+    }))
+    updateExercises([...draft.exercises, ...newExercises])
   }
 
-  const selectExerciseFromPicker = (exercise: Exercise) => {
+  const selectExercisesFromPicker = (selectedExercises: Exercise[]) => {
     setIsPickerOpen(false)
-    addExercise(exercise)
+    addExercises(selectedExercises)
   }
 
   // 새로 만든 종목은 시트로 돌아가지 않고 곧장 루틴에 들어간다 -- 방금 만든
@@ -275,7 +287,7 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
   const addCreatedExercise = (exercise: Exercise) => {
     setIsCreateOpen(false)
     setIsPickerOpen(false)
-    addExercise(exercise)
+    addExercises([exercise])
   }
 
   const updateExercise = (exerciseId: string, changes: Partial<RoutineExercise>) => {
@@ -373,7 +385,8 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
       isOpen={isPickerOpen}
       exercises={exercises}
       onClose={() => setIsPickerOpen(false)}
-      onSelect={selectExerciseFromPicker}
+      selectionMode="multiple"
+      onSelectMany={selectExercisesFromPicker}
       onOpenCreate={() => setIsCreateOpen(true)}
     />
     <CreateExerciseDialog

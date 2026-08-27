@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        importScripts: ['notification-click.js'],
+      },
       manifest: {
         name: 'Trainlog',
         short_name: 'Trainlog',

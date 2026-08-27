@@ -1,0 +1,44 @@
+.one-rep-max-sheet { width: min(100%, 520px); }
+.one-rep-max-header { display: flex; flex-shrink: 0; align-items: flex-start; justify-content: space-between; padding: 21px; border-bottom: 1px solid var(--border); }
+.one-rep-max-header h2 { margin-top: 5px; font-size: 1.16rem; }
+.one-rep-max-intro { display: flex; gap: 12px; margin: 16px 20px 4px; padding: 14px; color: var(--accent); background: var(--accent-subtle); border: 1px solid var(--accent-border); border-radius: 12px; }
+.one-rep-max-intro svg { flex: 0 0 auto; margin-top: 2px; }
+.one-rep-max-intro p { display: grid; gap: 4px; margin: 0; }
+.one-rep-max-intro strong { color: var(--text); font-size: .82rem; }
+.one-rep-max-intro span { color: var(--text-muted); font-size: .72rem; line-height: 1.5; }
+.one-rep-max-fields { display: grid; min-height: 0; gap: 7px; padding: 12px 20px; overflow-y: auto; }
+.one-rep-max-fields label { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 58px; padding: 8px 10px 8px 13px; background: var(--surface-subtle); border: 1px solid transparent; border-radius: 10px; }
+.one-rep-max-fields label:focus-within { border-color: var(--accent-border); background: var(--accent-subtle); }
+.one-rep-max-fields label > span:first-child { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.one-rep-max-fields em { color: var(--text-muted); font-size: .62rem; font-style: normal; font-weight: 800; }
+.one-rep-max-fields strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.one-rep-max-input { display: flex; flex: 0 0 108px; align-items: center; gap: 6px; }
+.one-rep-max-input input { width: 78px; min-height: 39px; padding: 0 8px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; text-align: right; font: inherit; font-size: .88rem; font-weight: 800; }
+.one-rep-max-input small { color: var(--text-muted); font-size: .7rem; font-weight: 750; }
+.one-rep-max-note { margin: 0; padding: 0 20px 12px; color: var(--text-muted); font-size: .68rem; }
+.one-rep-max-error { margin: 0 20px 10px; padding: 9px 11px; color: var(--danger); background: var(--danger-subtle); border-radius: 8px; font-size: .75rem; }
+.one-rep-max-actions { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 8px; padding: 13px 20px max(17px, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.one-rep-max-actions button { min-height: 42px; }
+
+@media (max-width: 560px) {
+  .one-rep-max-header { padding-inline: 16px; }
+  .one-rep-max-intro { margin-inline: 16px; }
+  .one-rep-max-fields { padding-inline: 16px; }
+  .one-rep-max-actions { padding-inline: 16px; }
+  .one-rep-max-actions .primary-button { flex: 1; }
+}
+
+.one-rep-max-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.one-rep-max-settings-input { display: flex; align-items: center; gap: 8px; }
+.one-rep-max-settings-input input { width: 100%; }
+.one-rep-max-settings-input small { color: var(--text-muted); font-size: .72rem; font-weight: 750; }
+.one-rep-max-settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.one-rep-max-settings-footer p, .one-rep-max-settings-status { color: var(--text-muted); font-size: .72rem; line-height: 1.5; }
+.one-rep-max-settings-footer button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+.one-rep-max-settings .one-rep-max-error { margin: 0; }
+
+@media (max-width: 560px) {
+  .one-rep-max-settings-grid { grid-template-columns: 1fr; }
+  .one-rep-max-settings-footer { align-items: stretch; flex-direction: column; }
+  .one-rep-max-settings-footer button { justify-content: center; }
+}

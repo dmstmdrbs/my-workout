@@ -64,6 +64,7 @@ describe.sequential('UF-12: 로그아웃', () => {
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await waitFor(() => expect(localStorage.getItem('trainlog:workout-draft:v1')).not.toBeNull())
 
     await user.click(screen.getAllByRole('button', { name: '설정' })[0])

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ListChecks, Plus, Search, X } from 'lucide-react'
+import { Check, ListChecks, Plus, Search, X } from 'lucide-react'
 import { Overlay } from '../../components/Overlay'
 import { useAppServices } from '../../services'
 import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
@@ -15,7 +15,9 @@ interface ExercisePickerSheetProps {
   isOpen: boolean
   exercises: Exercise[]
   onClose: () => void
-  onSelect: (exercise: Exercise) => void
+  onSelect?: (exercise: Exercise) => void
+  onSelectMany?: (exercises: Exercise[]) => void
+  selectionMode?: 'single' | 'multiple'
   /**
    * 운동 진행 화면은 즉석에서 새 운동을 만들 수 있어야 하지만, 통계처럼
    * 기존 운동의 기록을 조회하기만 하는 화면에는 만들기 동작 자체가 없다
@@ -26,19 +28,29 @@ interface ExercisePickerSheetProps {
   onOpenCreate?: () => void
 }
 
-export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOpenCreate }: ExercisePickerSheetProps) {
+export function ExercisePickerSheet({
+  isOpen,
+  exercises,
+  onClose,
+  onSelect,
+  onSelectMany,
+  selectionMode = 'single',
+  onOpenCreate,
+}: ExercisePickerSheetProps) {
   // 시트에서 바로 종목 관리로 갈 수 있어야, 운동 중에 브랜드를 잘못 고른 종목을
   // 그 자리에서 고칠 수 있다. 진행 중인 초안은 저장돼 있어 나갔다 와도 이어진다.
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [muscleFilter, setMuscleFilter] = useState<MuscleFilter>('all')
   const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilter>('all')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!isOpen) return
     setSearch('')
     setMuscleFilter('all')
     setEquipmentFilter('all')
+    setSelectedIds([])
   }, [isOpen])
 
   const term = search.trim().toLowerCase()
@@ -48,6 +60,25 @@ export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOp
     if (equipmentFilter !== 'all' && exercise.equipment !== equipmentFilter) return false
     return true
   })
+  const selectedExercises = selectedIds.flatMap((id) => {
+    const exercise = exercises.find((item) => item.id === id)
+    return exercise ? [exercise] : []
+  })
+
+  const handleExerciseClick = (exercise: Exercise) => {
+    if (selectionMode === 'single') {
+      onSelect?.(exercise)
+      return
+    }
+    setSelectedIds((current) => current.includes(exercise.id)
+      ? current.filter((id) => id !== exercise.id)
+      : [...current, exercise.id])
+  }
+
+  const confirmSelection = () => {
+    if (selectedExercises.length === 0) return
+    onSelectMany?.(selectedExercises)
+  }
 
   return <Overlay isOpen={isOpen} onClose={onClose} presentation="sheet" labelledBy="exercise-picker-title" className="exercise-picker-sheet">
     <header className="exercise-picker-header">
@@ -71,14 +102,14 @@ export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOp
           data-overlay-initial-focus
         />
       </label>
-      <label>
+      <div className="exercise-picker-muscle-filter" role="group" aria-label="부위로 필터">
         <span className="exercise-picker-filter-label">부위</span>
-        <select aria-label="부위로 필터" value={muscleFilter} onChange={(event) => setMuscleFilter(event.target.value as MuscleFilter)}>
-          <option value="all">전체</option>
-          {muscleGroups.map((muscle) => <option value={muscle} key={muscle}>{muscleLabel(muscle)}</option>)}
-        </select>
-      </label>
-      <label>
+        <div className="exercise-picker-filter-chips">
+          <button type="button" aria-pressed={muscleFilter === 'all'} onClick={() => setMuscleFilter('all')}>전체</button>
+          {muscleGroups.map((muscle) => <button type="button" aria-pressed={muscleFilter === muscle} onClick={() => setMuscleFilter(muscle)} key={muscle}>{muscleLabel(muscle)}</button>)}
+        </div>
+      </div>
+      <label className="exercise-picker-equipment-filter">
         <span className="exercise-picker-filter-label">장비</span>
         <select aria-label="장비로 필터" value={equipmentFilter} onChange={(event) => setEquipmentFilter(event.target.value as EquipmentFilter)}>
           <option value="all">전체</option>
@@ -88,17 +119,52 @@ export function ExercisePickerSheet({ isOpen, exercises, onClose, onSelect, onOp
     </div>
 
     <ul className="exercise-picker-list">
-      {filtered.map((exercise) => <li key={exercise.id}>
-        <button type="button" className="exercise-picker-item" aria-label={exercise.name} onClick={() => onSelect(exercise)}>
-          <span className="exercise-picker-item-name">
-            {exercise.brand && <span className="exercise-brand-badge">{brandLabel(exercise.brand)}</span>}
-            {exercise.name}
-          </span>
-          <span className="exercise-picker-item-meta">{muscleLabel(exercise.primaryMuscle)} · {equipmentLabel(exercise.equipment)}</span>
-        </button>
-      </li>)}
+      {filtered.map((exercise) => {
+        const selectionIndex = selectedIds.indexOf(exercise.id)
+        const isSelected = selectionIndex >= 0
+        return <li key={exercise.id}>
+          <button
+            type="button"
+            className={`exercise-picker-item${isSelected ? ' exercise-picker-item--selected' : ''}`}
+            aria-label={exercise.name}
+            aria-pressed={selectionMode === 'multiple' ? isSelected : undefined}
+            onClick={() => handleExerciseClick(exercise)}
+          >
+            <span className="exercise-picker-item-copy">
+              <span className="exercise-picker-item-name">
+                {exercise.brand && <span className="exercise-brand-badge">{brandLabel(exercise.brand)}</span>}
+                {exercise.name}
+              </span>
+              <span className="exercise-picker-item-meta">{muscleLabel(exercise.primaryMuscle)} · {equipmentLabel(exercise.equipment)}</span>
+            </span>
+            {selectionMode === 'multiple' && <span className="exercise-picker-selection-mark" aria-hidden="true">
+              {isSelected ? selectionIndex + 1 : <Check size={14} />}
+            </span>}
+          </button>
+        </li>
+      })}
       {filtered.length === 0 && <li className="exercise-picker-empty">조건에 맞는 운동이 없어요. 새로 만들어 보세요.</li>}
     </ul>
+
+    {selectionMode === 'multiple' && <footer className="exercise-picker-selection-footer">
+      <div className="exercise-picker-selection-summary" aria-live="polite">
+        <div>
+          <strong>{selectedExercises.length > 0 ? `${selectedExercises.length}개 선택` : '운동을 선택해 주세요'}</strong>
+          <span>{selectedExercises.length > 0 ? '선택한 순서대로 추가돼요' : '여러 종목을 한 번에 담을 수 있어요'}</span>
+        </div>
+        {selectedExercises.length > 0 && <button type="button" onClick={() => setSelectedIds([])}>전체 해제</button>}
+      </div>
+      {selectedExercises.length > 0 && <ol className="exercise-picker-selected-list" aria-label="선택한 운동 순서">
+        {selectedExercises.map((exercise, index) => <li key={exercise.id}>
+          <button type="button" onClick={() => handleExerciseClick(exercise)} aria-label={`${exercise.name} 선택 해제`}>
+            <span>{index + 1}</span>{exercise.name}<X size={12} aria-hidden="true" />
+          </button>
+        </li>)}
+      </ol>}
+      <button className="primary-button exercise-picker-confirm" type="button" disabled={selectedExercises.length === 0} onClick={confirmSelection}>
+        {selectedExercises.length > 0 ? `선택한 ${selectedExercises.length}개 추가` : '운동을 선택해 주세요'}
+      </button>
+    </footer>}
   </Overlay>
 }
 

@@ -59,6 +59,7 @@ describe.sequential('운동 화면: 지난 기록 조회 실패 내성', () => {
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
     const draft = JSON.parse(localStorage.getItem(workoutDraftKey) ?? '{}')

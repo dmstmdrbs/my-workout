@@ -4,6 +4,7 @@ import { LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'luc
 import { useAppServices, useSettings, userSettingsQueryKey } from '../../services'
 import { applyTheme } from '../../lib/theme'
 import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../workout/activeWorkoutDraft'
+import { OneRepMaxSettingsCard } from '../programs/OneRepMaxSettingsCard'
 import type { Theme, UserProfile, UserSettings } from '../../types/domain'
 import './Settings.css'
 
@@ -69,6 +70,8 @@ export function Settings() {
       {error && <p className="settings-error" role="alert">{error}</p>}
 
       <ProfileSection profile={profileQuery.data} onError={setError} />
+
+      <OneRepMaxSettingsCard />
 
       <section className="settings-card" aria-labelledby="settings-theme-title">
         <div className="settings-card-heading">

@@ -46,6 +46,7 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
     // Record a distinctive new value, distinct from the seeded history, and
@@ -57,7 +58,10 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     await user.click(screen.getByRole('button', { name: '1세트 완료' }))
 
     await user.click(screen.getByRole('button', { name: '운동 종료' }))
+    await user.click(screen.getByRole('button', { name: '종료하고 저장' }))
     await waitFor(() => expect(screen.queryByRole('heading', { name: '바벨 벤치프레스' })).toBeNull())
+    await screen.findByRole('heading', { name: '운동을 완료했어요' })
+    await user.click(screen.getByRole('button', { name: '홈으로' }))
 
     // Immediately (well within the 30s staleTime) start a second workout and
     // re-add the same exercise. "운동 시작" renders twice (sidebar nav-link
@@ -70,6 +74,7 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
     // The workout finished a moment ago must be reflected as "지난 기록"

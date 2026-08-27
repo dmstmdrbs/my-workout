@@ -43,7 +43,7 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ')
 
-export type OverlayPresentation = 'sheet' | 'dialog'
+export type OverlayPresentation = 'sheet' | 'dialog' | 'fullscreen'
 
 export interface OverlayProps {
   isOpen: boolean

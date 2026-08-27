@@ -9,6 +9,8 @@ export type WeightUnit = 'kg' | 'lb'
 export type Theme = 'system' | 'light' | 'dark'
 export type SetType = 'warmup' | 'working' | 'dropset'
 export type SessionStatus = 'in_progress' | 'completed' | 'abandoned'
+export type ProgramRunStatus = 'active' | 'completed' | 'withdrawn'
+export type ProgramDayType = 'strength' | 'cardio' | 'rest'
 export type Equipment = 'barbell' | 'dumbbell' | 'machine' | 'cable' | 'bodyweight' | 'cardio' | 'other'
 
 /**
@@ -78,6 +80,13 @@ export interface Exercise {
   defaultRestSeconds: number
   isArchived: boolean
   createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
+
+export interface ExerciseOneRepMax {
+  userId: Id
+  exerciseId: Id
+  oneRepMaxKg: number
   updatedAt: IsoDateTime
 }
 
@@ -155,6 +164,8 @@ export interface WorkoutSession {
   userId: Id
   routineId: Id | null
   routineName: string | null
+  /** Set only when this session was started from a fixed program Day. */
+  programRunDayId?: Id | null
   status: SessionStatus
   startedAt: IsoDateTime
   completedAt: IsoDateTime | null
@@ -170,6 +181,103 @@ export interface WorkoutSession {
   exercises: WorkoutExercise[]
   createdAt: IsoDateTime
   updatedAt: IsoDateTime
+}
+
+export interface ProgramSetPrescription {
+  setOrder: number
+  setType: SetType
+  targetWeightKg: number | null
+  /** 프로그램 시작 시 저장된 1RM을 기준으로 targetWeightKg를 계산한다. */
+  targetOneRepMaxPercent?: number | null
+  targetRepsMin: number | null
+  targetRepsMax: number | null
+  targetRir: Rir
+  restSeconds: number | null
+  notes: string | null
+}
+
+export interface ProgramExercisePrescription {
+  exerciseName: string
+  /** 변형 동작이 다른 종목의 1RM을 공유할 때 사용한다. 예: 일시정지 스쿼트 -> 스쿼트. */
+  oneRepMaxExerciseName?: string | null
+  exerciseOrder: number
+  notes: string | null
+  sets: ProgramSetPrescription[]
+}
+
+export interface ProgramRoutineSnapshot {
+  description: string | null
+  exercises: ProgramExercisePrescription[]
+}
+
+export interface ProgramCardioTarget {
+  exerciseName: string
+  distanceKm: number | null
+  durationMinutes: number | null
+  rpeMin: number | null
+  rpeMax: number | null
+}
+
+export interface ProgramDaySessionSummary {
+  id: Id
+  routineName: string | null
+  startedAt: IsoDateTime
+  completedAt: IsoDateTime | null
+}
+
+export interface ProgramRunDay {
+  id: Id
+  userId: Id
+  programRunId: Id
+  dayNumber: number
+  weekNumber: number
+  dayOfWeek: number
+  scheduledOn: string
+  dayType: ProgramDayType
+  title: string
+  instructions: string | null
+  routineSnapshot: ProgramRoutineSnapshot | null
+  cardioTarget: ProgramCardioTarget | null
+  isOptional: boolean
+  completedAt: IsoDateTime | null
+  workoutSession: ProgramDaySessionSummary | null
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
+
+export interface ProgramRun {
+  id: Id
+  userId: Id
+  programKey: string
+  programName: string
+  templateVersion: number
+  durationWeeks: number
+  startDate: string
+  status: ProgramRunStatus
+  endedAt: IsoDateTime | null
+  endReason: string | null
+  days: ProgramRunDay[]
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+}
+
+export interface StartProgramDayInput {
+  dayNumber: number
+  dayType: ProgramDayType
+  title: string
+  instructions: string | null
+  routineSnapshot: ProgramRoutineSnapshot | null
+  cardioTarget: ProgramCardioTarget | null
+  isOptional: boolean
+}
+
+export interface StartProgramRunInput {
+  programKey: string
+  programName: string
+  templateVersion: number
+  durationWeeks: number
+  startDate: string
+  days: StartProgramDayInput[]
 }
 
 export interface BodyMeasurement {

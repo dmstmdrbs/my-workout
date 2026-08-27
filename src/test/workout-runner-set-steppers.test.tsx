@@ -46,6 +46,7 @@ describe.sequential('운동 화면: 세트 중량/횟수 증감 버튼', () => {
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
     await user.click(screen.getByRole('button', { name: '레그 프레스' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     const card = within((await screen.findByRole('heading', { name: '레그 프레스' })).closest('section')!)
 
     const weightInput = card.getByRole('spinbutton', { name: '1세트 중량 (kg)' }) as HTMLInputElement
@@ -80,5 +81,12 @@ describe.sequential('운동 화면: 세트 중량/횟수 증감 버튼', () => {
     // Floor is 0 for reps too.
     await user.click(card.getByRole('button', { name: '1세트 횟수 1 감소' }))
     await waitFor(() => expect(readFirstSet().reps).toBe(0))
+
+    expect(screen.getByRole('combobox', { name: '1세트 실제 RIR 선택' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: '휴식 시간 10초 늘리기' }))
+    const restTimer = within(screen.getByRole('article', { name: '휴식 타이머' }))
+    expect(restTimer.getByText('00:10')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: '휴식 시간 10초 줄이기' }))
+    expect(restTimer.getByText('00:00')).toBeTruthy()
   })
 })

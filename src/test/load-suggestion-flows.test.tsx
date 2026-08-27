@@ -58,6 +58,7 @@ describe.sequential('UF-28: RIR 기반 중량 제안', () => {
     await user.click(await screen.findByRole('button', { name: '종목 추가' }))
     const sheet = within(await screen.findByRole('dialog', { name: '종목 추가' }))
     await user.click(sheet.getByRole('button', { name: '바벨 벤치프레스' }))
+    await user.click(sheet.getByRole('button', { name: '선택한 1개 추가' }))
 
     const note = await screen.findByRole('note')
     expect(note.textContent).toContain('계획보다 힘들었어요')

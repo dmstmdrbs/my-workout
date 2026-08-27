@@ -158,6 +158,7 @@ describe.sequential('일시정지: 러너 화면 동작', () => {
     fireEvent.click(screen.getByRole('button', { name: '종목 추가' }))
     expect(screen.getByRole('dialog', { name: '종목 추가' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
+    fireEvent.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await flushSetupQuery()
     expect(screen.getByRole('heading', { name: '바벨 벤치프레스' })).toBeTruthy()
 
@@ -171,6 +172,7 @@ describe.sequential('일시정지: 러너 화면 동작', () => {
     act(() => { vi.advanceTimersByTime(90_000) })
 
     fireEvent.click(screen.getByRole('button', { name: '운동 종료' }))
+    fireEvent.click(screen.getByRole('button', { name: '종료하고 저장' }))
     await flushSetupQuery()
 
     const store = JSON.parse(localStorage.getItem('trainlog:mock-store:v1') ?? '{}') as { sessions?: Array<{ pausedSeconds: number; status: string }> }

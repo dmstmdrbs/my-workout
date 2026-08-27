@@ -1,10 +1,12 @@
 .overlay-backdrop { display: grid; position: fixed; inset: 0; place-items: center; padding: 20px; background: rgb(16 24 40 / .42); }
 .overlay-backdrop--sheet { align-items: end; padding: 0; }
+.overlay-backdrop--fullscreen { padding: 0; background: var(--bg); }
 
 .overlay-panel { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-float); overscroll-behavior: contain; }
 .overlay-panel:focus-visible, .overlay-panel:focus { outline: 0; }
 
 .overlay-panel--dialog { width: min(100%, 440px); max-height: min(680px, calc(100dvh - 40px)); overflow: auto; border-radius: var(--radius-md); }
+.overlay-panel--fullscreen { display: flex; width: 100%; height: 100dvh; flex-direction: column; overflow: hidden; background: var(--bg); border: 0; box-shadow: none; }
 
 /* The sheet is a fixed header/filters area plus a scrolling list, not one
    scrolling block -- otherwise the search box and filters (and the `+` in

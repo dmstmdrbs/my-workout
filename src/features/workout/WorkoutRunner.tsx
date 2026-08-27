@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Check,
+  Bell,
+  BellOff,
   Clock3,
   Dumbbell,
   GripVertical,
@@ -14,14 +16,17 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { Overlay } from '../../components/Overlay'
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { suggestNextLoad } from '../../lib/loadSuggestion'
 import { formatRelativeDay } from '../../lib/relativeDay'
 import { playRestFinishedAlert, primeRestAlert } from '../../lib/restAlert'
 import { requestScreenWakeLock } from '../../lib/wakeLock'
+import { getDateInTimeZone } from '../../lib/localDate'
+import { disableRestAlerts, notifyRestComplete, readRestAlertsEnabled, requestRestAlerts } from '../../lib/restAlerts'
 import { useAppServices, useSettings } from '../../services'
-import type { Equipment, Exercise, Id, IsoDateTime, Routine, Rir, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
+import type { Equipment, Exercise, Id, IsoDateTime, ProgramRun, ProgramRunDay, Routine, Rir, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
   readStoredWorkoutDraft,
@@ -38,16 +43,20 @@ interface WorkoutRunnerProps {
   onFinish: (sessionId: string) => void
   onCancel: () => void
   onDraftStateChange?: (draft: StoredWorkoutDraft | null) => void
+  initialProgramRunDayId?: string | null
+  onSelectProgramDay?: (dayId: string) => void
 }
 
 interface WorkoutSetupData {
   routines: Routine[]
   exercises: Exercise[]
+  programDay: ProgramRunDay | null
+  activeProgramRun: ProgramRun | null
 }
 
 function lastCompletedSetQueryKey(exerciseId: string) { return ['last-completed-set', exerciseId] as const }
 
-export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: WorkoutRunnerProps) {
+export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialProgramRunDayId = null, onSelectProgramDay }: WorkoutRunnerProps) {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
   const settingsQuery = useSettings()
@@ -58,20 +67,24 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   const [restEndsAt, setRestEndsAt] = useState<number | null>(restoredDraft?.restEndsAt ?? null)
   const [pausedAt, setPausedAt] = useState<number | null>(restoredDraft?.pausedAt ?? null)
   const [clock, setClock] = useState(Date.now())
+  const [restAlertsEnabled, setRestAlertsEnabled] = useState(readRestAlertsEnabled)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isReorderOpen, setIsReorderOpen] = useState(false)
+  const [isFinishConfirmOpen, setIsFinishConfirmOpen] = useState(false)
   const [draggingExerciseId, setDraggingExerciseId] = useState<string | null>(null)
   const draggingExerciseIdRef = useRef<string | null>(null)
 
   const setupQuery = useQuery({
-    queryKey: ['workout-runner-setup'],
+    queryKey: ['workout-runner-setup', initialProgramRunDayId],
     queryFn: async (): Promise<WorkoutSetupData> => {
-      const [routines, exercises] = await Promise.all([
+      const [routines, exercises, programDay, activeProgramRun] = await Promise.all([
         workoutRepository.listRoutines(),
         workoutRepository.listExercises(),
+        initialProgramRunDayId ? workoutRepository.getProgramRunDay(initialProgramRunDayId) : Promise.resolve(null),
+        workoutRepository.getActiveProgramRun(),
       ])
-      return { routines, exercises }
+      return { routines, exercises, programDay, activeProgramRun }
     },
   })
 
@@ -82,11 +95,16 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   }, [draft])
 
   useEffect(() => {
-    if (restEndsAt !== null && restEndsAt <= clock) {
-      setRestEndsAt(null)
-      playRestFinishedAlert()
-    }
-  }, [clock, restEndsAt])
+    if (!draft || restEndsAt === null) return
+    const targetEnd = restEndsAt
+    const timeout = window.setTimeout(() => {
+      setClock(Date.now())
+      if (document.visibilityState === 'visible') playRestFinishedAlert()
+      else if (restAlertsEnabled) void notifyRestComplete()
+      setRestEndsAt((current) => current === targetEnd ? null : current)
+    }, Math.max(0, restEndsAt - Date.now()))
+    return () => window.clearTimeout(timeout)
+  }, [draft, restAlertsEnabled, restEndsAt])
 
   // 설정은 이 아래 이른 반환보다 뒤에서 구조 분해되지만, 훅은 반환 위에
   // 있어야 하므로 여기서 값만 꺼내 쓴다.
@@ -124,6 +142,8 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
       void queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
       void queryClient.invalidateQueries({ queryKey: ['completed-workout-records'] })
       void queryClient.invalidateQueries({ queryKey: ['workout-runner-setup'] })
+      void queryClient.invalidateQueries({ queryKey: ['program-runs'] })
+      void queryClient.invalidateQueries({ queryKey: ['active-program-run'] })
       // 방금 끝낸 운동이 루틴 선택 화면의 "마지막 수행"에 바로 반영되도록.
       void queryClient.invalidateQueries({ queryKey: routineLastPerformedQueryKey })
       // Prefix match (no `exact: true`) so every exercise id under
@@ -140,7 +160,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     return <RunnerError onRetry={() => { void setupQuery.refetch(); void settingsQuery.refetch() }} onCancel={onCancel} />
   }
 
-  const { routines, exercises } = setupQuery.data
+  const { routines, exercises, programDay, activeProgramRun } = setupQuery.data
   const { weightUnit, defaultRestSeconds, defaultRir, rirInputEnabled } = settingsQuery.data
   const selectedRoutine = routines.find((routine) => routine.id === selectedRoutineId) ?? routines[0]
   const remainingRest = restEndsAt === null ? 0 : Math.max(0, Math.ceil((restEndsAt - clock) / 1_000))
@@ -184,6 +204,24 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     setRestEndsAt(Date.now() + duration * 1_000)
   }
 
+  const adjustRest = (seconds: number) => {
+    const now = Date.now()
+    setClock(now)
+    setRestEndsAt((current) => {
+      const next = Math.max(now, Math.max(current ?? now, now) + seconds * 1_000)
+      return next === now ? null : next
+    })
+  }
+
+  const toggleRestAlerts = async () => {
+    if (restAlertsEnabled) {
+      disableRestAlerts()
+      setRestAlertsEnabled(false)
+      return
+    }
+    setRestAlertsEnabled(await requestRestAlerts())
+  }
+
   const toggleSetComplete = (exerciseId: string, set: WorkoutSetRecord) => {
     const nextCompleted = !set.isCompleted
     updateSet(exerciseId, set.id, { isCompleted: nextCompleted, completedAt: nextCompleted ? new Date().toISOString() : null })
@@ -217,39 +255,40 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     })
   }
 
-  const addExercise = async (exercise: Exercise) => {
-    if (!draft) return
-    const exerciseOrder = draft.exercises.length + 1
-    let previousSet: WorkoutSetRecord | null = null
-    try {
-      previousSet = await queryClient.fetchQuery({
-        queryKey: lastCompletedSetQueryKey(exercise.id),
-        queryFn: () => workoutRepository.getLastCompletedSetForExercise(exercise.id),
-      })
-    } catch {
-      // 지난 기록을 못 불러와도 종목 추가는 막지 않는다. 빈 세트로 추가한다.
-      previousSet = null
-    }
-    const nextExercise = createFreeWorkoutExercise({
+  const addExercises = async (selectedExercises: Exercise[]) => {
+    if (!draft || selectedExercises.length === 0) return
+    const previousSets = await Promise.all(selectedExercises.map(async (exercise) => {
+      try {
+        return await queryClient.fetchQuery({
+          queryKey: lastCompletedSetQueryKey(exercise.id),
+          queryFn: () => workoutRepository.getLastCompletedSetForExercise(exercise.id),
+        })
+      } catch {
+        // 한 종목의 지난 기록 조회가 실패해도 나머지 선택 종목은 모두 추가한다.
+        return null
+      }
+    }))
+    const firstExerciseOrder = draft.exercises.length + 1
+    const nextExercises = selectedExercises.map((exercise, index) => createFreeWorkoutExercise({
       exercise,
-      exerciseOrder,
-      previousSet,
+      exerciseOrder: firstExerciseOrder + index,
+      previousSet: previousSets[index],
       defaultRestSeconds,
       defaultRir,
-    })
-    setDraft((current) => current ? { ...current, exercises: [...current.exercises, nextExercise] } : current)
-    setActiveExerciseId(nextExercise.id)
+    }))
+    setDraft((current) => current ? { ...current, exercises: [...current.exercises, ...nextExercises] } : current)
+    setActiveExerciseId(nextExercises.at(-1)?.id ?? null)
   }
 
-  const selectExerciseFromPicker = (exercise: Exercise) => {
+  const selectExercisesFromPicker = (selectedExercises: Exercise[]) => {
     setIsPickerOpen(false)
-    void addExercise(exercise)
+    void addExercises(selectedExercises)
   }
 
   const addCreatedExercise = (exercise: Exercise) => {
     setIsCreateOpen(false)
     setIsPickerOpen(false)
-    void addExercise(exercise)
+    void addExercises([exercise])
   }
 
   const beginWorkout = () => {
@@ -283,9 +322,26 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
     setActiveExerciseId(null)
   }
 
+  const beginProgramWorkout = () => {
+    const storedDraft = readStoredWorkoutDraft()
+    if (storedDraft) {
+      setDraft(storedDraft.draft)
+      setActiveExerciseId(storedDraft.activeExerciseId)
+      setRestEndsAt(storedDraft.restEndsAt)
+      setPausedAt(storedDraft.pausedAt)
+      setClock(Date.now())
+      return
+    }
+    if (!programDay) return
+    const session = createProgramDraft(programDay, exercises)
+    setDraft(session)
+    setActiveExerciseId(session.exercises[0]?.id ?? null)
+  }
+
   const finishWorkout = () => {
     if (!draft || finishMutation.isPending) return
     if (completedSetCount(draft) === 0) {
+      setIsFinishConfirmOpen(false)
       clearStoredWorkoutDraft()
       setDraft(null)
       setActiveExerciseId(null)
@@ -372,10 +428,23 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
   }
 
   if (!draft) {
+    if (initialProgramRunDayId) {
+      if (!programDay) return <ProgramDayUnavailable onCancel={onCancel} />
+      const missingExercises = getMissingProgramExercises(programDay, exercises)
+      return <ProgramDayStarter
+        day={programDay}
+        missingExercises={missingExercises}
+        onBegin={beginProgramWorkout}
+        onCancel={onCancel}
+      />
+    }
     return <RoutinePicker
       routines={routines}
+      activeProgramRun={activeProgramRun}
+      timezone={settingsQuery.data.timezone}
       selectedRoutine={selectedRoutine}
       onSelect={(routineId) => setSelectedRoutineId(routineId)}
+      onSelectProgramDay={(dayId) => onSelectProgramDay?.(dayId)}
       onBegin={beginWorkout}
       onBeginFree={beginFreeWorkout}
       onCancel={onCancel}
@@ -411,7 +480,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
             {isPaused ? <Play size={16} /> : <Pause size={16} />}
           </button>
           <button className="runner-text-button" type="button" onClick={cancelWorkout}><X size={17} /> 나가기</button>
-          <button className="primary-button" type="button" onClick={finishWorkout} disabled={finishMutation.isPending}>
+          <button className="primary-button" type="button" onClick={() => setIsFinishConfirmOpen(true)} disabled={finishMutation.isPending}>
             <Save size={17} /> {finishMutation.isPending ? '저장 중…' : '운동 종료'}
           </button>
         </div>
@@ -446,12 +515,13 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
         </button>}
       </div>
 
-      <div className="rest-timer-dock"><RestTimer remaining={remainingRest} isRunning={restIsRunning} onRestart={() => startRest(restartRestSeconds())} onStop={() => setRestEndsAt(null)} compact /></div>
+      <div className="rest-timer-dock"><RestTimer remaining={remainingRest} isRunning={restIsRunning} alertsEnabled={restAlertsEnabled} onAdjust={adjustRest} onToggleAlerts={() => void toggleRestAlerts()} onRestart={() => startRest(restartRestSeconds())} onStop={() => setRestEndsAt(null)} compact /></div>
       <ExercisePickerSheet
         isOpen={isPickerOpen}
         exercises={exercises}
         onClose={() => setIsPickerOpen(false)}
-        onSelect={selectExerciseFromPicker}
+        selectionMode="multiple"
+        onSelectMany={selectExercisesFromPicker}
         onOpenCreate={() => setIsCreateOpen(true)}
       />
       <CreateExerciseDialog
@@ -469,6 +539,27 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: Workou
         onPointerUp={endReorderDrag}
         onPointerCancel={cancelReorderDrag}
       />}
+      <Overlay
+        isOpen={isFinishConfirmOpen}
+        onClose={() => { if (!finishMutation.isPending) setIsFinishConfirmOpen(false) }}
+        presentation="dialog"
+        labelledBy="finish-workout-title"
+        describedBy="finish-workout-description"
+        className="finish-workout-dialog"
+      >
+        <p className="eyebrow">FINISH WORKOUT</p>
+        <h2 id="finish-workout-title">운동을 종료할까요?</h2>
+        <p id="finish-workout-description">{completedSetCount(draft) === 0
+          ? '아직 완료한 세트가 없어 운동 기록은 저장되지 않아요.'
+          : `완료한 ${completedSetCount(draft)}세트와 총 볼륨 ${formatVolume(getSessionVolume(draft))}${weightUnit}을 저장합니다.`}</p>
+        {finishMutation.isError && <p className="finish-workout-error" role="alert">운동을 저장하지 못했어요. 네트워크를 확인한 뒤 다시 시도해 주세요.</p>}
+        <div className="finish-workout-actions">
+          <button className="secondary-button" type="button" onClick={() => setIsFinishConfirmOpen(false)} disabled={finishMutation.isPending}>계속 운동</button>
+          <button className="primary-button" type="button" onClick={finishWorkout} disabled={finishMutation.isPending} data-overlay-initial-focus>
+            <Save size={16} /> {finishMutation.isPending ? '저장 중…' : completedSetCount(draft) === 0 ? '기록 없이 종료' : '종료하고 저장'}
+          </button>
+        </div>
+      </Overlay>
     </main>
   )
 }
@@ -596,12 +687,16 @@ function LoadSuggestionBanner({ previousSet, weightUnit, onApply }: { previousSe
 
 function formatSuggestionWeight(value: number) { return Number.isInteger(value) ? String(value) : value.toFixed(1) }
 
-function RoutinePicker({ routines, selectedRoutine, onSelect, onBegin, onBeginFree, onCancel }: { routines: Routine[]; selectedRoutine: Routine | undefined; onSelect: (id: string) => void; onBegin: () => void; onBeginFree: () => void; onCancel: () => void }) {
+function RoutinePicker({ routines, activeProgramRun, timezone, selectedRoutine, onSelect, onSelectProgramDay, onBegin, onBeginFree, onCancel }: { routines: Routine[]; activeProgramRun: ProgramRun | null; timezone: string; selectedRoutine: Routine | undefined; onSelect: (id: string) => void; onSelectProgramDay: (dayId: string) => void; onBegin: () => void; onBeginFree: () => void; onCancel: () => void }) {
   const lastPerformed = useRoutineLastPerformed()
+  const today = getDateInTimeZone(timezone)
+  const programDay = activeProgramRun?.days.find((day) => day.scheduledOn === today)
+    ?? (activeProgramRun && today < activeProgramRun.startDate ? activeProgramRun.days[0] : null)
 
   return <main className="routine-picker-page" aria-labelledby="routine-picker-title">
     <section className="routine-picker-heading"><div><p className="eyebrow">START TRAINING</p><h1 id="routine-picker-title">오늘 어떤 운동을 할까요?</h1><p>루틴의 처방을 따르거나, 자유 운동에서 원하는 종목을 바로 추가해 보세요.</p></div><button className="runner-text-button" type="button" onClick={onCancel}>대시보드로 돌아가기</button></section>
-    {routines.length === 0 ? <div className="runner-empty"><Dumbbell size={24} /><h2>아직 저장된 루틴이 없어요.</h2><p>자유 운동은 지금 바로 시작할 수 있고, 필요하면 루틴을 만들어 둘 수도 있어요.</p></div> : <div className="routine-choice-grid">
+    {routines.length === 0 && !programDay ? <div className="runner-empty"><Dumbbell size={24} /><h2>아직 저장된 루틴이 없어요.</h2><p>자유 운동은 지금 바로 시작할 수 있고, 프로그램이나 개인 루틴을 가져올 수도 있어요.</p></div> : <div className="routine-choice-grid">
+      {programDay && <ProgramRoutineChoiceCard run={activeProgramRun!} day={programDay} today={today} onStart={() => onSelectProgramDay(programDay.id)} />}
       {routines.map((routine) => <RoutineChoiceCard
         key={routine.id}
         routine={routine}
@@ -615,6 +710,24 @@ function RoutinePicker({ routines, selectedRoutine, onSelect, onBegin, onBeginFr
       <button className="secondary-button begin-workout-button" type="button" onClick={onBeginFree}><Dumbbell size={17} /> 자유 운동으로 시작</button>
     </div>
   </main>
+}
+
+function ProgramRoutineChoiceCard({ run, day, today, onStart }: { run: ProgramRun; day: ProgramRunDay; today: string; onStart: () => void }) {
+  const isToday = day.scheduledOn === today
+  const canStart = day.dayType !== 'rest'
+  const exercises = day.routineSnapshot?.exercises ?? []
+  const preview = exercises.slice(0, ROUTINE_PREVIEW_EXERCISES).map((item) => item.exerciseName).join(' · ')
+  const status = day.workoutSession ? '수행 완료 · 다시 가능' : day.dayType === 'rest' ? '휴식일' : isToday ? '오늘 수행 예정' : `${formatProgramPickerDate(day.scheduledOn)} 예정`
+  return <button className="routine-choice program-routine-choice" type="button" onClick={onStart} disabled={!canStart}>
+    <span className="routine-choice-marker" />
+    <span className="routine-choice-copy">
+      <span className="program-routine-label">PROGRAM DAY {day.dayNumber}</span>
+      <strong>{day.title}</strong>
+      <small>{preview || day.instructions}</small>
+      <em>{run.programName} · {status}</em>
+    </span>
+    {canStart && <span className="program-routine-start"><Play size={14} fill="currentColor" /> 시작</span>}
+  </button>
 }
 
 const routineLastPerformedQueryKey = ['routine-last-performed'] as const
@@ -667,10 +780,13 @@ function RoutineChoiceCard({ routine, isSelected, lastPerformedAt, onSelect }: {
   </button>
 }
 
-function RestTimer({ remaining, isRunning, onRestart, onStop, compact = false }: { remaining: number; isRunning: boolean; onRestart: () => void; onStop: () => void; compact?: boolean }) {
-  return <article className={`rest-timer ${compact ? 'is-compact' : ''}`}>
+function RestTimer({ remaining, isRunning, alertsEnabled, onAdjust, onToggleAlerts, onRestart, onStop, compact = false }: { remaining: number; isRunning: boolean; alertsEnabled: boolean; onAdjust: (seconds: number) => void; onToggleAlerts: () => void; onRestart: () => void; onStop: () => void; compact?: boolean }) {
+  return <article className={`rest-timer ${compact ? 'is-compact' : ''}`} aria-label="휴식 타이머">
     <div className="rest-timer-copy"><span><Clock3 size={16} /> 휴식 타이머</span><strong>{formatTimer(remaining)}</strong></div>
     <div className="rest-timer-actions">
+      <button className="timer-adjust" type="button" onClick={() => onAdjust(-10)} aria-label="휴식 시간 10초 줄이기">-10</button>
+      <button className="timer-adjust" type="button" onClick={() => onAdjust(10)} aria-label="휴식 시간 10초 늘리기">+10</button>
+      <button className={`timer-control ${alertsEnabled ? 'is-enabled' : ''}`} type="button" onClick={onToggleAlerts} aria-label={alertsEnabled ? '휴식 종료 알림 끄기' : '휴식 종료 알림 켜기'} aria-pressed={alertsEnabled}>{alertsEnabled ? <Bell size={16} /> : <BellOff size={16} />}</button>
       <button className="timer-control" type="button" onClick={onRestart} aria-label="휴식 타이머 다시 시작"><TimerReset size={16} /></button>
       {isRunning && <button className="timer-stop" type="button" onClick={onStop}>건너뛰기</button>}
     </div>
@@ -679,6 +795,30 @@ function RestTimer({ remaining, isRunning, onRestart, onStop, compact = false }:
 
 function RunnerLoading() { return <main className="workout-page runner-loading" aria-label="운동 데이터를 불러오는 중"><div /><div /><div /></main> }
 function RunnerError({ onRetry, onCancel }: { onRetry: () => void; onCancel: () => void }) { return <main className="routine-picker-page runner-error"><Dumbbell size={24} /><h1>운동 데이터를 불러오지 못했어요.</h1><p>잠시 후 다시 시도해 주세요.</p><div><button className="primary-button" type="button" onClick={onRetry}>다시 시도</button><button className="runner-text-button" type="button" onClick={onCancel}>대시보드로 돌아가기</button></div></main> }
+
+function ProgramDayUnavailable({ onCancel }: { onCancel: () => void }) {
+  return <main className="routine-picker-page runner-error"><Dumbbell size={24} /><h1>시작할 수 없는 프로그램 Day예요.</h1><p>종료된 회차이거나 존재하지 않는 일정입니다.</p><div><button className="primary-button" type="button" onClick={onCancel}>프로그램으로 돌아가기</button></div></main>
+}
+
+function ProgramDayStarter({ day, missingExercises, onBegin, onCancel }: { day: ProgramRunDay; missingExercises: string[]; onBegin: () => void; onCancel: () => void }) {
+  const target = day.cardioTarget
+  const summary = day.dayType === 'cardio' && target
+    ? [target.distanceKm !== null ? `${target.distanceKm}km` : null, target.durationMinutes !== null ? `${target.durationMinutes}분` : null, target.rpeMin !== null ? `RPE ${target.rpeMin}-${target.rpeMax ?? target.rpeMin}` : null].filter(Boolean).join(' · ')
+    : day.routineSnapshot ? `${day.routineSnapshot.exercises.length}개 종목 · ${day.routineSnapshot.exercises.reduce((total, item) => total + item.sets.length, 0)}세트` : '휴식일'
+  const disabled = day.dayType === 'rest' || missingExercises.length > 0
+  const buttonLabel = day.workoutSession ? '다시 운동하기' : day.dayType === 'rest' ? '휴식일' : '운동 시작'
+
+  return <main className="routine-picker-page program-day-starter" aria-labelledby="program-workout-title">
+    <section className="routine-picker-heading"><div><p className="eyebrow">PROGRAM DAY {day.dayNumber}</p><h1 id="program-workout-title">{day.title}</h1><p>{formatProgramDate(day.scheduledOn)} · {summary}</p></div><button className="runner-text-button" type="button" onClick={onCancel}>프로그램으로 돌아가기</button></section>
+    <article className="program-workout-preview">
+      <div><span>WEEK {day.weekNumber}</span><strong>Day {day.dayNumber}</strong></div>
+      <p>{day.instructions}</p>
+      {day.routineSnapshot && <ol>{day.routineSnapshot.exercises.map((item) => <li key={`${item.exerciseOrder}-${item.exerciseName}`}><strong>{item.exerciseName}</strong><span>{item.sets.length}세트 · {formatProgramSetTarget(item.sets[0])}</span></li>)}</ol>}
+      {missingExercises.length > 0 && <p className="runner-inline-error">운동 목록에서 찾지 못한 종목: {missingExercises.join(', ')}</p>}
+      <button className="primary-button begin-workout-button" type="button" onClick={onBegin} disabled={disabled}><Play size={17} fill="currentColor" /> {buttonLabel}</button>
+    </article>
+  </main>
+}
 
 function createDraft(routine: Routine, exercises: Exercise[]): WorkoutDraft {
   const startedAt = new Date().toISOString()
@@ -698,6 +838,51 @@ function createDraft(routine: Routine, exercises: Exercise[]): WorkoutDraft {
         restSeconds: prescription.restSeconds, isCompleted: false, completedAt: null, notes: null,
       })),
     })),
+  }
+}
+
+function createProgramDraft(day: ProgramRunDay, exercises: Exercise[]): WorkoutDraft {
+  const exerciseByName = new Map(exercises.map((exercise) => [exercise.name, exercise]))
+  const startedAt = new Date().toISOString()
+
+  if (day.dayType === 'cardio' && day.cardioTarget) {
+    const target = day.cardioTarget
+    const exercise = exerciseByName.get(target.exerciseName)
+    if (!exercise) throw new Error(`${target.exerciseName} 종목을 찾지 못했어요.`)
+    return {
+      id: createId(), routineId: null, routineName: `Day ${day.dayNumber} · ${day.title}`, programRunDayId: day.id,
+      status: 'in_progress', startedAt, completedAt: null, pausedSeconds: 0, notes: day.instructions,
+      exercises: [{
+        id: createId(), exerciseId: exercise.id, exerciseName: exercise.name, primaryMuscle: exercise.primaryMuscle, exerciseOrder: 1,
+        notes: target.rpeMin === null ? day.instructions : `목표 RPE ${target.rpeMin}-${target.rpeMax ?? target.rpeMin}`,
+        sets: [{
+          id: createId(), setOrder: 1, setType: 'working', weightKg: null, reps: null,
+          durationSeconds: target.durationMinutes === null ? null : target.durationMinutes * 60,
+          distanceKm: target.distanceKm, targetRir: null, actualRir: null, restSeconds: null,
+          isCompleted: false, completedAt: null, notes: null,
+        }],
+      }],
+    }
+  }
+
+  if (!day.routineSnapshot) throw new Error('이 Day에는 운동 처방이 없어요.')
+  return {
+    id: createId(), routineId: null, routineName: `Day ${day.dayNumber} · ${day.title}`, programRunDayId: day.id,
+    status: 'in_progress', startedAt, completedAt: null, pausedSeconds: 0, notes: day.instructions,
+    exercises: day.routineSnapshot.exercises.map((prescription): WorkoutExercise => {
+      const exercise = exerciseByName.get(prescription.exerciseName)
+      if (!exercise) throw new Error(`${prescription.exerciseName} 종목을 찾지 못했어요.`)
+      return {
+        id: createId(), exerciseId: exercise.id, exerciseName: exercise.name, primaryMuscle: exercise.primaryMuscle,
+        exerciseOrder: prescription.exerciseOrder, notes: prescription.notes,
+        sets: prescription.sets.map((set): WorkoutSetRecord => ({
+          id: createId(), setOrder: set.setOrder, setType: set.setType, weightKg: set.targetWeightKg,
+          reps: set.targetRepsMax ?? set.targetRepsMin, durationSeconds: null, distanceKm: null,
+          targetRir: set.targetRir, actualRir: null, restSeconds: set.restSeconds,
+          isCompleted: false, completedAt: null, notes: set.notes,
+        })),
+      }
+    }),
   }
 }
 
@@ -745,4 +930,19 @@ function findMostRecentlyCompletedSet(draft: WorkoutDraft | null): WorkoutSetRec
     }
   }
   return latest
+}
+function getMissingProgramExercises(day: ProgramRunDay, exercises: Exercise[]) {
+  const available = new Set(exercises.map((exercise) => exercise.name))
+  const names = day.dayType === 'cardio' && day.cardioTarget
+    ? [day.cardioTarget.exerciseName]
+    : day.routineSnapshot?.exercises.map((exercise) => exercise.exerciseName) ?? []
+  return names.filter((name) => !available.has(name))
+}
+function formatProgramDate(value: string) { return new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }).format(new Date(`${value}T12:00:00`)) }
+function formatProgramPickerDate(value: string) { return new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }).format(new Date(`${value}T12:00:00`)) }
+function formatProgramSetTarget(set: { targetWeightKg: number | null; targetRepsMin: number | null; targetRepsMax: number | null; targetRir: Rir; notes?: string | null }) {
+  if (set.targetRepsMin === null && set.targetRepsMax === null) return set.notes ?? '시간·거리 기록'
+  const weight = set.targetWeightKg === null ? '' : `${set.targetWeightKg}kg · `
+  const reps = set.targetRepsMin === set.targetRepsMax ? `${set.targetRepsMin ?? '-'}회` : `${set.targetRepsMin ?? '-'}-${set.targetRepsMax ?? '-'}회`
+  return `${weight}${reps} · RIR ${set.targetRir ?? '-'}`
 }

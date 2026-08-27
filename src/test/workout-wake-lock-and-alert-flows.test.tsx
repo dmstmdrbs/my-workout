@@ -50,6 +50,7 @@ async function startFreeWorkout(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: '종목 추가' }))
   const sheet = within(await screen.findByRole('dialog', { name: '종목 추가' }))
   await user.click(sheet.getByRole('button', { name: '바벨 벤치프레스' }))
+  await user.click(sheet.getByRole('button', { name: '선택한 1개 추가' }))
   await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 }
 
@@ -91,7 +92,9 @@ describe.sequential('UF-25: 운동 중 화면 켜 두기와 휴식 알림', () =
     renderApp()
     fireEvent.click(await screen.findByRole('button', { name: '자유 운동으로 시작' }))
     fireEvent.click(await screen.findByRole('button', { name: '종목 추가' }))
-    fireEvent.click(within(await screen.findByRole('dialog', { name: '종목 추가' })).getByRole('button', { name: '바벨 벤치프레스' }))
+    const sheet = within(await screen.findByRole('dialog', { name: '종목 추가' }))
+    fireEvent.click(sheet.getByRole('button', { name: '바벨 벤치프레스' }))
+    fireEvent.click(sheet.getByRole('button', { name: '선택한 1개 추가' }))
 
     fireEvent.click(await screen.findByRole('button', { name: '1세트 완료' }))
     expect(vibrate).not.toHaveBeenCalled()

@@ -75,13 +75,14 @@ describe.sequential('기록 화면 무한 스크롤', () => {
     await screen.findByRole('heading', { name: '운동 기록' })
 
     // Desktop records are intentionally split into a compact navigation
-    // column (calendar + list) and a reading column (detail + share), so the
+    // column (calendar + list) and a reading column (detail), so the
     // calendar never pushes the selected record below the fold.
     const workspace = document.querySelector('.records-workspace')
     expect(workspace?.querySelector('.records-navigation .records-calendar')).not.toBeNull()
     expect(workspace?.querySelector('.records-navigation .records-list-panel')).not.toBeNull()
     expect(workspace?.querySelector('.records-content .record-detail')).not.toBeNull()
-    expect(workspace?.querySelector('.records-content .share-panel')).not.toBeNull()
+    expect(workspace?.querySelector('.records-content .share-panel')).toBeNull()
+    expect(screen.getByRole('button', { name: '공유' })).toBeTruthy()
 
     await waitFor(() => {
       expect(document.querySelectorAll('.record-list-item').length).toBe(recordsPageSize)

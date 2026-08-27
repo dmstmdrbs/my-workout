@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MemoryRouter, Navigate, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   BarChart3,
+  CalendarRange,
   CalendarDays,
   Clock3,
   Dumbbell,
@@ -17,8 +18,10 @@ import {
 import { BodyMeasurements } from './features/body/BodyMeasurements'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { ExerciseCatalog } from './features/exercises/ExerciseCatalog'
+import { Programs } from './features/programs/Programs'
 import { Records } from './features/records/Records'
 import { RecordEditor } from './features/records/RecordEditor'
+import { WorkoutComplete } from './features/records/WorkoutComplete'
 import { RoutineManager } from './features/routines/RoutineManager'
 import { Settings } from './features/settings/Settings'
 import { Stats } from './features/stats/Stats'
@@ -30,10 +33,11 @@ import { formatElapsedTime, getEffectivePausedSeconds } from './lib/duration'
 import { applyTheme } from './lib/theme'
 import './App.css'
 
-type PageId = 'dashboard' | 'workout' | 'routines' | 'records' | 'stats' | 'body' | 'exercises' | 'settings'
+type PageId = 'dashboard' | 'programs' | 'workout' | 'routines' | 'records' | 'stats' | 'body' | 'exercises' | 'settings'
 
 const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'dashboard', label: '대시보드', icon: Home },
+  { id: 'programs', label: '프로그램', icon: CalendarRange },
   { id: 'workout', label: '운동 시작', icon: Dumbbell },
   { id: 'routines', label: '루틴', icon: Layers3 },
   { id: 'records', label: '기록', icon: CalendarDays },
@@ -45,6 +49,7 @@ const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
 
 const pagePaths: Record<PageId, string> = {
   dashboard: '/',
+  programs: '/programs',
   workout: '/workout',
   routines: '/routines',
   records: '/records',
@@ -56,9 +61,9 @@ const pagePaths: Record<PageId, string> = {
 
 // Explicit placement: slicing the navigation array silently reshuffles menus
 // whenever an entry is inserted.
-const sideNavPages: PageId[] = ['dashboard', 'workout', 'routines', 'records', 'stats', 'body', 'exercises']
-const bottomNavPages: PageId[] = ['dashboard', 'workout', 'routines', 'records']
-const moreMenuPages: PageId[] = ['stats', 'body', 'exercises', 'settings']
+const sideNavPages: PageId[] = ['dashboard', 'programs', 'workout', 'routines', 'records', 'stats', 'body', 'exercises']
+const bottomNavPages: PageId[] = ['dashboard', 'programs', 'workout', 'records']
+const moreMenuPages: PageId[] = ['routines', 'stats', 'body', 'exercises', 'settings']
 
 function navItem(id: PageId) {
   const item = navigation.find((entry) => entry.id === id)
@@ -96,6 +101,7 @@ function AppShell() {
   const moreMenuBottomButtonRef = useRef<HTMLButtonElement>(null)
 
   const activePage = getActivePage(location.pathname)
+  const requestedProgramDayId = new URLSearchParams(location.search).get('programDay')
 
   // Settings (and the theme they carry) are only meaningful once signed in;
   // `enabled` keeps this from firing failing requests against the mock/
@@ -320,13 +326,19 @@ function AppShell() {
             onSelectSession={(sessionId) => navigateTo(`/records/${sessionId}`)}
             onManageRoutines={() => navigateTo('/routines')}
             onSelectRoutine={(routineId) => navigateTo(`/routines/${routineId}`)}
+            onOpenPrograms={() => navigateTo('/programs')}
+            onStartProgramDay={(dayId) => navigateTo(`/workout?programDay=${dayId}`)}
           />} />
           <Route path="/workout" element={<WorkoutRunner
-            onFinish={() => { setActiveWorkoutDraft(null); navigate('/') }}
-            onCancel={() => { setActiveWorkoutDraft(null); navigate('/') }}
+            initialProgramRunDayId={requestedProgramDayId}
+            onSelectProgramDay={(dayId) => navigate(`/workout?programDay=${dayId}`)}
+            onFinish={(sessionId) => { setActiveWorkoutDraft(null); navigate(`/workout/complete/${sessionId}`) }}
+            onCancel={() => { setActiveWorkoutDraft(null); navigate(requestedProgramDayId ? '/programs' : '/') }}
             onDraftStateChange={handleDraftStateChange}
           />} />
-          <Route path="/routines/:routineId?" element={<RoutineRoute onRoutineChange={(routineId) => navigate(routineId === 'new' ? '/routines/new' : routineId ? `/routines/${routineId}` : '/routines')} />} />
+          <Route path="/workout/complete/:sessionId" element={<WorkoutCompleteRoute onViewRecord={(sessionId) => navigate(`/records/${sessionId}`)} onGoHome={() => navigate('/')} />} />
+          <Route path="/programs" element={<Programs onStartDay={(dayId) => navigate(`/workout?programDay=${dayId}`)} onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
+          <Route path="/routines/:routineId?" element={<RoutineRoute onRoutineChange={(routineId) => navigate(routineId === 'new' ? '/routines/new' : routineId ? `/routines/${routineId}` : '/routines')} onStartProgramDay={(dayId) => navigate(`/workout?programDay=${dayId}`)} />} />
           <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} onEditSession={(sessionId) => navigate(`/records/${sessionId}/edit`)} />} />
           <Route path="/records/:sessionId/edit" element={<RecordEditRoute
             onDone={(sessionId) => navigate(`/records/${sessionId}`, { replace: true })}
@@ -424,9 +436,15 @@ function RecordEditRoute({ onDone, onDirtyChange }: { onDone: (sessionId: string
   return <RecordEditor sessionId={sessionId} onDone={() => onDone(sessionId)} onDirtyChange={onDirtyChange} />
 }
 
-function RoutineRoute({ onRoutineChange }: { onRoutineChange: (routineId: string | 'new' | null) => void }) {
+function WorkoutCompleteRoute({ onViewRecord, onGoHome }: { onViewRecord: (sessionId: string) => void; onGoHome: () => void }) {
+  const { sessionId } = useParams()
+  if (!sessionId) return <UnknownPageRoute onGoHome={onGoHome} />
+  return <WorkoutComplete sessionId={sessionId} onViewRecord={() => onViewRecord(sessionId)} onGoHome={onGoHome} />
+}
+
+function RoutineRoute({ onRoutineChange, onStartProgramDay }: { onRoutineChange: (routineId: string | 'new' | null) => void; onStartProgramDay: (dayId: string) => void }) {
   const { routineId } = useParams()
-  return <RoutineManager initialSelectedRoutineId={routineId && routineId !== 'new' ? routineId : null} initialCreate={routineId === 'new'} onRoutineChange={onRoutineChange} />
+  return <RoutineManager initialSelectedRoutineId={routineId && routineId !== 'new' ? routineId : null} initialCreate={routineId === 'new'} onRoutineChange={onRoutineChange} onStartProgramDay={onStartProgramDay} />
 }
 
 function useLocationPathId(prefix: string) {
@@ -456,6 +474,7 @@ function UnknownPageRoute({ onGoHome }: { onGoHome: () => void }) {
 function getActivePage(pathname: string): PageId | null {
   if (pathname === '/') return 'dashboard'
   if (pathname.startsWith('/workout')) return 'workout'
+  if (pathname.startsWith('/programs')) return 'programs'
   if (pathname.startsWith('/routines')) return 'routines'
   if (pathname.startsWith('/records')) return 'records'
   if (pathname.startsWith('/settings')) return 'settings'

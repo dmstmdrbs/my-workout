@@ -56,10 +56,10 @@
 .auth-gate[aria-label] .auth-gate-card > .brand-symbol { margin-bottom: 14px; }
 .auth-gate[aria-label] .auth-gate-card p { margin: 0; color: var(--text-muted); font-weight: 650; }
 
-.active-workout-toast { display: flex; position: fixed; z-index: 20; right: 28px; bottom: 28px; align-items: center; gap: 11px; min-width: min(390px, calc(100vw - 56px)); padding: 11px 12px; color: #fff; text-align: left; background: var(--text); border: 1px solid rgb(255 255 255 / .16); border-radius: 14px; box-shadow: var(--shadow-float); }
-.active-workout-toast:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--text) 92%, var(--accent)); }
+.active-workout-toast { display: flex; position: fixed; z-index: 20; right: 28px; bottom: 28px; align-items: center; gap: 11px; min-width: min(390px, calc(100vw - 56px)); padding: 11px 12px; color: var(--contrast-text); text-align: left; background: var(--contrast-surface); border: 1px solid rgb(255 255 255 / .16); border-radius: 14px; box-shadow: var(--shadow-float); }
+.active-workout-toast:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--contrast-surface) 92%, var(--accent)); }
 .active-workout-toast-icon { display: grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; color: var(--accent); background: rgb(255 255 255 / .12); border-radius: 9px; }
-.active-workout-toast-copy { display: grid; min-width: 0; gap: 3px; }.active-workout-toast-copy strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }.active-workout-toast-copy small { display: inline-flex; align-items: center; gap: 4px; color: #c6ccd6; font-size: .71rem; font-variant-numeric: tabular-nums; }.active-workout-toast-action { margin-left: auto; color: #fff; font-size: .72rem; font-weight: 800; white-space: nowrap; }.active-workout-toast.is-paused .active-workout-toast-icon { color: var(--danger); }
+.active-workout-toast-copy { display: grid; min-width: 0; gap: 3px; }.active-workout-toast-copy strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }.active-workout-toast-copy small { display: inline-flex; align-items: center; gap: 4px; color: var(--contrast-muted); font-size: .71rem; font-variant-numeric: tabular-nums; }.active-workout-toast-action { margin-left: auto; color: var(--contrast-text); font-size: .72rem; font-weight: 800; white-space: nowrap; }.active-workout-toast.is-paused .active-workout-toast-icon { color: var(--danger); }
 
 @media (max-width: 899px) {
   .side-nav { width: 220px; transform: translateX(-100%); transition: transform .2s ease; box-shadow: var(--shadow-float); }
@@ -68,7 +68,8 @@
   .top-bar { justify-content: space-between; min-height: 64px; padding: 0 20px; }
   .mobile-menu-button, .mobile-brand { display: flex; }
   .bottom-nav { display: grid; position: fixed; z-index: 15; right: 0; bottom: 0; left: 0; grid-template-columns: repeat(5, 1fr); min-height: 70px; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--surface) 93%, transparent); border-top: 1px solid var(--border); backdrop-filter: blur(14px); }
-  .bottom-nav button { display: grid; place-content: center; gap: 3px; padding: 0; color: var(--text-muted); background: transparent; border: 0; border-radius: 8px; font-size: .66rem; font-weight: 650; }
+  .bottom-nav button { display: grid; grid-template-rows: 21px auto; align-content: center; justify-items: center; gap: 3px; min-width: 0; padding: 0; color: var(--text-muted); background: transparent; border: 0; border-radius: 8px; font-size: .66rem; font-weight: 650; line-height: 1; }
+  .bottom-nav button > svg { display: block; align-self: center; }
   .bottom-nav button.is-active { color: var(--accent); }
   .top-bar-popover {
     position: fixed;

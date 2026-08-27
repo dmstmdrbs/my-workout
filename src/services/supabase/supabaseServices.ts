@@ -3,15 +3,24 @@ import type {
   BodyMeasurement,
   Equipment,
   Exercise,
+  ExerciseOneRepMax,
   ExerciseBrand,
   Id,
   MuscleGroup,
+  ProgramCardioTarget,
+  ProgramDaySessionSummary,
+  ProgramDayType,
+  ProgramRoutineSnapshot,
+  ProgramRun,
+  ProgramRunDay,
+  ProgramRunStatus,
   Rir,
   Routine,
   RoutineExercise,
   RoutineSetPrescription,
   SessionStatus,
   SetType,
+  StartProgramRunInput,
   Theme,
   UserProfile,
   UserSettings,
@@ -67,6 +76,11 @@ function numberValue(row: Row, key: string, fallback = 0): number {
 
 function booleanValue(row: Row, key: string, fallback = false): boolean {
   return typeof row[key] === 'boolean' ? row[key] : fallback
+}
+
+function objectValue<T>(row: Row, key: string): T | null {
+  const value = asRow(row[key])
+  return value ? value as T : null
 }
 
 function arrayValue<T extends string>(row: Row, key: string): T[] {
@@ -136,6 +150,15 @@ function mapExercise(row: Row): Exercise {
     defaultRestSeconds: numberValue(row, 'default_rest_seconds', 90),
     isArchived: booleanValue(row, 'is_archived'),
     createdAt: stringValue(row, 'created_at'),
+    updatedAt: stringValue(row, 'updated_at'),
+  }
+}
+
+function mapExerciseOneRepMax(row: Row): ExerciseOneRepMax {
+  return {
+    userId: stringValue(row, 'user_id'),
+    exerciseId: stringValue(row, 'exercise_id'),
+    oneRepMaxKg: numberValue(row, 'one_rep_max_kg'),
     updatedAt: stringValue(row, 'updated_at'),
   }
 }
@@ -223,6 +246,7 @@ function mapWorkoutSession(row: Row): WorkoutSession {
     userId: stringValue(row, 'user_id'),
     routineId: nullableString(row, 'routine_id'),
     routineName: nullableString(row, 'routine_name'),
+    programRunDayId: nullableString(row, 'program_run_day_id'),
     status: stringValue(row, 'status') as SessionStatus,
     startedAt: stringValue(row, 'started_at'),
     completedAt: nullableString(row, 'completed_at'),
@@ -233,6 +257,56 @@ function mapWorkoutSession(row: Row): WorkoutSession {
     editedAt: nullableString(row, 'edited_at'),
     notes: nullableString(row, 'notes'),
     exercises,
+    createdAt: stringValue(row, 'created_at'),
+    updatedAt: stringValue(row, 'updated_at'),
+  }
+}
+
+function mapProgramDay(row: Row): ProgramRunDay {
+  const completedSession = asRows(row.workout_sessions)
+    .filter((session) => stringValue(session, 'status') === 'completed')
+    .sort((a, b) => (nullableString(b, 'completed_at') ?? stringValue(b, 'started_at')).localeCompare(nullableString(a, 'completed_at') ?? stringValue(a, 'started_at')))[0]
+  const workoutSession: ProgramDaySessionSummary | null = completedSession ? {
+    id: stringValue(completedSession, 'id'),
+    routineName: nullableString(completedSession, 'routine_name'),
+    startedAt: stringValue(completedSession, 'started_at'),
+    completedAt: nullableString(completedSession, 'completed_at'),
+  } : null
+
+  return {
+    id: stringValue(row, 'id'),
+    userId: stringValue(row, 'user_id'),
+    programRunId: stringValue(row, 'program_run_id'),
+    dayNumber: numberValue(row, 'day_number'),
+    weekNumber: numberValue(row, 'week_number'),
+    dayOfWeek: numberValue(row, 'day_of_week'),
+    scheduledOn: stringValue(row, 'scheduled_on'),
+    dayType: stringValue(row, 'day_type') as ProgramDayType,
+    title: stringValue(row, 'title'),
+    instructions: nullableString(row, 'instructions'),
+    routineSnapshot: objectValue<ProgramRoutineSnapshot>(row, 'routine_snapshot'),
+    cardioTarget: objectValue<ProgramCardioTarget>(row, 'cardio_target'),
+    isOptional: booleanValue(row, 'is_optional'),
+    completedAt: nullableString(row, 'completed_at'),
+    workoutSession,
+    createdAt: stringValue(row, 'created_at'),
+    updatedAt: stringValue(row, 'updated_at'),
+  }
+}
+
+function mapProgramRun(row: Row): ProgramRun {
+  return {
+    id: stringValue(row, 'id'),
+    userId: stringValue(row, 'user_id'),
+    programKey: stringValue(row, 'program_key'),
+    programName: stringValue(row, 'program_name'),
+    templateVersion: numberValue(row, 'template_version', 1),
+    durationWeeks: numberValue(row, 'duration_weeks', 8),
+    startDate: stringValue(row, 'start_date'),
+    status: stringValue(row, 'status') as ProgramRunStatus,
+    endedAt: nullableString(row, 'ended_at'),
+    endReason: nullableString(row, 'end_reason'),
+    days: asRows(row.program_run_days).map(mapProgramDay).sort((a, b) => a.dayNumber - b.dayNumber),
     createdAt: stringValue(row, 'created_at'),
     updatedAt: stringValue(row, 'updated_at'),
   }
@@ -418,6 +492,25 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
     if (error) throw toError(error, '운동을 보관하지 못했어요.')
   }
 
+  async listExerciseOneRepMaxes() {
+    await this.requireUser()
+    const { data, error } = await this.client.from('exercise_one_rep_maxes').select('*').order('updated_at', { ascending: false })
+    if (error) throw toError(error, '1RM 설정을 불러오지 못했어요.')
+    return asRows(data).map(mapExerciseOneRepMax)
+  }
+
+  async saveExerciseOneRepMax(exerciseId: Id, oneRepMaxKg: number) {
+    const user = await this.requireUser()
+    const { data, error } = await this.client.from('exercise_one_rep_maxes').upsert({
+      user_id: user.id,
+      exercise_id: exerciseId,
+      one_rep_max_kg: oneRepMaxKg,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,exercise_id' }).select('*').single()
+    if (error) throw toError(error, '1RM 설정을 저장하지 못했어요.')
+    return mapExerciseOneRepMax(data as Row)
+  }
+
   async listRoutines() {
     await this.requireUser()
     const { data, error } = await this.client.from('routines').select('*, routine_exercises(*, exercises(name), routine_set_prescriptions(*))').order('updated_at', { ascending: false })
@@ -447,6 +540,77 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
     await this.requireUser()
     const { error } = await this.client.from('routines').delete().eq('id', id)
     if (error) throw toError(error, '루틴을 삭제하지 못했어요.')
+  }
+
+  private async getProgramRun(id: Id) {
+    await this.requireUser()
+    const { data, error } = await this.client
+      .from('program_runs')
+      .select('*, program_run_days(*, workout_sessions(id, routine_name, status, started_at, completed_at))')
+      .eq('id', id)
+      .maybeSingle()
+    if (error) throw toError(error, '프로그램 회차를 불러오지 못했어요.')
+    return data ? mapProgramRun(data as Row) : null
+  }
+
+  async listProgramRuns() {
+    await this.requireUser()
+    const { data, error } = await this.client
+      .from('program_runs')
+      .select('*, program_run_days(*, workout_sessions(id, routine_name, status, started_at, completed_at))')
+      .order('created_at', { ascending: false })
+    if (error) throw toError(error, '프로그램 기록을 불러오지 못했어요.')
+    return asRows(data).map(mapProgramRun)
+  }
+
+  async getActiveProgramRun() {
+    await this.requireUser()
+    const { data, error } = await this.client
+      .from('program_runs')
+      .select('*, program_run_days(*, workout_sessions(id, routine_name, status, started_at, completed_at))')
+      .eq('status', 'active')
+      .maybeSingle()
+    if (error) throw toError(error, '진행 중인 프로그램을 불러오지 못했어요.')
+    return data ? mapProgramRun(data as Row) : null
+  }
+
+  async getProgramRunDay(id: Id) {
+    await this.requireUser()
+    const { data, error } = await this.client
+      .from('program_run_days')
+      .select('*, workout_sessions(id, routine_name, status, started_at, completed_at), program_runs!inner(status)')
+      .eq('id', id)
+      .eq('program_runs.status', 'active')
+      .maybeSingle()
+    if (error) throw toError(error, '프로그램 Day를 불러오지 못했어요.')
+    return data ? mapProgramDay(data as Row) : null
+  }
+
+  async startProgramRun(input: StartProgramRunInput) {
+    await this.ensureProfile()
+    const { data, error } = await this.client.rpc('start_program_run', { payload: input })
+    if (error) throw toError(error, '프로그램을 시작하지 못했어요.')
+    const runId = typeof data === 'string' ? data : ''
+    if (!runId) throw new Error('프로그램 회차를 만들지 못했어요.')
+    const run = await this.getProgramRun(runId)
+    if (!run) throw new Error('시작한 프로그램을 다시 불러오지 못했어요.')
+    return run
+  }
+
+  async completeProgramRunDay(id: Id) {
+    await this.requireUser()
+    const { error } = await this.client.rpc('complete_program_rest_day', { target_day_id: id })
+    if (error) throw toError(error, '휴식일을 완료하지 못했어요.')
+  }
+
+  async endProgramRun(id: Id, outcome: 'completed' | 'withdrawn', reason: string | null = null) {
+    await this.requireUser()
+    const { error } = await this.client.rpc('end_program_run', {
+      target_run_id: id,
+      outcome,
+      reason,
+    })
+    if (error) throw toError(error, '프로그램을 종료하지 못했어요.')
   }
 
   async listSessions(options: { status?: WorkoutSession['status']; limit?: number; startedBefore?: string; startedAfter?: string } = {}) {

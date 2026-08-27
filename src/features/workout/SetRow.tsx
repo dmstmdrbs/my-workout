@@ -114,6 +114,10 @@ function ActualRirPicker({ set, onChange }: Pick<SetRowProps, 'set' | 'onChange'
       {rirChoices.map((choice) => <button className={set.actualRir === choice.value ? 'is-selected' : ''} type="button" key={choice.value} onClick={() => onChange({ actualRir: choice.value })}>{choice.label}</button>)}
       <button className={set.actualRir === null ? 'is-selected is-empty' : 'is-empty'} type="button" onClick={() => onChange({ actualRir: null })}>–</button>
     </div>
+    <select className="rir-compact-select" aria-label={`${set.setOrder}세트 실제 RIR 선택`} value={set.actualRir ?? ''} onChange={(event) => onChange({ actualRir: event.target.value === '' ? null : Number(event.target.value) })}>
+      <option value="">–</option>
+      {rirChoices.map((choice) => <option value={choice.value} key={choice.value}>{choice.label}</option>)}
+    </select>
   </div>
 }
 

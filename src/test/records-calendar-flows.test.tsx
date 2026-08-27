@@ -181,12 +181,11 @@ describe.sequential('기록 화면: 월간 달력', () => {
 
   test('늦은 저녁과 자정 직후에 기록한 세션도 각자의 로컬 날짜에 정확히 표시된다', async () => {
     const repo = createLocalStorageServices().workoutRepository
-    // 23:30 KST stays on the 20th. 00:30 KST on the 21st converts to 15:30
-    // UTC on the *20th* -- a grouping that used `toISOString().slice(0, 10)`
-    // instead of local calendar getters would wrongly keep this session on
-    // the 20th instead of the 21st.
-    await addCompletedSession(repo, '2026-08-20T23:30:00.000+09:00', 'late-evening')
-    await addCompletedSession(repo, '2026-08-21T00:30:00.000+09:00', 'just-after-midnight')
+    // Keep these fixtures away from the today-relative streak tests below.
+    // 00:30 KST on the 6th converts to 15:30 UTC on the *5th*, which catches
+    // accidental UTC grouping without becoming part of a current streak.
+    await addCompletedSession(repo, '2026-08-05T23:30:00.000+09:00', 'late-evening')
+    await addCompletedSession(repo, '2026-08-06T00:30:00.000+09:00', 'just-after-midnight')
 
     const user = userEvent.setup()
     renderApp('/records')
@@ -196,9 +195,9 @@ describe.sequential('기록 화면: 월간 달력', () => {
     await clickMonthsBack(user, monthsBetween(new Date(), seedMonthStart))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /2026년 8월 20일 .+ 운동 완료/ })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /2026년 8월 5일 .+ 운동 완료/ })).toBeTruthy()
     })
-    expect(screen.getByRole('button', { name: /2026년 8월 21일 .+ 운동 완료/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /2026년 8월 6일 .+ 운동 완료/ })).toBeTruthy()
   })
 
   test('오늘 아직 운동을 완료하지 않아도 어제까지 이어온 연속 기록은 끊기지 않는다', async () => {

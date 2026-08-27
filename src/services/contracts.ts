@@ -1,8 +1,12 @@
 import type {
   BodyMeasurement,
   Exercise,
+  ExerciseOneRepMax,
   Id,
   IsoDateTime,
+  ProgramRun,
+  ProgramRunDay,
+  StartProgramRunInput,
   Routine,
   UserProfile,
   UserSettings,
@@ -47,11 +51,20 @@ export interface WorkoutRepository {
   getExercise(id: Id): Promise<Exercise | null>
   saveExercise(exercise: Omit<Exercise, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }): Promise<Exercise>
   archiveExercise(id: Id): Promise<void>
+  listExerciseOneRepMaxes(): Promise<ExerciseOneRepMax[]>
+  saveExerciseOneRepMax(exerciseId: Id, oneRepMaxKg: number): Promise<ExerciseOneRepMax>
 
   listRoutines(): Promise<Routine[]>
   getRoutine(id: Id): Promise<Routine | null>
   saveRoutine(routine: Omit<Routine, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }): Promise<Routine>
   deleteRoutine(id: Id): Promise<void>
+
+  listProgramRuns(): Promise<ProgramRun[]>
+  getActiveProgramRun(): Promise<ProgramRun | null>
+  getProgramRunDay(id: Id): Promise<ProgramRunDay | null>
+  startProgramRun(input: StartProgramRunInput): Promise<ProgramRun>
+  completeProgramRunDay(id: Id): Promise<void>
+  endProgramRun(id: Id, outcome: 'completed' | 'withdrawn', reason?: string | null): Promise<void>
 
   listSessions(options?: {
     status?: WorkoutSession['status']

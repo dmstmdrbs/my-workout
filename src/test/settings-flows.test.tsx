@@ -73,6 +73,20 @@ describe.sequential('UF-12: 설정 변경', () => {
     await waitFor(() => expect(readSettings().defaultRir).toBe(3))
   })
 
+  test('프로그램 기준 1RM을 설정에서 저장할 수 있다', async () => {
+    const user = userEvent.setup()
+    renderApp('/settings')
+
+    const benchMax = await screen.findByRole('spinbutton', { name: '바벨 벤치프레스 1RM' })
+    await user.type(benchMax, '115')
+    await user.click(screen.getByRole('button', { name: '1RM 저장' }))
+
+    await waitFor(() => {
+      const maxes = JSON.parse(localStorage.getItem(storeKey) ?? '{}').exerciseOneRepMaxes
+      expect(maxes).toEqual(expect.arrayContaining([expect.objectContaining({ exerciseId: 'barbell-bench-press', oneRepMaxKg: 115 })]))
+    })
+  })
+
   test('바뀐 기본값이 새 자유 운동 종목에 반영된다', async () => {
     const user = userEvent.setup()
     renderApp('/settings')
@@ -90,6 +104,7 @@ describe.sequential('UF-12: 설정 변경', () => {
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
+    await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
     const draft = JSON.parse(localStorage.getItem('trainlog:workout-draft:v1') ?? '{}')

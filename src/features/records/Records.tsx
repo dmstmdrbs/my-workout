@@ -1,30 +1,23 @@
-import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
-import type { Ref } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toPng } from 'html-to-image'
-import { Download, ImageDown, Pencil, RefreshCw, Share2, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { ImageDown, Pencil, RefreshCw, Share2, Trash2, X } from 'lucide-react'
 import { Overlay } from '../../components/Overlay'
-import { getSessionDurationMinutes } from '../../lib/duration'
-import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import { muscleLabel } from '../workout/exerciseLabels'
 import { RecordsCalendar } from './RecordsCalendar'
 import { invalidateRecordQueries } from './recordQueries'
+import {
+  formatWorkoutDuration,
+  formatWorkoutNumber,
+  formatWorkoutRir,
+  formatWorkoutSet,
+} from './workoutShareFormat'
+import { WorkoutComplete } from './WorkoutComplete'
 import './Records.css'
 
-type ExportState = 'idle' | 'exporting' | 'sharing' | 'success' | 'error'
-
 const emptySessions: WorkoutSession[] = []
-/**
- * 내보내는 이미지의 CSS 폭. pixelRatio 2와 곱해져 1080px PNG가 된다 -- 폰
- * 갤러리와 공유 시트가 기대하는 세로형 카드 폭이다. 720px이던 시절에는
- * 종목 이름과 세트가 양 끝으로 벌어져 가운데가 텅 빈 채로 뽑혔다.
- */
-const shareCardExportWidth = 540
-const maxShareCardPixels = 32_000_000
-
 // Cursor-paginated page size for the records list. Exported so tests can
 // derive how many sessions they need to seed rather than hardcoding a
 // number that would silently go stale if this changes.
@@ -40,11 +33,8 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
   const queryClient = useQueryClient()
   const settingsQuery = useSettings()
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedSessionId)
-  const [includeRir, setIncludeRir] = useState(true)
-  const [exportState, setExportState] = useState<ExportState>('idle')
-  const [exportMessage, setExportMessage] = useState('')
+  const [isShareOpen, setIsShareOpen] = useState(false)
   const [sessionPendingDelete, setSessionPendingDelete] = useState<WorkoutSession | null>(null)
-  const shareCardRef = useRef<HTMLElement>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   const recordsQuery = useInfiniteQuery({
@@ -101,13 +91,8 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   useEffect(() => {
-    if (settingsQuery.data) setIncludeRir(settingsQuery.data.shareRirByDefault)
-  }, [settingsQuery.data])
-
-  useEffect(() => {
     setSelectedId(initialSelectedSessionId)
-    setExportState('idle')
-    setExportMessage('')
+    setIsShareOpen(false)
   }, [initialSelectedSessionId])
 
   const deleteMutation = useMutation({
@@ -119,8 +104,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
       const nextSession = sessions.find((session) => session.id !== deletedId) ?? null
       setSessionPendingDelete(null)
       setSelectedId(nextSession?.id ?? null)
-      setExportState('idle')
-      setExportMessage('')
+      setIsShareOpen(false)
 
       queryClient.removeQueries({ queryKey: ['workout-record', deletedId] })
       // Do not wait for every dependent query to refetch before leaving a
@@ -145,69 +129,6 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
     if (deleteMutation.isPending) return
     deleteMutation.reset()
     setSessionPendingDelete(null)
-  }
-
-  async function makeCardPng() {
-    if (!shareCardRef.current) throw new Error('공유 카드를 준비하지 못했어요.')
-    const height = Math.ceil(shareCardRef.current.scrollHeight)
-    const pixelRatio = Math.min(2, Math.max(1, Math.sqrt(maxShareCardPixels / (shareCardExportWidth * height))))
-    return toPng(shareCardRef.current, {
-      cacheBust: true,
-      backgroundColor: '#111214',
-      width: shareCardExportWidth,
-      height,
-      pixelRatio,
-      skipAutoScale: true,
-    })
-  }
-
-  async function downloadCard() {
-    if (!selectedSession) return
-    setExportState('exporting')
-    setExportMessage('공유 이미지를 만드는 중이에요.')
-    try {
-      const dataUrl = await makeCardPng()
-      downloadDataUrl(dataUrl, shareFileName(selectedSession))
-      setExportState('success')
-      setExportMessage('PNG 이미지를 저장했어요.')
-    } catch {
-      setExportState('error')
-      setExportMessage('이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.')
-    }
-  }
-
-  async function shareCard() {
-    if (!selectedSession) return
-    setExportState('sharing')
-    setExportMessage('공유 이미지를 준비하는 중이에요.')
-    let dataUrl: string | null = null
-    try {
-      dataUrl = await makeCardPng()
-      const file = await dataUrlToFile(dataUrl, shareFileName(selectedSession))
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${selectedSession.routineName ?? '운동'} 운동 기록` })
-        setExportState('success')
-        setExportMessage('공유를 완료했어요.')
-        return
-      }
-      downloadDataUrl(dataUrl, file.name)
-      setExportState('success')
-      setExportMessage('이 브라우저에서는 파일 공유 대신 PNG를 저장했어요.')
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        setExportState('idle')
-        setExportMessage('공유를 취소했어요.')
-        return
-      }
-      if (dataUrl) {
-        downloadDataUrl(dataUrl, shareFileName(selectedSession))
-        setExportState('success')
-        setExportMessage('공유창을 열지 못해 PNG 파일로 저장했어요.')
-        return
-      }
-      setExportState('error')
-      setExportMessage('공유 이미지를 만들지 못했어요. PNG 저장을 다시 시도해 주세요.')
-    }
   }
 
   if (recordsQuery.isPending || settingsQuery.isPending || (sessionMissingFromList && directSessionQuery.isPending)) return <RecordsLoading />
@@ -245,8 +166,7 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
   const selectSessionFromCalendar = (sessionId: string) => {
     if (sessions.some((session) => session.id === sessionId)) {
       setSelectedId(sessionId)
-      setExportState('idle')
-      setExportMessage('')
+      setIsShareOpen(false)
     }
     onSelectSession?.(sessionId)
   }
@@ -273,12 +193,12 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
                     className={`record-list-item ${selectedSession.id === session.id ? 'is-selected' : ''}`}
                     key={session.id}
                     type="button"
-                    onClick={() => { setSelectedId(session.id); setExportState('idle'); setExportMessage(''); onSelectSession?.(session.id) }}
+                    onClick={() => { setSelectedId(session.id); setIsShareOpen(false); onSelectSession?.(session.id) }}
                     aria-pressed={selectedSession.id === session.id}
                   >
                     <span className="record-list-date">{formatDateShort(session.startedAt)}</span>
                     <strong>{session.routineName ?? '자유 운동'}</strong>
-                    <span>{completedSetCount(session)}세트 · {formatDuration(session)}</span>
+                    <span>{completedSetCount(session)}세트 · {formatWorkoutDuration(session)}</span>
                   </button>
                 ))}
                 {/* This div must pre-exist so `aria-live` is registered before its
@@ -312,13 +232,16 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
                   <p className="eyebrow">{formatDateFull(selectedSession.startedAt)}</p>
                   <h2 id="record-detail-title">{selectedSession.routineName ?? '자유 운동'}</h2>
                   <p>
-                    {formatDuration(selectedSession)} · {selectedSession.exercises.length}개 종목 · 완료 {completedSetCount(selectedSession)}세트
+                    {formatWorkoutDuration(selectedSession)} · {selectedSession.exercises.length}개 종목 · 완료 {completedSetCount(selectedSession)}세트
                     {selectedSession.editedAt && <span className="record-edited-badge" title={`${formatDateFull(selectedSession.editedAt)}에 수정`}>수정됨</span>}
                   </p>
                 </div>
                 <div className="record-detail-actions">
-                  <div className="record-volume"><span>총 볼륨</span><strong>{formatNumber(getSessionVolume(selectedSession))} <small>{settingsQuery.data.weightUnit}</small></strong></div>
-                  <div className="record-detail-buttons">
+                  <div className="record-volume"><span>총 볼륨</span><strong>{formatWorkoutNumber(getSessionVolume(selectedSession))} <small>{settingsQuery.data.weightUnit}</small></strong></div>
+                  <div className="record-detail-buttons record-action-buttons">
+                    <button className="record-share-button" type="button" onClick={() => setIsShareOpen(true)}>
+                      <Share2 size={15} aria-hidden="true" /> 공유
+                    </button>
                     <button className="record-edit-button" type="button" onClick={() => onEditSession?.(selectedSession.id)}>
                       <Pencil size={15} aria-hidden="true" /> 기록 수정
                     </button>
@@ -346,34 +269,13 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
               {selectedSession.notes && <p className="record-note"><strong>메모</strong>{selectedSession.notes}</p>}
             </section>
 
-            <section className="share-panel" aria-labelledby="share-title">
-              <div className="share-panel-heading"><div><p className="eyebrow">WORKOUT CARD</p><h2 id="share-title">공유 카드</h2></div><ImageDown size={19} aria-hidden="true" /></div>
-              <label className="rir-toggle">
-                <span><SlidersHorizontal size={16} aria-hidden="true" /> 실제 RIR 표시</span>
-                <input type="checkbox" checked={includeRir} onChange={(event) => setIncludeRir(event.target.checked)} />
-                <span className="toggle-visual" aria-hidden="true" />
-              </label>
-
-              <WorkoutShareCard session={selectedSession} weightUnit={settingsQuery.data.weightUnit} includeRir={includeRir} />
-
-              <div className="share-actions">
-                <button className="primary-button" type="button" onClick={() => void shareCard()} disabled={exportState === 'exporting' || exportState === 'sharing'}>
-                  <Share2 size={16} aria-hidden="true" /> {exportState === 'sharing' ? '준비 중…' : '공유하기'}
-                </button>
-                <button className="secondary-button share-download" type="button" onClick={() => void downloadCard()} disabled={exportState === 'exporting' || exportState === 'sharing'}>
-                  <Download size={16} aria-hidden="true" /> {exportState === 'exporting' ? '생성 중…' : 'PNG 저장'}
-                </button>
-              </div>
-              <p className={`export-feedback ${exportState === 'error' ? 'is-error' : ''}`} role="status" aria-live="polite">{exportMessage || '공유 카드에는 개인 계정 정보가 포함되지 않아요.'}</p>
-            </section>
           </div>
         </div>
       )}
-      {selectedSession && (
-        <div className="share-card-export-target" aria-hidden="true">
-          <WorkoutShareCard ref={shareCardRef} session={selectedSession} weightUnit={settingsQuery.data.weightUnit} includeRir={includeRir} />
-        </div>
-      )}
+      {selectedSession && <Overlay isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} presentation="fullscreen" labelledBy="record-share-layer-title" className="workout-share-layer">
+        <header className="workout-share-layer-header"><div><p className="eyebrow">TRAINLOG SHARE</p><h2 id="record-share-layer-title">운동 기록 공유</h2></div><button className="icon-button" type="button" onClick={() => setIsShareOpen(false)} aria-label="공유 화면 닫기"><X size={20} /></button></header>
+        <div className="workout-share-layer-scroll"><WorkoutComplete sessionId={selectedSession.id} variant="share" onClose={() => setIsShareOpen(false)} /></div>
+      </Overlay>}
       <DeleteRecordDialog
         session={sessionPendingDelete}
         isDeleting={deleteMutation.isPending}
@@ -385,37 +287,8 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
   )
 }
 
-const ShareCard = ({ session, weightUnit, includeRir, cardRef }: { session: WorkoutSession; weightUnit: string; includeRir: boolean; cardRef: Ref<HTMLElement> }) => (
-  <article className="workout-share-card" ref={cardRef} aria-label={`${session.routineName ?? '자유 운동'} 공유 카드`}>
-    <header className="share-card-header"><div><span className="share-card-brand">TRAINLOG</span><p>{formatCardDate(session.startedAt)} · {formatDuration(session)}</p></div><span className="share-card-mark">TL</span></header>
-    <h3>{session.routineName ?? '자유 운동'}</h3>
-    <div className={`share-card-summary ${includeRir ? '' : 'without-rir'}`}><div><strong>{formatNumber(getSessionVolume(session))}</strong><span>총 볼륨 {weightUnit}</span></div><div><strong>{completedSetCount(session)}</strong><span>완료 세트</span></div>{includeRir && <div><strong>{formatAverageRir(session)}</strong><span>평균 실제 RIR</span></div>}</div>
-    <div className="share-card-exercises">
-      {session.exercises.map((exercise) => {
-        const completed = exercise.sets.filter((set) => set.isCompleted)
-        if (!completed.length) return null
-        const bestEstimate = bestEstimatedOneRepMax(completed)
-        return (
-          <div className="share-card-exercise" key={exercise.id}>
-            <div className="share-card-exercise-name">
-              <strong>{exercise.exerciseName}</strong>
-              {bestEstimate !== null && <span className="share-card-e1rm">예상 1RM {formatWeight(bestEstimate)}{weightUnit}</span>}
-            </div>
-            <div className="share-card-exercise-sets">{completed.map((set) => <span key={set.id}>{formatSet(set, weightUnit)}{includeRir && set.actualRir !== null ? ` · RIR ${formatRir(set.actualRir)}` : ''}</span>)}</div>
-          </div>
-        )
-      })}
-    </div>
-    <footer>TRAIN WITH INTENTION</footer>
-  </article>
-)
-
-const WorkoutShareCard = forwardRef<HTMLElement, { session: WorkoutSession; weightUnit: string; includeRir: boolean }>(function WorkoutShareCard({ session, weightUnit, includeRir }, cardRef) {
-  return <ShareCard session={session} weightUnit={weightUnit} includeRir={includeRir} cardRef={cardRef} />
-})
-
 function CompletedSetRow({ set, weightUnit }: { set: WorkoutSetRecord; weightUnit: string }) {
-  return <div className="completed-set-row"><span>{set.setOrder}</span><strong>{formatSet(set, weightUnit)}</strong><span>{set.actualRir === null ? 'RIR 미기록' : `실제 RIR ${formatRir(set.actualRir)}`}</span></div>
+  return <div className="completed-set-row"><span>{set.setOrder}</span><strong>{formatWorkoutSet(set, weightUnit)}</strong><span>{set.actualRir === null ? 'RIR 미기록' : `실제 RIR ${formatWorkoutRir(set.actualRir)}`}</span></div>
 }
 
 function RecordsLoading() { return <main className="records-page" aria-label="운동 기록 불러오는 중"><section className="records-heading skeleton-heading"><div className="skeleton-line small" /><div className="skeleton-line title" /></section><section className="records-skeleton-grid"><div className="skeleton-card records-list-skeleton" /><div className="skeleton-card records-detail-skeleton" /><div className="skeleton-card records-share-skeleton" /></section></main> }
@@ -447,28 +320,5 @@ function DeleteRecordDialog({ session, isDeleting, isError, onCancel, onConfirm 
   )
 }
 
-function getActualRirs(session: WorkoutSession) { return session.exercises.flatMap((exercise) => exercise.sets).filter((set) => set.isCompleted && set.actualRir !== null).map((set) => set.actualRir as number) }
-function formatAverageRir(session: WorkoutSession) { const rirs = getActualRirs(session); if (!rirs.length) return '–'; const average = rirs.reduce((sum, value) => sum + value, 0) / rirs.length; return average >= 5 ? '5+' : average.toFixed(1) }
-function formatRir(rir: number) { return rir >= 5 ? '5+' : String(rir) }
-/**
- * 시간이나 거리가 적힌 세트는 유산소로 본다. 세트 자체에는 장비 정보가 없고,
- * 유산소가 아니면 이 두 값이 채워질 일이 없어 이 판정으로 충분하다.
- */
-function formatSet(set: WorkoutSetRecord, weightUnit: string) {
-  if (set.durationSeconds !== null || set.distanceKm !== null) {
-    const parts = []
-    if (set.durationSeconds !== null) parts.push(`${Math.round(set.durationSeconds / 60)}분`)
-    if (set.distanceKm !== null) parts.push(`${set.distanceKm}km`)
-    return parts.join(' · ')
-  }
-  return `${formatWeight(set.weightKg)} ${weightUnit} × ${set.reps ?? '–'}`
-}
-function formatWeight(weight: number | null) { return weight === null ? '–' : Number.isInteger(weight) ? String(weight) : weight.toFixed(1) }
-function formatNumber(value: number) { return new Intl.NumberFormat('ko-KR').format(Math.round(value)) }
-function formatDuration(session: WorkoutSession) { if (!session.completedAt) return '기록 중'; const minutes = getSessionDurationMinutes(session); return minutes < 60 ? `${minutes}분` : `${Math.floor(minutes / 60)}시간${minutes % 60 ? ` ${minutes % 60}분` : ''}` }
 function formatDateShort(date: string) { return new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }).format(new Date(date)) }
 function formatDateFull(date: string) { return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(date)) }
-function formatCardDate(date: string) { return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(date)).replace(/\.$/, '') }
-function shareFileName(session: WorkoutSession) { const date = new Date(session.startedAt); const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; return `trainlog-${localDate}.png` }
-function downloadDataUrl(dataUrl: string, filename: string) { const link = document.createElement('a'); link.href = dataUrl; link.download = filename; document.body.append(link); link.click(); link.remove() }
-async function dataUrlToFile(dataUrl: string, filename: string) { const response = await fetch(dataUrl); const blob = await response.blob(); return new File([blob], filename, { type: 'image/png' }) }

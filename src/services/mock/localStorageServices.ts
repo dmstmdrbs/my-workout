@@ -1,13 +1,18 @@
 import type {
   BodyMeasurement,
   Exercise,
+  ExerciseOneRepMax,
   Id,
+  ProgramRun,
+  ProgramRunDay,
   Routine,
+  StartProgramRunInput,
   UserProfile,
   UserSettings,
   WorkoutSession,
   WorkoutSetRecord,
 } from '../../types/domain'
+import { addCalendarDays } from '../../lib/localDate'
 import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, WorkoutRepository } from '../contracts'
 import { mockExercises, mockRoutines, mockSessions, mockSettings, mockUser } from './seed'
 
@@ -20,6 +25,8 @@ interface LocalStore {
   routines: Routine[]
   sessions: WorkoutSession[]
   measurements: BodyMeasurement[]
+  programRuns: ProgramRun[]
+  exerciseOneRepMaxes: ExerciseOneRepMax[]
 }
 
 const storageKey = 'trainlog:mock-store:v1'
@@ -57,6 +64,8 @@ function createStore(): LocalStore {
     routines: clone(mockRoutines),
     sessions: clone(mockSessions),
     measurements: [],
+    programRuns: [],
+    exerciseOneRepMaxes: [],
   }
 }
 
@@ -66,6 +75,8 @@ function readStore(): LocalStore {
     const raw = globalThis.localStorage?.getItem(storageKey)
     if (raw) {
       inMemoryStore = JSON.parse(raw) as LocalStore
+      inMemoryStore.programRuns ??= []
+      inMemoryStore.exerciseOneRepMaxes ??= []
       return inMemoryStore
     }
   } catch { /* localStorage can be disabled; memory fallback remains usable. */ }
@@ -145,6 +156,18 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
     return clone(saved)
   }
   async archiveExercise(id: Id) { updateStore((store) => { const item = store.exercises.find((exercise) => exercise.id === id); if (item) { item.isArchived = true; item.updatedAt = now() } }) }
+  async listExerciseOneRepMaxes() { return clone(this.requireStore().exerciseOneRepMaxes) }
+  async saveExerciseOneRepMax(exerciseId: Id, oneRepMaxKg: number) {
+    const store = this.requireStore()
+    if (!store.exercises.some((exercise) => exercise.id === exerciseId)) throw new Error('운동을 찾지 못했어요.')
+    const saved: ExerciseOneRepMax = { userId: store.profile.id, exerciseId, oneRepMaxKg, updatedAt: now() }
+    updateStore((next) => {
+      const index = next.exerciseOneRepMaxes.findIndex((item) => item.exerciseId === exerciseId)
+      if (index >= 0) next.exerciseOneRepMaxes[index] = saved
+      else next.exerciseOneRepMaxes.push(saved)
+    })
+    return clone(saved)
+  }
 
   async listRoutines() { return clone(this.requireStore().routines.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))) }
   async getRoutine(id: Id) { return clone(this.requireStore().routines.find((item) => item.id === id) ?? null) }
@@ -155,6 +178,96 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
     return clone(saved)
   }
   async deleteRoutine(id: Id) { updateStore((store) => { store.routines = store.routines.filter((item) => item.id !== id) }) }
+
+  async listProgramRuns() {
+    const store = this.requireStore()
+    return clone(store.programRuns
+      .map((run) => attachProgramSessions(run, store.sessions))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+  }
+  async getActiveProgramRun() {
+    const store = this.requireStore()
+    const run = store.programRuns.find((item) => item.status === 'active')
+    return clone(run ? attachProgramSessions(run, store.sessions) : null)
+  }
+  async getProgramRunDay(id: Id) {
+    const store = this.requireStore()
+    for (const run of store.programRuns.filter((item) => item.status === 'active')) {
+      const day = run.days.find((item) => item.id === id)
+      if (day) return clone(attachProgramDaySession(day, store.sessions))
+    }
+    return null
+  }
+  async startProgramRun(input: StartProgramRunInput) {
+    const store = this.requireStore()
+    if (store.programRuns.some((item) => item.status === 'active')) throw new Error('진행 중인 프로그램을 먼저 종료해 주세요.')
+    const timestamp = now()
+    const runId = newId()
+    const days: ProgramRunDay[] = input.days.map((day) => ({
+      id: newId(),
+      userId: store.profile.id,
+      programRunId: runId,
+      dayNumber: day.dayNumber,
+      weekNumber: Math.floor((day.dayNumber - 1) / 7) + 1,
+      dayOfWeek: ((day.dayNumber - 1) % 7) + 1,
+      scheduledOn: addCalendarDays(input.startDate, day.dayNumber - 1),
+      dayType: day.dayType,
+      title: day.title,
+      instructions: day.instructions,
+      routineSnapshot: day.routineSnapshot,
+      cardioTarget: day.cardioTarget,
+      isOptional: day.isOptional,
+      completedAt: null,
+      workoutSession: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }))
+    const run: ProgramRun = {
+      id: runId,
+      userId: store.profile.id,
+      programKey: input.programKey,
+      programName: input.programName,
+      templateVersion: input.templateVersion,
+      durationWeeks: input.durationWeeks,
+      startDate: input.startDate,
+      status: 'active',
+      endedAt: null,
+      endReason: null,
+      days,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }
+    updateStore((next) => { next.programRuns.push(run) })
+    return clone(run)
+  }
+  async completeProgramRunDay(id: Id) {
+    const timestamp = now()
+    let found = false
+    updateStore((store) => {
+      const run = store.programRuns.find((item) => item.status === 'active' && item.days.some((day) => day.id === id))
+      const day = run?.days.find((item) => item.id === id)
+      if (!day || day.dayType !== 'rest') return
+      day.completedAt ??= timestamp
+      day.updatedAt = timestamp
+      if (run) run.updatedAt = timestamp
+      found = true
+    })
+    if (!found) throw new Error('완료할 수 있는 활성 프로그램 휴식일을 찾지 못했어요.')
+  }
+  async endProgramRun(id: Id, outcome: 'completed' | 'withdrawn', reason: string | null = null) {
+    const timestamp = now()
+    let found = false
+    updateStore((store) => {
+      const run = store.programRuns.find((item) => item.id === id && item.status === 'active')
+      if (!run) return
+      run.status = outcome
+      run.endedAt = timestamp
+      run.endReason = reason
+      run.updatedAt = timestamp
+      found = true
+    })
+    if (!found) throw new Error('진행 중인 프로그램을 찾지 못했어요.')
+  }
 
   async listSessions(options: { status?: WorkoutSession['status']; limit?: number; startedBefore?: string; startedAfter?: string } = {}) {
     const at = (value: string) => new Date(value).getTime()
@@ -218,4 +331,23 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
 /** Default development services. Swap this factory for Supabase implementations at app composition only. */
 export function createLocalStorageServices(): AppServices {
   return { auth: new LocalStorageAuthAdapter(), workoutRepository: new LocalStorageWorkoutRepository() }
+}
+
+function attachProgramSessions(run: ProgramRun, sessions: WorkoutSession[]): ProgramRun {
+  return { ...run, days: run.days.map((day) => attachProgramDaySession(day, sessions)) }
+}
+
+function attachProgramDaySession(day: ProgramRunDay, sessions: WorkoutSession[]): ProgramRunDay {
+  const session = sessions
+    .filter((item) => item.programRunDayId === day.id && item.status === 'completed')
+    .sort((a, b) => (b.completedAt ?? b.startedAt).localeCompare(a.completedAt ?? a.startedAt))[0]
+  return {
+    ...day,
+    workoutSession: session ? {
+      id: session.id,
+      routineName: session.routineName,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+    } : null,
+  }
 }

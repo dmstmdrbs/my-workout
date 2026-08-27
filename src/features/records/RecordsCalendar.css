@@ -52,3 +52,4 @@
   .calendar-stat { padding: 9px 10px; }
   .calendar-grid { gap: 5px; }
 }
+.calendar-day.has-workout { color: var(--on-accent); }
