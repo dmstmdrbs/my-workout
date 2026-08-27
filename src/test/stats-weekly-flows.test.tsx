@@ -49,10 +49,16 @@ function weeksBetween(a: Date, b: Date) {
   return Math.round((getWeekStart(a).getTime() - getWeekStart(b).getTime()) / (7 * 24 * 60 * 60 * 1000))
 }
 
+/**
+ * 버튼을 클릭마다 다시 찾는다. `statsQuery`의 키에 선택한 주가 들어 있어 한 번
+ * 누르면 화면이 로딩 분기로 바뀌고 주 이동 헤더가 교체된다. 버튼 노드를 루프
+ * 밖에서 한 번만 잡아 두면 두 번째 클릭부터는 이미 떨어져 나간 노드를 눌러
+ * 아무 일도 일어나지 않는다 -- 시드 주까지 한 주였던 동안에는 드러나지 않다가,
+ * 실제 시계가 흘러 두 주 이상 떨어지자 실패했다.
+ */
 async function clickWeeksBack(user: ReturnType<typeof userEvent.setup>, count: number) {
-  const prevButton = screen.getByRole('button', { name: '이전 주' })
   for (let i = 0; i < count; i += 1) {
-    await user.click(prevButton)
+    await user.click(await screen.findByRole('button', { name: '이전 주' }))
   }
 }
 
