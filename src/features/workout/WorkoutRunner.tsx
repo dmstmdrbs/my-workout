@@ -6,7 +6,6 @@ import {
   Dumbbell,
   GripVertical,
   ListOrdered,
-  Minus,
   Pause,
   Play,
   Plus,
@@ -22,7 +21,7 @@ import { formatRelativeDay } from '../../lib/relativeDay'
 import { playRestFinishedAlert, primeRestAlert } from '../../lib/restAlert'
 import { requestScreenWakeLock } from '../../lib/wakeLock'
 import { useAppServices, useSettings } from '../../services'
-import type { Equipment, Exercise, Id, IsoDateTime, Routine, Rir, SetType, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
+import type { Equipment, Exercise, Id, IsoDateTime, Routine, Rir, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
   readStoredWorkoutDraft,
@@ -32,6 +31,7 @@ import {
 } from './activeWorkoutDraft'
 import { CreateExerciseDialog, ExercisePickerSheet } from './ExercisePicker'
 import { muscleLabel, snapshotExerciseName } from './exerciseLabels'
+import { SetRow } from './SetRow'
 import './WorkoutRunner.css'
 
 interface WorkoutRunnerProps {
@@ -46,20 +46,6 @@ interface WorkoutSetupData {
 }
 
 function lastCompletedSetQueryKey(exerciseId: string) { return ['last-completed-set', exerciseId] as const }
-
-const WEIGHT_STEP = 2.5
-const REPS_STEP = 1
-const DURATION_STEP_SECONDS = 60
-const DISTANCE_STEP_KM = 0.1
-
-const rirChoices: Array<{ value: number; label: string }> = [
-  { value: 0, label: '0' },
-  { value: 1, label: '1' },
-  { value: 2, label: '2' },
-  { value: 3, label: '3' },
-  { value: 4, label: '4' },
-  { value: 5, label: '5+' },
-]
 
 export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange }: WorkoutRunnerProps) {
   const { workoutRepository } = useAppServices()
@@ -681,87 +667,6 @@ function RoutineChoiceCard({ routine, isSelected, lastPerformedAt, onSelect }: {
   </button>
 }
 
-function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, isCardio, rirInputEnabled, onChange, onComplete }: { set: WorkoutSetRecord; weightUnit: string; weightLabel: string; weightShortLabel: string; isBodyweight: boolean; isCardio: boolean; rirInputEnabled: boolean; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
-  if (isCardio) return <CardioSetRow set={set} rirInputEnabled={rirInputEnabled} onChange={onChange} onComplete={onComplete} />
-
-  return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''} ${rirInputEnabled ? '' : 'is-rir-hidden'}`}>
-    <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
-    <label>
-      <span className="mobile-field-label">{weightLabel}</span>
-      <div className="numeric-stepper">
-        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 ${weightShortLabel} ${WEIGHT_STEP}${weightUnit} 감소`} onClick={() => onChange({ weightKg: decrementValue(set.weightKg, WEIGHT_STEP) })}><Minus size={14} /></button>
-        <input aria-label={`${set.setOrder}세트 ${weightLabel}`} inputMode="decimal" type="number" min="0" step="0.5" placeholder={isBodyweight ? '맨몸' : undefined} value={set.weightKg ?? ''} onChange={(event) => onChange({ weightKg: toNullableNumber(event.target.value) })} />
-        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 ${weightShortLabel} ${WEIGHT_STEP}${weightUnit} 증가`} onClick={() => onChange({ weightKg: incrementValue(set.weightKg, WEIGHT_STEP) })}><Plus size={14} /></button>
-      </div>
-    </label>
-    <label>
-      <span className="mobile-field-label">횟수</span>
-      <div className="numeric-stepper">
-        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 횟수 ${REPS_STEP} 감소`} onClick={() => onChange({ reps: decrementValue(set.reps, REPS_STEP) })}><Minus size={14} /></button>
-        <input aria-label={`${set.setOrder}세트 횟수`} inputMode="numeric" type="number" min="0" step="1" value={set.reps ?? ''} onChange={(event) => onChange({ reps: toNullableInteger(event.target.value) })} />
-        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 횟수 ${REPS_STEP} 증가`} onClick={() => onChange({ reps: incrementValue(set.reps, REPS_STEP) })}><Plus size={14} /></button>
-      </div>
-    </label>
-    <span className="target-rir"><small className="mobile-field-label">목표 RIR</small>{formatRir(set.targetRir)}</span>
-    {rirInputEnabled && <div className="actual-rir"><span className="mobile-field-label">실제 RIR</span><div className="rir-choice-row" role="group" aria-label={`${set.setOrder}세트 실제 RIR`}>
-      {rirChoices.map((choice) => <button className={set.actualRir === choice.value ? 'is-selected' : ''} type="button" key={choice.value} onClick={() => onChange({ actualRir: choice.value })}>{choice.label}</button>)}
-      <button className={set.actualRir === null ? 'is-selected is-empty' : 'is-empty'} type="button" onClick={() => onChange({ actualRir: null })}>–</button>
-    </div></div>}
-    <button className={`complete-set-button ${set.isCompleted ? 'is-completed' : ''}`} type="button" onClick={onComplete} aria-label={`${set.setOrder}세트 ${set.isCompleted ? '완료 취소' : '완료'}`}>
-      {set.isCompleted ? <Check size={17} /> : '완료'}
-    </button>
-  </div>
-}
-
-/**
- * 유산소 세트는 중량·횟수 대신 시간과 거리를 받는다. 시간은 초로 저장하고
- * 화면에서는 분으로 다룬다 -- 러닝 기록을 "1800초"로 적는 사람은 없다.
- * RIR 열은 그대로 두되 값이 없으면 비워 둔다. 유산소에 목표 RIR을 처방하는
- * 경우는 드물지만, 넣고 싶은 사람의 자리를 없앨 이유도 없다.
- */
-function CardioSetRow({ set, rirInputEnabled, onChange, onComplete }: { set: WorkoutSetRecord; rirInputEnabled: boolean; onChange: (changes: Partial<WorkoutSetRecord>) => void; onComplete: () => void }) {
-  const minutes = set.durationSeconds === null ? '' : String(Math.round(set.durationSeconds / 60))
-  const stepDuration = (delta: number) => onChange({ durationSeconds: Math.max(0, (set.durationSeconds ?? 0) + delta) })
-  const stepDistance = (delta: number) => onChange({ distanceKm: roundDistance(Math.max(0, (set.distanceKm ?? 0) + delta)) })
-
-  return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''} ${rirInputEnabled ? '' : 'is-rir-hidden'}`}>
-    <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
-    <label>
-      <span className="mobile-field-label">시간 (분)</span>
-      <div className="numeric-stepper">
-        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 시간 1분 감소`} onClick={() => stepDuration(-DURATION_STEP_SECONDS)}><Minus size={14} /></button>
-        <input aria-label={`${set.setOrder}세트 시간 (분)`} inputMode="numeric" type="number" min="0" step="1" value={minutes} onChange={(event) => onChange({ durationSeconds: toNullableMinutes(event.target.value) })} />
-        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 시간 1분 증가`} onClick={() => stepDuration(DURATION_STEP_SECONDS)}><Plus size={14} /></button>
-      </div>
-    </label>
-    <label>
-      <span className="mobile-field-label">거리 (km)</span>
-      <div className="numeric-stepper">
-        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 거리 0.1km 감소`} onClick={() => stepDistance(-DISTANCE_STEP_KM)}><Minus size={14} /></button>
-        <input aria-label={`${set.setOrder}세트 거리 (km)`} inputMode="decimal" type="number" min="0" step="0.1" value={set.distanceKm ?? ''} onChange={(event) => onChange({ distanceKm: toNullableNumber(event.target.value) })} />
-        <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 거리 0.1km 증가`} onClick={() => stepDistance(DISTANCE_STEP_KM)}><Plus size={14} /></button>
-      </div>
-    </label>
-    <span className="target-rir"><small className="mobile-field-label">목표 RIR</small>{formatRir(set.targetRir)}</span>
-    {rirInputEnabled && <div className="actual-rir"><span className="mobile-field-label">실제 RIR</span><div className="rir-choice-row" role="group" aria-label={`${set.setOrder}세트 실제 RIR`}>
-      {rirChoices.map((choice) => <button className={set.actualRir === choice.value ? 'is-selected' : ''} type="button" key={choice.value} onClick={() => onChange({ actualRir: choice.value })}>{choice.label}</button>)}
-      <button className={set.actualRir === null ? 'is-selected is-empty' : 'is-empty'} type="button" onClick={() => onChange({ actualRir: null })}>–</button>
-    </div></div>}
-    <button className={`complete-set-button ${set.isCompleted ? 'is-completed' : ''}`} type="button" onClick={onComplete} aria-label={`${set.setOrder}세트 ${set.isCompleted ? '완료 취소' : '완료'}`}>
-      {set.isCompleted ? <Check size={17} /> : '완료'}
-    </button>
-  </div>
-}
-
-/** 분 입력을 초로. 빈 칸과 음수는 값 없음으로 본다. */
-function toNullableMinutes(value: string) {
-  const parsed = toNullableInteger(value)
-  return parsed === null ? null : parsed * 60
-}
-
-/** 0.1km 단위 스테퍼가 부동소수 오차로 3.3000000000000003이 되지 않게 한다. */
-function roundDistance(value: number) { return Math.round(value * 10) / 10 }
-
 function RestTimer({ remaining, isRunning, onRestart, onStop, compact = false }: { remaining: number; isRunning: boolean; onRestart: () => void; onStop: () => void; compact?: boolean }) {
   return <article className={`rest-timer ${compact ? 'is-compact' : ''}`}>
     <div className="rest-timer-copy"><span><Clock3 size={16} /> 휴식 타이머</span><strong>{formatTimer(remaining)}</strong></div>
@@ -815,8 +720,6 @@ function createFreeWorkoutExercise({ exercise, exerciseOrder, previousSet, defau
 function sortExercises(exercises: WorkoutExercise[]) { return [...exercises].sort((left, right) => left.exerciseOrder - right.exerciseOrder) }
 function normalizeExerciseOrder(exercises: WorkoutExercise[]) { return exercises.map((exercise, index) => ({ ...exercise, exerciseOrder: index + 1 })) }
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `workout-${Date.now()}-${Math.random().toString(36).slice(2)}` }
-function toNullableNumber(value: string) { if (value.trim() === '') return null; const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? parsed : null }
-function toNullableInteger(value: string) { const number = toNullableNumber(value); return number === null ? null : Math.floor(number) }
 function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) {
   if (!set) return '기록 없음'
   if (set.durationSeconds !== null || set.distanceKm !== null) {
@@ -827,17 +730,11 @@ function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) {
   }
   return set.weightKg !== null && set.reps !== null ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음'
 }
-function formatRir(rir: Rir) { if (rir === null) return '–'; return rir >= 5 ? '5+' : String(rir) }
 function formatTimer(seconds: number) { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
 /** 볼륨은 kg 소수점을 보여줄 만큼 정밀하지 않아 정수로 끊고 천 단위만 구분한다. */
 function formatVolume(volume: number) { return Math.round(volume).toLocaleString('ko-KR') }
 function countAllSets(session: WorkoutDraft) { return session.exercises.reduce((count, exercise) => count + exercise.sets.length, 0) }
 function countRoutineSets(routine: Routine) { return routine.exercises.reduce((count, exercise) => count + exercise.sets.length, 0) }
-// A null field is treated as an empty 0 baseline: incrementing it once lands
-// on exactly one step (rather than staying null or producing NaN), and
-// decrementing it clamps at the floor like any other value.
-function incrementValue(value: number | null, step: number, floor = 0) { return Math.max(floor, (value ?? 0) + step) }
-function decrementValue(value: number | null, step: number, floor = 0) { return Math.max(floor, (value ?? 0) - step) }
 function findMostRecentlyCompletedSet(draft: WorkoutDraft | null): WorkoutSetRecord | null {
   if (!draft) return null
   let latest: WorkoutSetRecord | null = null
@@ -849,4 +746,3 @@ function findMostRecentlyCompletedSet(draft: WorkoutDraft | null): WorkoutSetRec
   }
   return latest
 }
-function setTypeLabel(setType: SetType) { return setType === 'warmup' ? '워밍업' : setType === 'dropset' ? '드롭' : '작업' }
