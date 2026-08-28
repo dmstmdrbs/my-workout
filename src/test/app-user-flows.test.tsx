@@ -149,6 +149,10 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
 
     await user.click(sideNavButton('기록'))
     await screen.findByRole('heading', { name: '운동 기록' })
+    // 기록 탭은 달력과 그 날의 목록만 보여준다. 세트 값은 상세에서 확인한다.
+    const dayPanel = await screen.findByRole('region', { name: '선택한 날의 운동' })
+    await user.click(await within(dayPanel).findByRole('button', { name: /Pull Day/ }))
+    await screen.findByRole('button', { name: '공유' })
     expect(screen.getAllByText(/실제 RIR 5\+/).length).toBeGreaterThan(0)
   })
 
@@ -178,10 +182,10 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(recentSessionRoutine).toBeTruthy()
     expect(recentSessionDate).toBeTruthy()
     await user.click(recentSession)
-    await screen.findByRole('heading', { name: '운동 기록' })
+    await screen.findByRole('button', { name: '공유' })
     const openedHeading = document.querySelector('.record-detail-heading')
-    expect(openedHeading?.querySelector('h2')?.textContent).toBe(recentSessionRoutine)
-    expect(openedHeading?.querySelector('.eyebrow')?.textContent).toContain(recentSessionDate)
+    expect(openedHeading?.querySelector('h1')?.textContent).toBe(recentSessionRoutine)
+    expect(openedHeading?.querySelector('.record-detail-back')?.textContent).toContain(recentSessionDate)
 
     await user.click(sideNavButton('대시보드'))
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
@@ -220,8 +224,8 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     const user = userEvent.setup()
 
     const directRecord = renderApp('/records/session-2026-08-14')
-    await screen.findByRole('heading', { name: '운동 기록' })
-    expect(document.querySelector('.record-detail-heading .eyebrow')?.textContent).toContain('2026년 8월 14일')
+    await screen.findByRole('button', { name: '공유' })
+    expect(document.querySelector('.record-detail-back')?.textContent).toContain('2026년 8월 14일')
     directRecord.unmount()
 
     const directRoutine = renderApp('/routines/pull-day')
@@ -342,6 +346,9 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await screen.findByRole('heading', { name: /좋은 하루예요/ })
     await user.click(sideNavButton('기록'))
     await screen.findByRole('heading', { name: '운동 기록' })
+    const recordDayPanel = await screen.findByRole('region', { name: '선택한 날의 운동' })
+    await user.click((await within(recordDayPanel).findAllByRole('button'))[0])
+    await screen.findByRole('button', { name: '공유' })
 
     expect(document.querySelector('.share-panel')).toBeNull()
     await user.click(screen.getByRole('button', { name: '공유' }))
@@ -487,7 +494,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     const sessionId = 'session-2026-08-14'
     renderApp(`/records/${sessionId}`)
 
-    await screen.findByRole('heading', { name: '운동 기록' })
+    await screen.findByRole('button', { name: '삭제' })
     expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions.some((session: { id: string }) => session.id === sessionId)).toBe(true)
 
     await user.click(screen.getByRole('button', { name: '삭제' }))
@@ -502,7 +509,9 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(within(await screen.findByRole('dialog', { name: '운동 기록을 삭제할까요?' })).getByRole('button', { name: '삭제하기' }))
     await waitFor(() => expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions.some((session: { id: string }) => session.id === sessionId)).toBe(false))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '운동 기록을 삭제할까요?' })).toBeNull())
+    // 삭제한 상세 URL에 머무르지 않고 그 날의 목록으로 돌아간다.
     await screen.findByRole('heading', { name: '운동 기록' })
+    expect(screen.queryByRole('button', { name: '삭제' })).toBeNull()
   })
 
   test('하단 내비게이션의 더보기 버튼으로 팝오버를 열고 닫을 수 있다', async () => {

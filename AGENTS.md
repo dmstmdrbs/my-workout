@@ -93,7 +93,8 @@ docs/user-flow-test-plan.md       수동/자동 검증 기준
 - `/programs` 8주 프로그램 시작·진행·회차 기록
 - `/workout` 운동 시작/진행/재개
 - `/routines`, `/routines/new`, `/routines/:routineId` 루틴
-- `/records`, `/records/:sessionId` 기록/공유
+- `/records` 기록 탭 — 달력과 선택한 날의 기록 목록. 보고 있는 날짜는 경로가 아니라 쿼리(`?d=YYYY-MM-DD`)에 둔다. 새 화면이 아니라 같은 화면의 선택이고, 상세에서 돌아왔을 때 보던 날이 그대로 열려야 하기 때문이다.
+- `/records/:sessionId` 기록 상세 전용 화면(공유·수정·삭제 진입점)
 - `/records/:sessionId/edit` 완료된 기록 편집(완료 세트의 값·세트 수·메모만)
 - `/settings` 설정
 - `/body` 신체 측정 기록

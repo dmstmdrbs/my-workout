@@ -88,7 +88,7 @@ describe.sequential('UF-26: 완료된 운동 기록 편집', () => {
     const sessionId = await seedCompletedSession(repo, '편집 대상 A')
 
     renderApp(`/records/${sessionId}`)
-    await screen.findByRole('heading', { name: '편집 대상 A', level: 2 })
+    await screen.findByRole('heading', { name: '편집 대상 A', level: 1 })
     expect(screen.queryByText('수정됨')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: '수정' }))
@@ -108,7 +108,7 @@ describe.sequential('UF-26: 완료된 운동 기록 편집', () => {
 
     await user.click(screen.getByRole('button', { name: '저장하기' }))
 
-    await screen.findByRole('heading', { name: '편집 대상 A', level: 2 })
+    await screen.findByRole('heading', { name: '편집 대상 A', level: 1 })
     await waitFor(() => {
       expect(screen.getByText('85 kg × 7')).toBeTruthy()
     })
@@ -137,7 +137,7 @@ describe.sequential('UF-26: 완료된 운동 기록 편집', () => {
 
     await user.click(screen.getByRole('button', { name: '저장하기' }))
 
-    await screen.findByRole('heading', { name: '편집 대상 B', level: 2 })
+    await screen.findByRole('heading', { name: '편집 대상 B', level: 1 })
     await waitFor(() => {
       expect(screen.getByText(/완료 1세트/)).toBeTruthy()
     })
@@ -167,7 +167,7 @@ describe.sequential('UF-26: 완료된 운동 기록 편집', () => {
     await screen.findByRole('heading', { name: '고친 내용을 버릴까요?' })
     await user.click(screen.getByRole('button', { name: '버리기' }))
 
-    await screen.findByRole('heading', { name: '편집 대상 C', level: 2 })
+    await screen.findByRole('heading', { name: '편집 대상 C', level: 1 })
     // 심어 둔 세트는 80×7, 80×7, 80×6이다. 고치기 전 그대로 남아 있어야 한다.
     expect(screen.getAllByText('80 kg × 7')).toHaveLength(2)
     expect(screen.getByText('80 kg × 6')).toBeTruthy()
@@ -184,7 +184,7 @@ describe.sequential('UF-26: 완료된 운동 기록 편집', () => {
     await screen.findByRole('heading', { name: '기록 수정' })
 
     await user.click(screen.getByRole('button', { name: '취소' }))
-    await screen.findByRole('heading', { name: '편집 대상 D', level: 2 })
+    await screen.findByRole('heading', { name: '편집 대상 D', level: 1 })
     expect(screen.queryByRole('heading', { name: '고친 내용을 버릴까요?' })).toBeNull()
   })
 })

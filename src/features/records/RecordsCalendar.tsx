@@ -10,16 +10,20 @@ import './RecordsCalendar.css'
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
 
 interface RecordsCalendarProps {
-  /** 표시할 날의 세션을 선택했을 때 호출된다. 그 날 세션이 이미 로드된 목록에
-   * 있으면 즉시 선택되고, 없으면(다른 페이지에 있거나 아직 안 불러온 세션)
-   * `/records/:sessionId` 직접 진입과 동일한 단건 조회 경로로 열린다. */
-  onSelectDay: (sessionId: string) => void
-  selectedSessionId: string | null
+  /** 운동이 있는 날을 눌렀을 때. 세션이 아니라 **날짜**를 넘긴다 -- 하루에 두
+   * 번 운동한 날이 있으므로 그 날의 세션을 고르는 일은 이 컴포넌트가 아니라
+   * 아래 목록의 몫이다. 값은 `toLocalDateKey` 형식(`YYYY-MM-DD`)이다. */
+  onSelectDay: (dateKey: string) => void
+  selectedDateKey: string | null
 }
 
-export function RecordsCalendar({ onSelectDay, selectedSessionId }: RecordsCalendarProps) {
+export function RecordsCalendar({ onSelectDay, selectedDateKey }: RecordsCalendarProps) {
   const { workoutRepository } = useAppServices()
-  const [isExpanded, setIsExpanded] = useState(false)
+  // 모바일에서는 이 달력이 날짜를 옮길 유일한 수단이므로 펼친 채로 시작한다.
+  // 접힌 채로 시작하던 시절에는 화면 아래에 완료한 운동 전체 목록이 따로 있어
+  // 달력 없이도 다른 날로 갈 수 있었다. 접기 자체는 남겨 둔다 -- 그 날 기록이
+  // 많으면 목록을 위로 끌어올릴 수 있어야 한다.
+  const [isExpanded, setIsExpanded] = useState(true)
   // 0 = 이번 달, 음수 = 과거. 미래로는 절대 넘어가지 않는다.
   const [monthOffset, setMonthOffset] = useState(0)
 
@@ -61,13 +65,16 @@ export function RecordsCalendar({ onSelectDay, selectedSessionId }: RecordsCalen
     }),
   })
 
-  // 그 날 세션이 여럿이면(하루 두 번 운동) 가장 최근 세션을 그 날의 대표로
-  // 삼는다. `listSessions`는 최신순으로 반환하므로 먼저 만난 것이 최신이다.
+  // 하루에 두 번 운동한 날이 있다. 예전에는 첫 세션만 남기고 나머지를 버려서
+  // 그 날의 두 번째 운동은 달력에서 열 방법이 아예 없었다. 이제는 날짜마다
+  // 세션을 모두 모아 두고, 개수는 칸의 접근성 이름에 쓴다.
   const monthSessionsByDay = useMemo(() => {
-    const map = new Map<string, WorkoutSession>()
+    const map = new Map<string, WorkoutSession[]>()
     for (const session of monthQuery.data ?? []) {
       const key = toLocalDateKey(new Date(session.startedAt))
-      if (!map.has(key)) map.set(key, session)
+      const bucket = map.get(key)
+      if (bucket) bucket.push(session)
+      else map.set(key, [session])
     }
     return map
   }, [monthQuery.data])
@@ -174,12 +181,13 @@ export function RecordsCalendar({ onSelectDay, selectedSessionId }: RecordsCalen
                     const cellDate = new Date(displayedMonthStart)
                     cellDate.setDate(day)
                     const key = toLocalDateKey(cellDate)
-                    const session = monthSessionsByDay.get(key)
-                    const hasWorkout = Boolean(session)
+                    const daySessions = monthSessionsByDay.get(key)
+                    const hasWorkout = daySessions !== undefined
                     const isToday = key === toLocalDateKey(today)
-                    const isSelected = session !== undefined && session.id === selectedSessionId
+                    const isSelected = hasWorkout && key === selectedDateKey
                     const weekdayLabel = dayLabels[getMondayIndex(cellDate)]
-                    const dayLabel = `${monthLabelBase} ${day}일 ${weekdayLabel}요일${isToday ? ', 오늘' : ''}, ${hasWorkout ? '운동 완료' : '운동 기록 없음'}`
+                    const workoutLabel = daySessions ? `운동 ${daySessions.length}회 완료` : '운동 기록 없음'
+                    const dayLabel = `${monthLabelBase} ${day}일 ${weekdayLabel}요일${isToday ? ', 오늘' : ''}, ${workoutLabel}`
                     return (
                       <button
                         type="button"
@@ -188,7 +196,7 @@ export function RecordsCalendar({ onSelectDay, selectedSessionId }: RecordsCalen
                         disabled={!hasWorkout}
                         aria-pressed={hasWorkout ? isSelected : undefined}
                         aria-label={dayLabel}
-                        onClick={() => { if (session) onSelectDay(session.id) }}
+                        onClick={() => { if (hasWorkout) onSelectDay(key) }}
                       >
                         <span aria-hidden="true">{day}</span>
                         {hasWorkout && <span className="calendar-day-mark" aria-hidden="true" />}

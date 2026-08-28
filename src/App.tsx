@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { MemoryRouter, Navigate, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { MemoryRouter, Navigate, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   BarChart3,
   CalendarRange,
@@ -20,6 +20,7 @@ import { Dashboard } from './features/dashboard/Dashboard'
 import { ExerciseCatalog } from './features/exercises/ExerciseCatalog'
 import { Programs } from './features/programs/Programs'
 import { Records } from './features/records/Records'
+import { RecordDetail } from './features/records/RecordDetail'
 import { RecordEditor } from './features/records/RecordEditor'
 import { WorkoutComplete } from './features/records/WorkoutComplete'
 import { RoutineManager } from './features/routines/RoutineManager'
@@ -339,12 +340,18 @@ function AppShell() {
           <Route path="/workout/complete/:sessionId" element={<WorkoutCompleteRoute onViewRecord={(sessionId) => navigate(`/records/${sessionId}`)} onGoHome={() => navigate('/')} />} />
           <Route path="/programs" element={<Programs onStartDay={(dayId) => navigate(`/workout?programDay=${dayId}`)} onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} />} />
           <Route path="/routines/:routineId?" element={<RoutineRoute onRoutineChange={(routineId) => navigate(routineId === 'new' ? '/routines/new' : routineId ? `/routines/${routineId}` : '/routines')} onStartProgramDay={(dayId) => navigate(`/workout?programDay=${dayId}`)} />} />
-          <Route path="/records" element={<Records onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} onEditSession={(sessionId) => navigate(`/records/${sessionId}/edit`)} />} />
+          <Route path="/records" element={<RecordsRoute
+            onSelectDay={(dateKey) => navigate(`/records?d=${dateKey}`, { replace: true })}
+            onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)}
+          />} />
           <Route path="/records/:sessionId/edit" element={<RecordEditRoute
             onDone={(sessionId) => navigate(`/records/${sessionId}`, { replace: true })}
             onDirtyChange={setHasUnsavedRecordEdit}
           />} />
-          <Route path="/records/:sessionId" element={<RecordRoute onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)} onEditSession={(sessionId) => navigate(`/records/${sessionId}/edit`)} onClearSelection={() => navigate('/records', { replace: true })} />} />
+          <Route path="/records/:sessionId" element={<RecordDetailRoute
+            onBack={(dateKey) => navigate(dateKey ? `/records?d=${dateKey}` : '/records')}
+            onEdit={(sessionId) => navigate(`/records/${sessionId}/edit`)}
+          />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/body" element={<BodyMeasurements />} />
           <Route path="/exercises" element={<ExerciseCatalog />} />
@@ -425,9 +432,25 @@ function BrandIcon() {
   return <span className="brand-symbol" aria-hidden="true"><img src="/trainlog-icon.png" alt="" /></span>
 }
 
-function RecordRoute({ onSelectSession, onEditSession, onClearSelection }: { onSelectSession: (sessionId: string) => void; onEditSession: (sessionId: string) => void; onClearSelection: () => void }) {
-  const sessionId = useLocationPathId('/records/')
-  return <Records initialSelectedSessionId={sessionId} onSelectSession={onSelectSession} onEditSession={onEditSession} onClearSelection={onClearSelection} />
+/**
+ * 보고 있는 날짜는 경로가 아니라 쿼리(`?d=YYYY-MM-DD`)에 둔다. 새 화면이 아니라
+ * 같은 화면의 선택이고, 상세에서 뒤로 돌아왔을 때 보던 날이 그대로 열려야
+ * 하는데 컴포넌트 상태로만 두면 리마운트에서 초기화된다.
+ */
+function RecordsRoute({ onSelectDay, onSelectSession }: { onSelectDay: (dateKey: string) => void; onSelectSession: (sessionId: string) => void }) {
+  const [searchParams] = useSearchParams()
+  const dateKey = searchParams.get('d')
+  return <Records
+    selectedDateKey={dateKey && /^\d{4}-\d{2}-\d{2}$/.test(dateKey) ? dateKey : null}
+    onSelectDay={onSelectDay}
+    onSelectSession={onSelectSession}
+  />
+}
+
+function RecordDetailRoute({ onBack, onEdit }: { onBack: (dateKey: string | null) => void; onEdit: (sessionId: string) => void }) {
+  const { sessionId } = useParams()
+  if (!sessionId) return <Navigate replace to="/records" />
+  return <RecordDetail sessionId={sessionId} onBack={onBack} onEdit={onEdit} />
 }
 
 function RecordEditRoute({ onDone, onDirtyChange }: { onDone: (sessionId: string) => void; onDirtyChange: (isDirty: boolean) => void }) {
@@ -445,11 +468,6 @@ function WorkoutCompleteRoute({ onViewRecord, onGoHome }: { onViewRecord: (sessi
 function RoutineRoute({ onRoutineChange, onStartProgramDay }: { onRoutineChange: (routineId: string | 'new' | null) => void; onStartProgramDay: (dayId: string) => void }) {
   const { routineId } = useParams()
   return <RoutineManager initialSelectedRoutineId={routineId && routineId !== 'new' ? routineId : null} initialCreate={routineId === 'new'} onRoutineChange={onRoutineChange} onStartProgramDay={onStartProgramDay} />
-}
-
-function useLocationPathId(prefix: string) {
-  const { pathname } = useLocation()
-  return decodeURIComponent(pathname.slice(prefix.length)) || null
 }
 
 function UnknownPageRoute({ onGoHome }: { onGoHome: () => void }) {

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
@@ -113,10 +113,10 @@ describe.sequential('기록 화면: 월간 달력', () => {
     await clickMonthsBack(user, monthsBetween(new Date(), seedMonthStart))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /2026년 8월 14일 .+ 운동 완료/ })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /2026년 8월 14일 .+ 운동 \d+회 완료/ })).toBeTruthy()
     })
-    expect(screen.getByRole('button', { name: /2026년 8월 12일 .+ 운동 완료/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /2026년 8월 11일 .+ 운동 완료/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /2026년 8월 12일 .+ 운동 \d+회 완료/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /2026년 8월 11일 .+ 운동 \d+회 완료/ })).toBeTruthy()
 
     // Exactly those three days -- everything else in August 2026 is unmarked.
     expect(document.querySelectorAll('.calendar-day.has-workout').length).toBe(3)
@@ -164,7 +164,7 @@ describe.sequential('기록 화면: 월간 달력', () => {
     expect(document.querySelectorAll('.calendar-day.has-workout').length).toBe(0)
   })
 
-  test('마킹된 날짜를 선택하면 그 날의 기록이 상세 패널에 열린다', async () => {
+  test('마킹된 날짜를 선택하면 그 날의 기록이 아래 목록에 열린다', async () => {
     const user = userEvent.setup()
     renderApp('/records')
     await screen.findByRole('heading', { name: '운동 기록' })
@@ -172,11 +172,13 @@ describe.sequential('기록 화면: 월간 달력', () => {
     const seedMonthStart = getMonthStart(new Date(mockSessions[0].startedAt))
     await clickMonthsBack(user, monthsBetween(new Date(), seedMonthStart))
 
-    await user.click(await screen.findByRole('button', { name: /2026년 8월 11일 .+ 운동 완료/ }))
+    await user.click(await screen.findByRole('button', { name: /2026년 8월 11일 .+ 운동 \d+회 완료/ }))
 
+    const panel = await screen.findByRole('region', { name: '선택한 날의 운동' })
     await waitFor(() => {
-      expect(document.querySelector('.record-detail-heading .eyebrow')?.textContent).toContain('2026년 8월 11일')
+      expect(within(panel).getByRole('heading').textContent).toContain('2026년 8월 11일')
     })
+    expect(within(panel).getByText('Pull Day')).toBeTruthy()
   })
 
   test('늦은 저녁과 자정 직후에 기록한 세션도 각자의 로컬 날짜에 정확히 표시된다', async () => {
@@ -195,9 +197,9 @@ describe.sequential('기록 화면: 월간 달력', () => {
     await clickMonthsBack(user, monthsBetween(new Date(), seedMonthStart))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /2026년 8월 5일 .+ 운동 완료/ })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /2026년 8월 5일 .+ 운동 \d+회 완료/ })).toBeTruthy()
     })
-    expect(screen.getByRole('button', { name: /2026년 8월 6일 .+ 운동 완료/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /2026년 8월 6일 .+ 운동 \d+회 완료/ })).toBeTruthy()
   })
 
   test('오늘 아직 운동을 완료하지 않아도 어제까지 이어온 연속 기록은 끊기지 않는다', async () => {

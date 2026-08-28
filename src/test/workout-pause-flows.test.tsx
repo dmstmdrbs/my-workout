@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import App from '../App'
 import { readStoredWorkoutDraft, workoutDraftStorageKey } from '../features/workout/activeWorkoutDraft'
+import { toLocalDateKey } from '../lib/week'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
 
 /**
@@ -208,7 +209,9 @@ describe.sequential('일시정지: 저장·표시', () => {
 
     expect(saved.pausedSeconds).toBe(600)
 
-    const app = renderApp('/records')
+    // 기록 탭은 이제 하루씩 보여준다. 기본값(가장 최근 운동일)이 아니라 이
+    // 세션이 있는 날을 명시해 연다.
+    const app = renderApp(`/records?d=${toLocalDateKey(new Date(startedAt))}`)
     await screen.findByRole('heading', { name: '운동 기록' })
 
     const rowLabel = await screen.findByText('일시정지 소요시간 테스트')

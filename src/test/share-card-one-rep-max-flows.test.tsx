@@ -140,7 +140,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
   test('가장 무거운 세트가 아니라, 완료 세트 중 e1RM이 가장 높은 세트 기준으로 예상 1RM을 표시한다', async () => {
     const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
-    await screen.findByRole('heading', { name: '운동 기록' })
+    await screen.findByRole('button', { name: '공유' })
     const shareLayer = await openShareLayer(user)
 
     const bestEstimate = Math.max(
@@ -159,7 +159,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
   test('완료 세트를 칩 대신 순서가 있는 세로 행 목록으로 표시한다', async () => {
     const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
-    await screen.findByRole('heading', { name: '운동 기록' })
+    await screen.findByRole('button', { name: '공유' })
     const shareLayer = await openShareLayer(user)
 
     const block = shareCardExerciseBlock(shareLayer, progressiveOverloadExerciseName)
@@ -177,7 +177,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
   test('체중 운동은 예상 1RM을 표시하지 않는다', async () => {
     const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
-    await screen.findByRole('heading', { name: '운동 기록' })
+    await screen.findByRole('button', { name: '공유' })
     const shareLayer = await openShareLayer(user)
 
     const block = shareCardExerciseBlock(shareLayer, bodyweightExerciseName)
@@ -187,7 +187,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
   test('완료 세트가 모두 반복 상한을 넘으면 예상 1RM을 표시하지 않는다', async () => {
     const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
-    await screen.findByRole('heading', { name: '운동 기록' })
+    await screen.findByRole('button', { name: '공유' })
     const shareLayer = await openShareLayer(user)
 
     const block = shareCardExerciseBlock(shareLayer, highRepExerciseName)
@@ -197,7 +197,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
   test('추정 불가한 세트와 가능한 세트가 섞여 있으면, 추정 가능한 세트만으로 예상 1RM을 계산한다', async () => {
     const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
-    await screen.findByRole('heading', { name: '운동 기록' })
+    await screen.findByRole('button', { name: '공유' })
     const shareLayer = await openShareLayer(user)
 
     const onlyEstimableEstimate = estimateOneRepMax(60, 8) as number
@@ -211,7 +211,7 @@ describe.sequential('공유 카드 예상 1RM', () => {
   test('예상 1RM 줄이 추가되어 카드가 길어져도 고정 폭 PNG 저장은 그대로 동작한다', async () => {
     const user = userEvent.setup()
     renderApp(`/records/${sessionId}`)
-    await screen.findByRole('heading', { name: '운동 기록' })
+    await screen.findByRole('button', { name: '공유' })
     const shareLayer = await openShareLayer(user)
 
     await user.click(within(shareLayer).getByRole('button', { name: 'PNG 저장' }))
