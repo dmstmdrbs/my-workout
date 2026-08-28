@@ -70,6 +70,7 @@ describe.sequential('UF-25: 고정 7일 프로그램 회차', () => {
 
   test('근거 보완 템플릿은 회복 주차와 전신 근육별 최소 볼륨을 실제 처방에 반영한다', () => {
     const plateau = buildPlateauBreakProgram('2026-11-02')
+    expect(plateau.templateVersion).toBe(4)
     const weekOneUpper = plateau.days[0].routineSnapshot!
     const weekFourUpper = plateau.days[21].routineSnapshot!
     const weekEightUpper = plateau.days[49].routineSnapshot!
@@ -78,6 +79,26 @@ describe.sequential('UF-25: 고정 7일 프로그램 회차', () => {
     expect(totalSets(weekFourUpper)).toBeLessThanOrEqual(Math.ceil(totalSets(weekOneUpper) * 0.67))
     expect(totalSets(weekEightUpper)).toBe(totalSets(weekFourUpper))
     expect(weekFourUpper.exercises.flatMap((item) => item.sets).every((set) => set.targetRir === null || set.targetRir === 4)).toBe(true)
+
+    const weekOneUpperVolume = plateau.days[3].routineSnapshot!
+    const weekOneLowerArms = plateau.days[4].routineSnapshot!
+    const weekThreeLowerArms = plateau.days[18].routineSnapshot!
+    const armSets = (snapshot: typeof weekOneLowerArms, names: string[]) => snapshot.exercises
+      .filter((item) => names.includes(item.exerciseName))
+      .reduce((sum, item) => sum + item.sets.length, 0)
+    const triceps = ['케이블 오버헤드 트라이셉스 익스텐션', '케이블 트라이셉스 푸시다운']
+    const biceps = ['케이블 컬', '인클라인 덤벨 컬']
+    expect(plateau.days[3].title).toBe('상체 볼륨 + 이지런')
+    expect(weekOneUpperVolume.exercises.at(-1)).toMatchObject({ exerciseName: '러닝' })
+    expect(weekOneUpperVolume.exercises.at(-1)?.sets[0]).toMatchObject({ targetDurationSeconds: 20 * 60, notes: expect.stringContaining('RPE 3-4') })
+    expect(plateau.days.slice(0, 7).reduce((count, day) => count + (day.cardioTarget?.exerciseName === '러닝' ? 1 : 0) + (day.routineSnapshot?.exercises.some((item) => item.exerciseName === '러닝') ? 1 : 0), 0)).toBe(2)
+    expect(weekOneUpperVolume.exercises.find((item) => item.exerciseName === '케이블 레터럴 레이즈')?.sets).toHaveLength(4)
+    expect(weekOneUpperVolume.exercises.some((item) => triceps.includes(item.exerciseName) || biceps.includes(item.exerciseName))).toBe(false)
+    expect(weekOneLowerArms.exercises.some((item) => ['레그 익스텐션', '케이블 크런치'].includes(item.exerciseName))).toBe(false)
+    expect(armSets(weekOneUpper, triceps) + armSets(weekOneLowerArms, triceps)).toBe(10)
+    expect(armSets(weekOneUpper, biceps) + armSets(weekOneLowerArms, biceps)).toBe(10)
+    expect(armSets(plateau.days[14].routineSnapshot!, triceps) + armSets(weekThreeLowerArms, triceps)).toBe(12)
+    expect(armSets(plateau.days[14].routineSnapshot!, biceps) + armSets(weekThreeLowerArms, biceps)).toBe(12)
 
     const busy = buildBusyFullBodyProgram('2026-11-02')
     const firstWeekExercises = busy.days.slice(0, 7).flatMap((day) => day.routineSnapshot?.exercises ?? [])

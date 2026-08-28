@@ -191,6 +191,9 @@ export interface ProgramSetPrescription {
   targetOneRepMaxPercent?: number | null
   targetRepsMin: number | null
   targetRepsMax: number | null
+  /** 웨이트 Day 안에 포함된 유산소 처방을 운동 초안에 미리 채운다. */
+  targetDurationSeconds?: number | null
+  targetDistanceKm?: number | null
   targetRir: Rir
   restSeconds: number | null
   notes: string | null

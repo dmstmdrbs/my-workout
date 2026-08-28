@@ -877,7 +877,9 @@ function createProgramDraft(day: ProgramRunDay, exercises: Exercise[]): WorkoutD
         exerciseOrder: prescription.exerciseOrder, notes: prescription.notes,
         sets: prescription.sets.map((set): WorkoutSetRecord => ({
           id: createId(), setOrder: set.setOrder, setType: set.setType, weightKg: set.targetWeightKg,
-          reps: set.targetRepsMax ?? set.targetRepsMin, durationSeconds: null, distanceKm: null,
+          reps: set.targetRepsMax ?? set.targetRepsMin,
+          durationSeconds: set.targetDurationSeconds ?? null,
+          distanceKm: set.targetDistanceKm ?? null,
           targetRir: set.targetRir, actualRir: null, restSeconds: set.restSeconds,
           isCompleted: false, completedAt: null, notes: set.notes,
         })),

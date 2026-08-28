@@ -9,7 +9,7 @@ import type {
 
 export const plateauBreakProgramKey = 'two-split-running-plateau-break'
 export const plateauBreakProgramName = '8주 2분할 + 러닝 정체기 돌파'
-export const plateauBreakTemplateVersion = 3
+export const plateauBreakTemplateVersion = 4
 export const plateauBreakDurationWeeks = 8
 export const officeUpperFourDayProgramKey = 'office-upper-three-lower-cardio-four-day'
 export const officeUpperFourDayProgramName = '8주 직장인 상체 3일 + 하체·유산소'
@@ -58,8 +58,8 @@ const upperStrength: ProgramRoutineSnapshot = {
     exercise('바벨 오버헤드 프레스', 3, sets(3, { setType: 'working', targetWeightKg: null, targetOneRepMaxPercent: 75, targetRepsMin: 5, targetRepsMax: 8, targetRir: 2, restSeconds: 150 }), '오른쪽 어깨가 불편하면 뉴트럴 그립 머신/덤벨로 교체'),
     exercise('와이드 그립 랫 풀다운', 4, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 2, restSeconds: 90 })),
     exercise('케이블 레터럴 레이즈', 5, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 20, targetRir: 1, restSeconds: 75 })),
-    exercise('케이블 오버헤드 트라이셉스 익스텐션', 6, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 75 })),
-    exercise('케이블 컬', 7, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 75 })),
+    exercise('케이블 오버헤드 트라이셉스 익스텐션', 6, sets(4, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 75 }), '팔 약점 우선 종목. 모든 세트가 15회 RIR 1이면 최소 단위로 증량'),
+    exercise('케이블 컬', 7, sets(4, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 75 }), '팔 약점 우선 종목. 모든 세트가 15회 RIR 1이면 최소 단위로 증량'),
   ],
 }
 
@@ -85,23 +85,23 @@ const upperHypertrophy: ProgramRoutineSnapshot = {
     exercise('인클라인 덤벨 프레스', 2, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 8, targetRepsMax: 12, targetRir: 2, restSeconds: 120 })),
     exercise('체스트 서포티드 시티드 로우', 3, sets(3, { setType: 'working', targetWeightKg: null, targetRepsMin: 8, targetRepsMax: 12, targetRir: 2, restSeconds: 120 }), '뉴트럴 또는 좁은 그립'),
     exercise('원 암 케이블 랫 풀다운', 4, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 2, restSeconds: 90 })),
-    exercise('케이블 레터럴 레이즈', 5, sets(3, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 20, targetRir: 1, restSeconds: 75 })),
+    exercise('케이블 레터럴 레이즈', 5, sets(4, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 20, targetRir: 1, restSeconds: 75 })),
     exercise('리버스 펙 덱 플라이', 6, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 20, targetRir: 1, restSeconds: 75 })),
-    exercise('케이블 트라이셉스 푸시다운', 7, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 75 })),
-    exercise('인클라인 덤벨 컬', 8, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 75 })),
-    exercise('하이 투 로우 케이블 플라이', 9, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 15, targetRir: 2, restSeconds: 75 }), '90분 안에 끝나고 어깨가 편할 때만 수행'),
+    exercise('하이 투 로우 케이블 플라이', 7, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 15, targetRir: 2, restSeconds: 75 }), '90분 안에 끝나고 어깨가 편할 때만 수행'),
   ],
 }
 
 const lowerHypertrophy: ProgramRoutineSnapshot = {
-  description: '다음 날 러닝을 방해하지 않도록 피로를 제한한 하체 볼륨일',
+  description: '다음 날 러닝을 방해하지 않도록 하체 피로를 제한하고 팔 약점을 보완하는 날',
   exercises: [
     exercise('일시정지 스쿼트', 1, sets(2, { setType: 'working', targetWeightKg: null, targetOneRepMaxPercent: 65, targetRepsMin: 5, targetRepsMax: 5, targetRir: 3, restSeconds: 150 }), '바닥에서 1초 정지, 기술과 자신감 우선', '스쿼트'),
     exercise('레그 프레스', 2, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 8, targetRepsMax: 12, targetRir: 2, restSeconds: 120 })),
-    exercise('레그 익스텐션', 3, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 15, targetRir: 2, restSeconds: 75 }), '러닝 피로가 높으면 1세트만'),
-    exercise('레그 컬', 4, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 90 })),
-    exercise('스탠딩 카프 레이즈', 5, sets(3, { setType: 'working', targetWeightKg: null, targetRepsMin: 8, targetRepsMax: 15, targetRir: 1, restSeconds: 75 })),
-    exercise('케이블 크런치', 6, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 75 })),
+    exercise('레그 컬', 3, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 1, restSeconds: 90 })),
+    exercise('스탠딩 카프 레이즈', 4, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 8, targetRepsMax: 15, targetRir: 1, restSeconds: 75 })),
+    exercise('케이블 오버헤드 트라이셉스 익스텐션', 5, sets(3, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 2, restSeconds: 75 }), '인클라인 덤벨 컬과 번갈아 수행'),
+    exercise('인클라인 덤벨 컬', 6, sets(3, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 2, restSeconds: 75 }), '삼두 운동과 번갈아 수행'),
+    exercise('케이블 트라이셉스 푸시다운', 7, sets(3, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 20, targetRir: 1, restSeconds: 75 }), '케이블 컬과 번갈아 수행'),
+    exercise('케이블 컬', 8, sets(3, { setType: 'working', targetWeightKg: null, targetRepsMin: 12, targetRepsMax: 20, targetRir: 1, restSeconds: 75 }), '삼두 운동과 번갈아 수행'),
   ],
 }
 
@@ -268,6 +268,47 @@ function deload(snapshot: ProgramRoutineSnapshot) {
   return next
 }
 
+const shortRunDurations = [20, 25, 30, 20, 30, 35, 20, 20]
+
+function upperHypertrophyWithEasyRun(week: number) {
+  const next = cloneSnapshot(upperHypertrophy)
+  const durationMinutes = shortRunDurations[week - 1]
+  const addStrides = [2, 3, 5, 6].includes(week)
+  const runNote = `이지런 ${durationMinutes}분 · RPE 3-4${addStrides ? ' · 마지막에 20초 스트라이드 4회(각 60-90초 걷기·조깅)' : ''}`
+  next.description = `${next.description ?? ''} · 상체 웨이트 후 ${runNote}`
+  next.exercises.push(exercise(
+    '러닝',
+    next.exercises.length + 1,
+    sets(1, {
+      setType: 'working',
+      targetWeightKg: null,
+      targetRepsMin: null,
+      targetRepsMax: null,
+      targetDurationSeconds: durationMinutes * 60,
+      targetDistanceKm: null,
+      targetRir: null,
+      restSeconds: null,
+      notes: runNote,
+    }),
+    '상체 운동 후 실시합니다. 숨이 차지만 짧은 문장으로 대화 가능한 강도를 유지하세요.',
+  ))
+  return next
+}
+
+function lowerHypertrophyWithArmVolume(week: number) {
+  const next = cloneSnapshot(lowerHypertrophy)
+  const armSetsPerExercise = [3, 6].includes(week) ? 4 : 3
+  if (armSetsPerExercise === 3) return next
+
+  next.description = `${next.description ?? ''} · 팔 집중 볼륨 주차(이두·삼두 각 8세트)`
+  next.exercises = next.exercises.map((item) => {
+    if (!['케이블 오버헤드 트라이셉스 익스텐션', '인클라인 덤벨 컬', '케이블 트라이셉스 푸시다운', '케이블 컬'].includes(item.exerciseName)) return item
+    const finalSet = item.sets.at(-1)!
+    return { ...item, sets: [...item.sets, { ...finalSet, setOrder: 4 }] }
+  })
+  return next
+}
+
 function officeWeekSnapshot(snapshot: ProgramRoutineSnapshot, week: number) {
   const blockWeek = ((week - 1) % 4) + 1
   const targetRir = blockWeek === 1 ? 3 : blockWeek === 2 ? 3 : blockWeek === 3 ? 2 : 4
@@ -309,12 +350,14 @@ export function buildPlateauBreakProgram(startDate: string): StartProgramRunInpu
   for (let week = 1; week <= plateauBreakDurationWeeks; week += 1) {
     const firstDay = (week - 1) * 7 + 1
     const isDeload = week === 4 || week === 8
+    const upperVolumeAndRun = upperHypertrophyWithEasyRun(week)
+    const lowerVolumeAndArms = lowerHypertrophyWithArmVolume(week)
     days.push(
       strengthDay(firstDay, '상체 강도', isDeload ? deload(upperStrength) : cloneSnapshot(upperStrength), '벤치프레스는 반복 수를 먼저 늘리고 목표 상단에 도달하면 2.5kg 올립니다.'),
       strengthDay(firstDay + 1, '하체 강도', isDeload ? deload(lowerStrength) : cloneSnapshot(lowerStrength), '스쿼트와 RDL은 RIR 2를 지키고 실패 반복을 만들지 않습니다.'),
       restDay(firstDay + 2),
-      strengthDay(firstDay + 3, '상체 볼륨', isDeload ? deload(upperHypertrophy) : cloneSnapshot(upperHypertrophy), '어깨 통증이 2/10을 넘으면 뉴트럴 그립 프레스로 바꾸고 플라이는 생략합니다.'),
-      strengthDay(firstDay + 4, '하체 볼륨', isDeload ? deload(lowerHypertrophy) : cloneSnapshot(lowerHypertrophy), '다음 날 러닝을 위해 반복 속도와 자세가 무너지기 전에 종료합니다.'),
+      strengthDay(firstDay + 3, '상체 볼륨 + 이지런', isDeload ? deload(upperVolumeAndRun) : upperVolumeAndRun, '상체 운동 후 처방된 짧은 이지런을 수행합니다. 어깨 통증이 2/10을 넘으면 뉴트럴 그립 프레스로 바꾸고 플라이는 생략합니다.'),
+      strengthDay(firstDay + 4, '하체·팔 집중', isDeload ? deload(lowerVolumeAndArms) : lowerVolumeAndArms, '다음 날 장거리 러닝을 위해 하체는 자세가 무너지기 전에 끝내고, 이두·삼두는 두 쌍의 길항 슈퍼세트로 마무리합니다. 8세트 주차에도 팔꿈치 통증이 2/10을 넘거나 반복 수가 2회 이상 급락하면 각 종목 마지막 세트를 생략합니다.'),
       runDay(firstDay + 5, runDistances[week - 1]),
       restDay(firstDay + 6),
     )
@@ -404,11 +447,11 @@ export const trainingProgramCatalog: TrainingProgramDefinition[] = [
     key: plateauBreakProgramKey,
     name: plateauBreakProgramName,
     eyebrow: 'PLATEAU BREAK',
-    summary: '상·하체 4회와 이지런 1회를 고정된 7일 주기로 진행합니다.',
-    focus: '벤치·스쿼트 정체기 돌파와 10km 러닝 병행',
+    summary: '상·하체 4회에 짧은 이지런과 장거리 러닝을 배치해 주 2회 달립니다.',
+    focus: '벤치·스쿼트 정체기 돌파, 팔 약점 보완과 10km 러닝 병행',
     durationWeeks: 8,
     sessionsPerWeek: 5,
-    tags: ['2분할', '러닝', '주 5회', '2026 근거 검토'],
+    tags: ['2분할', '러닝 주 2회', '팔 보완', '주 5일', '2026 근거 검토'],
     color: '#dc5f2b',
     build: buildPlateauBreakProgram,
   },
