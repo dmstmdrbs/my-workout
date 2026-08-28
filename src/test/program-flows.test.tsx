@@ -176,7 +176,8 @@ describe.sequential('UF-25: 고정 7일 프로그램 회차', () => {
     await screen.findByRole('heading', { name: '운동을 완료했어요' })
     await screen.findByRole('heading', { name: 'Day 1 · 상체 강도', level: 2 })
     await user.click(screen.getByRole('button', { name: '전체 기록' }))
-    await screen.findByRole('heading', { name: '운동 기록' })
+    // '전체 기록'은 그 세션의 상세(/records/:id)로 간다. 목록 화면이 아니다.
+    await screen.findByRole('button', { name: '공유' })
 
     const firstRun = await services.workoutRepository.getActiveProgramRun()
     expect(firstRun?.days[0].workoutSession).not.toBeNull()

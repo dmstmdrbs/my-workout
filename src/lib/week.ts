@@ -53,6 +53,26 @@ export function getMonthEnd(monthStart: Date): Date {
 }
 
 /**
+ * `YYYY-MM-DD` 로컬 날짜 키를 그 날 00:00(로컬 자정)으로 되돌린다.
+ * `toLocalDateKey`의 역이다. `new Date('2026-08-26')`는 UTC로 해석돼 한국에서
+ * 하루 전 09시가 되므로 쓰지 않는다.
+ */
+export function fromLocalDateKey(key: string): Date {
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+/**
+ * 주어진 날 시작(00:00)의 다음 날 시작.
+ * `listSessions`의 배타적 상한(`startedBefore`)으로 쓴다.
+ */
+export function getDayEnd(dayStart: Date): Date {
+  const end = new Date(dayStart)
+  end.setDate(end.getDate() + 1)
+  return end
+}
+
+/**
  * 로컬 달력 날짜를 `YYYY-MM-DD`로 정규화한다.
  *
  * `toISOString().slice(0, 10)`은 UTC 기준이라, 한국(UTC+9)처럼 UTC보다 앞선
