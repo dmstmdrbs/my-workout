@@ -9,6 +9,14 @@ self.addEventListener('notificationclick', (event) => {
 
     if (appClient) {
       await appClient.focus()
+
+      // 이미 목표 화면에 있으면 이동하지 않는다. 같은 주소로 navigate()하면
+      // 전체 리로드가 걸려, 기록 중이던 운동 화면이 처음부터 다시 뜬다.
+      // 경로만 비교한다 -- /workout?programDay=... 처럼 쿼리가 붙어 있어도
+      // 같은 화면이다.
+      const isAlreadyThere = new URL(appClient.url).pathname === new URL(targetUrl).pathname
+      if (isAlreadyThere) return
+
       if ('navigate' in appClient) {
         try {
           await appClient.navigate(targetUrl)
