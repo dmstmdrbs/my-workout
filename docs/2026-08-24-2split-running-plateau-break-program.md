@@ -2,14 +2,14 @@
 
 ## Identity And Outcomes
 
-This is an eight-week, strength-first upper/lower split for breaking a long plateau. Running builds general aerobic capacity and a comfortable 5-8 km base. The October 10 km event is a secondary event, not the reason to reduce upper-body or lower-body progress.
+This is an eight-week upper/lower split that keeps strength progression while preparing for a 10 km event with two weekly runs. The shorter Day 4 run builds frequency and running economy; the Day 6 run builds distance. Arm work is prioritized by reallocating some lower-body accessory volume.
 
 The program begins on Monday, August 24, 2026. That date is Day 1. Every week always has seven calendar Days, including two displayed rest Days.
 
 - Bench press: progress from 90 kg x 6 toward 90 kg x 8 at RIR 1-2, then start 92.5 kg x 6.
 - Squat: progress from 120 kg x 4-5 at RIR 2 toward 125 kg x 5 or 120 kg x 6 at RIR 2.
 - Overhead press: progress 52.5-55 kg from 3 x 5 toward 3 x 8 only if the right shoulder remains stable.
-- Weekly direct work: back 9-11 sets, shoulders 8-10, chest 7-9, biceps 6-8, triceps 6-8.
+- Weekly direct work: back 10 sets, shoulders 9 sets, chest 7-9 sets, and biceps/triceps 10-12 sets each in normal weeks. Pressing and pulling add indirect arm work.
 - Keep lower-body performance while establishing a five-activity-day weekly rhythm.
 - Keep body weight around the current baseline; do not use an aggressive calorie deficit during the block.
 
@@ -22,18 +22,18 @@ The app derives the current Day from the calendar date and program start date. I
 | Day 1 | Monday | Upper Strength | Workout |
 | Day 2 | Tuesday | Lower Strength | Workout |
 | Day 3 | Wednesday | Rest | Rest day |
-| Day 4 | Thursday | Upper Hypertrophy | Workout |
-| Day 5 | Friday | Lower Hypertrophy | Workout |
-| Day 6 | Saturday | Easy/Long Run | Workout |
+| Day 4 | Thursday | Upper Hypertrophy + Short Easy Run | Workout |
+| Day 5 | Friday | Lower Technique + Arms | Workout |
+| Day 6 | Saturday | Long Easy Run | Workout |
 | Day 7 | Sunday | Rest | Rest day |
 
-The optional 20-30 minute easy run can be performed after Day 4 if time and recovery allow. It does not create, replace, or shift a program Day. The monthly last-Sunday gym closure does not affect the plan because Day 7 is a rest day.
+The 20-35 minute Day 4 run is a required second run and is recorded as the final exercise of the upper-body session. It does not create, replace, or shift a program Day. The monthly last-Sunday gym closure does not affect the plan because Day 7 is a rest day.
 
 If a workout Day is missed, it is recorded as missed by default and the following calendar Day remains unchanged. The later app feature may offer a manual reschedule action, but it must preserve the original prescribed Day in history.
 
 ## Base Rules
 
-- Gym-session limit: 90 minutes. Core work must fit in 70-80 minutes; optional work uses remaining time.
+- Most sessions target 90 minutes or less. Day 4 can reach about 100 minutes when the 35-minute run is prescribed; omit the optional fly before shortening the required run. Day 5 keeps its 12-16 arm sets time-efficient with two alternating biceps/triceps pairs.
 - Bench uses RIR 1-2. Squat and RDL use RIR 2. Do not chase routine grinder or failure repetitions.
 - The final set of lateral raises, curls, or triceps work may reach RIR 0-1 to calibrate effort.
 - Warm-up sets are not working sets. Use 3-5 ramp-up sets before barbell work sets.
@@ -51,8 +51,8 @@ Target duration: 75-90 minutes.
 | Barbell overhead press | 3 | 5-8 | 2 | 150 sec | 52.5-55 kg; neutral-grip alternative if needed |
 | Wide or one-arm lat pulldown | 2 | 10-15 | 1-2 | 90 sec | choose a pain-free path toward hip |
 | Cable lateral raise | 2 | 12-20 | 1-2 | 75 sec | last set can reach RIR 0-1 |
-| Overhead cable triceps extension | 2 | 10-15 | 1-2 | 75 sec | superset with curl |
-| Cable or incline dumbbell curl | 2 | 10-15 | 1-2 | 75 sec | superset with triceps |
+| Overhead cable triceps extension | 4 | 10-15 | 1 | 75 sec | arm-priority progression lift |
+| Cable curl | 4 | 10-15 | 1 | 75 sec | arm-priority progression lift |
 
 Bench progression: add one repetition to the top set until 8 reps is reached at RIR 1-2; then add 2.5 kg and restart at 6 reps. Increase the back-off load by 2.5 kg only after both sets reach 10 reps at RIR 2.
 
@@ -79,9 +79,9 @@ Required actions:
 - Normal walking, light mobility, and optional shoulder preparation are allowed.
 - Aim for normal sleep and nutrition. Do not compensate for missed training with a hard session.
 
-## Day 4: Upper Hypertrophy
+## Day 4: Upper Hypertrophy + Short Easy Run
 
-Target duration: 75-90 minutes.
+Target duration: 80-100 minutes including the run.
 
 | Exercise | Work sets | Target | RIR | Rest | Note |
 | --- | ---: | --- | ---: | --- | --- |
@@ -89,45 +89,48 @@ Target duration: 75-90 minutes.
 | Low-incline dumbbell press | 2 | 8-12 | 1-2 | 120 sec | avoid uncomfortable stretch chasing |
 | Close/neutral chest-supported row | 3 | 8-12 | 1-2 | 120 sec | elbows toward hips for lat involvement |
 | One-arm cable lat pulldown | 2 | 10-15 | 1-2 | 90 sec | control stretched position |
-| Cable lateral raise | 3 | 12-20 | 1-2 | 75 sec | last set can reach RIR 0-1 |
+| Cable lateral raise | 4 | 12-20 | 1-2 | 75 sec | one set added after removing direct arm work |
 | Reverse pec deck | 2 | 12-20 | 1-2 | 75 sec | rear-delt priority |
-| Cable triceps pressdown | 2 | 10-15 | 1-2 | 75 sec | superset with curl |
-| Incline dumbbell curl | 2 | 10-15 | 1-2 | 75 sec | superset with triceps |
 | High-to-low cable fly | 2 optional | 12-15 | 1-2 | 75 sec | add only if under 90 min and shoulder is quiet |
+| Easy run | 1 | 20-35 min | RPE 3-4 | - | weeks 2, 3, 5, and 6 finish with four 20-sec strides |
 
 There is no separate middle-chest muscle to isolate. Flat/decline pressing and adequate total pectoral volume are the primary tools; cable fly is supplemental.
 
-## Day 5: Lower Hypertrophy
+## Day 5: Lower Technique + Arms
 
-Target duration: 65-80 minutes.
+Target duration: 70-90 minutes; use alternating biceps/triceps pairs rather than resting after all 12-16 arm sets separately.
 
 | Exercise | Work sets | Target | RIR | Rest | Note |
 | --- | ---: | --- | ---: | --- | --- |
 | Paused squat | 2 | 5 | 3 | 150 sec | technique, confidence, position; not a fatigue test |
 | Leg press | 2 | 8-12 | 1-2 | 120 sec | full controlled range |
-| Leg extension | 1-2 | 12-15 | 1-2 | 75 sec | use one set if Friday leg fatigue is high |
 | Leg curl | 2 | 10-15 | 1-2 | 90 sec | slow eccentric |
-| Calf raise | 3 | 8-15 | 1-2 | 75 sec | pause at stretch |
-| Cable or weighted crunch | 2 | 10-15 | 1-2 | 75 sec | controlled trunk flexion |
+| Calf raise | 2 | 8-15 | 1-2 | 75 sec | pause at stretch |
+| Overhead cable triceps extension | 3 | 10-15 | 1 | 75 sec | alternate with incline curl |
+| Incline dumbbell curl | 3 | 10-15 | 1 | 75 sec | alternate with overhead extension |
+| Cable triceps pressdown | 3 | 12-20 | 1 | 75 sec | alternate with cable curl |
+| Cable curl | 3 | 12-20 | 1 | 75 sec | alternate with pressdown |
 
-Day 5 is deliberately lower fatigue because Day 6 follows it. If Saturday running feels noticeably impaired, reduce Day 5 leg extension before changing squat or RDL volume.
+Day 5 removes leg extension, one calf set, and core work from the former prescription. The six biceps and six triceps sets use two exercises per muscle instead of six sets of one movement; weeks 3 and 6 increase each movement from three to four sets, giving eight sets per arm muscle on Day 5. Together with Day 1, weekly direct arm work is 10 sets in base weeks and 12 sets in arm-volume weeks, while quadriceps retain about nine direct sets. If Saturday running feels noticeably impaired, reduce Day 5 leg press before removing the low-load paused-squat technique work.
+
+Do not force the fourth set in weeks 3 and 6 when elbow discomfort exceeds 2/10 or repetitions fall by more than two from the preceding set at the same load. In that case, retain the six-set Day 5 arm prescription.
 
 ## Day 6: Easy/Long Run
 
 Run at conversational RPE 3-4. This builds a general aerobic base, not a hard race-specific workout.
 
-| Week | Dates | Target |
-| --- | --- | --- |
-| 1 | Aug 24-30 | 5 km easy |
-| 2 | Aug 31-Sep 6 | 5 km easy |
-| 3 | Sep 7-13 | 6 km easy |
-| 4 | Sep 14-20 | 5 km easy recovery |
-| 5 | Sep 21-27 | 7-8 km easy |
-| 6 | Sep 28-Oct 4 | 5-6 km easy |
-| 7 | Oct 5-11 | Kakao Friends Run 10 km on Oct 10 replaces Day 6 |
-| 8 | Oct 12-18 | 5 km easy recovery and reassessment |
+| Week | Dates | Day 4 short run | Day 6 long run |
+| --- | --- | --- | --- |
+| 1 | Aug 24-30 | 20 min easy | 5 km easy |
+| 2 | Aug 31-Sep 6 | 25 min easy + 4 strides | 5 km easy |
+| 3 | Sep 7-13 | 30 min easy + 4 strides | 6 km easy |
+| 4 | Sep 14-20 | 20 min easy recovery | 5 km easy recovery |
+| 5 | Sep 21-27 | 30 min easy + 4 strides | 7-8 km easy |
+| 6 | Sep 28-Oct 4 | 35 min easy + 4 strides | 5-6 km easy |
+| 7 | Oct 5-11 | 20 min easy | Kakao Friends Run 10 km on Oct 10 replaces Day 6 |
+| 8 | Oct 12-18 | 20 min easy recovery | 5 km easy recovery and reassessment |
 
-For Week 7 only, reduce Day 5 to paused squat 1 set, leg curl 2 sets, calf raise 2 sets, and core 2 sets. All other strength Days remain unchanged unless recovery is poor.
+When the October 10 event falls on Day 6, the app replaces Day 5 with pre-event rest and Day 7 with post-event recovery. Keep the Day 4 run easy and do not add strides that week.
 
 ## Day 7: Rest
 
@@ -141,12 +144,12 @@ Required actions:
 
 | Weeks | Phase | Resistance directive | Running directive |
 | --- | --- | --- | --- |
-| 1 | Calibration | Use initial loads and validate true RIR, technique, and shoulder tolerance. | 5 km easy. |
-| 2-3 | Build 1 | Add repetitions before load. | 5-6 km easy. |
-| 4 | Deload | Reduce every exercise by about 35-50% of its working sets and use RIR 4. | 5 km easy. |
-| 5-6 | Build 2 | Resume full sets; use double progression and make no unplanned exercise changes. | Build to 7-8 km, then reduce to 5-6 km. |
-| 7 | Event adaptation | Keep Days 1, 2, and 4 normal if recovered; use the reduced Day 5 prescription. | Day 6 is the event. |
-| 8 | Recovery and reassessment | Reduce every exercise by about 35-50% of its working sets, use RIR 4, and compare benchmark lifts, waist, and recovery with Week 1. | 5 km easy. |
+| 1 | Calibration | Use initial loads and validate true RIR, technique, and shoulder tolerance. | Day 4 20 min easy; Day 6 5 km easy. |
+| 2-3 | Build 1 | Add repetitions before load. | Build Day 4 to 30 min with strides; Day 6 to 6 km. |
+| 4 | Deload | Reduce every lifting exercise by about 35-50% of its working sets and use RIR 4. | Day 4 20 min and Day 6 5 km, both easy. |
+| 5-6 | Build 2 | Resume full sets; use double progression and make no unplanned exercise changes. | Day 4 30-35 min with strides; Day 6 builds to 7-8 km before tapering. |
+| 7 | Event adaptation | Keep upper-body work normal if recovered; use Day 5 pre-event rest when the event is on Day 6. | Day 4 20 min easy; Day 6 is the event. |
+| 8 | Recovery and reassessment | Reduce every lifting exercise by about 35-50%, use RIR 4, and compare benchmarks with Week 1. | Two short easy recovery runs. |
 
 ## Auto-Regulation
 
