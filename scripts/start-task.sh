@@ -20,7 +20,11 @@ slug=$1
 prefix=${2:-feature}
 branch="${prefix}/${slug}"
 
-main_checkout=$(git rev-parse --show-toplevel)
+# worktree 안에서 실행해도 메인 체크아웃을 가리켜야 한다. --show-toplevel 은
+# 현재 worktree 를 돌려주므로, 그걸 쓰면 worktree 안에서 실행했을 때
+# <repo>-wt-wt/<slug> 같은 엉뚱한 경로를 찾는다. --git-common-dir 은 어느
+# worktree 에서 불러도 메인 저장소의 .git 을 가리킨다.
+main_checkout=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 repo_name=$(basename "$main_checkout")
 worktree_root="$(dirname "$main_checkout")/${repo_name}-wt"
 worktree="${worktree_root}/${slug}"
