@@ -145,10 +145,44 @@ DB 변경은 먼저 migration 적용과 RLS 확인을 마친 뒤 프론트엔드
 ### Git 브랜치·워크트리·PR
 
 1. 모든 기능·스펙 작업은 시작 시 예외 없이 먼저 `git fetch origin main`을 실행해 원격 `main`의 최신 커밋을 가져옵니다. 이전 작업에서 확인한 상태나 로컬 `main`이 최신일 것이라고 가정하지 않습니다.
-2. fetch 직후의 `origin/main`을 명시적인 시작점으로 작업 범위가 드러나는 별도 브랜치와 전용 Git worktree를 만듭니다. 로컬 `main`, 오래된 브랜치 또는 이전 worktree의 HEAD에서 새 작업 브랜치를 만들지 않습니다.
+2. fetch 직후의 `origin/main`을 명시적인 시작점으로 작업 범위가 드러나는 별도 브랜치와 전용 Git worktree를 만듭니다. 로컬 `main`, 오래된 브랜치 또는 이전 worktree의 HEAD에서 새 작업 브랜치를 만들지 않습니다. **변경 규모는 예외 사유가 아닙니다** — 한 줄 수정, 오타 교정, 버튼 문구 변경도 브랜치와 worktree를 만들고 시작합니다. "작은 수정이니까", "worktree 준비 비용이 아까우니까"는 규칙을 건너뛸 근거가 되지 않습니다(그 비용은 `scripts/start-task.sh`가 없앴습니다).
 3. 서로 독립적인 기능·스펙은 한 브랜치에 섞지 않습니다. 하나의 응집된 사용자 가치와 그 테스트·문서·migration을 한 작업 단위와 한 PR로 묶습니다.
 4. 구현이 끝나면 관련 테스트뿐 아니라 린트, 타입 검사, 프로덕션 빌드 등 변경 범위에 필요한 검증을 완료하고 브랜치를 원격에 푸시합니다.
 5. 검증된 작업은 별도 사용자 승인 요청 없이 PR을 생성하고 병합합니다. PR에는 변경 목적, 주요 동작, 검증 결과, DB migration·배포 영향과 남은 제한 사항을 기록합니다.
 6. PR 병합 전 최신 `origin/main`과의 충돌 및 CI 상태를 확인합니다. 다른 작업을 보존하며 충돌을 해결하고, 검증이 실패한 상태에서는 병합하지 않습니다. 강제 푸시는 사용자가 명시적으로 승인한 경우에만 허용합니다.
 7. 병합 후 `origin/main`에 결과가 포함됐는지 확인하고, 더 이상 필요 없는 worktree와 로컬·원격 작업 브랜치는 안전하게 정리합니다. 완료 보고에는 PR과 병합 커밋을 함께 남깁니다.
 8. 문서 규칙 변경처럼 사용자가 `origin/main` 직접 반영을 명시한 경우에만 예외적으로 `main`에 바로 커밋하고 푸시합니다.
+
+### 에이전트 워크플로 가드
+
+위 규칙은 문서만으로는 지켜지지 않았습니다(2026-08-26~28 사이 `main` 직접 커밋·푸시, worktree 없이
+시작, 로컬이 `origin/main`보다 앞선 상태의 수동 배포로 다른 기기의 작업을 덮어씀). 그래서 하네스가
+실행하는 hook으로 차단합니다.
+
+| 파일 | 역할 |
+|---|---|
+| `scripts/agent-guard.mjs` | PreToolUse hook. 규칙 위반 도구 호출을 종료 코드 2로 차단 |
+| `scripts/session-git-status.sh` | SessionStart hook. 브랜치·`origin/main` 대비 앞뒤·worktree·Vercel 링크를 세션 첫 컨텍스트에 주입 |
+| `scripts/start-task.sh` | fetch 후 `origin/main`에서 브랜치·worktree 생성, `node_modules` 심볼릭 링크 |
+| `scripts/finish-task.sh` | 병합 확인 후 worktree·브랜치 정리 |
+| `.claude/settings.json` | 위 두 hook 등록 |
+| `.claude/skills/trainlog-task/` | 시작·종료 절차 스킬 |
+
+차단 규칙:
+
+| | 조건 | 통로 |
+|---|---|---|
+| G1 | `main`/`master`에서 `git commit` | `TRAINLOG_ALLOW=main-commit <명령>` |
+| G2 | `main`으로 `git push` | `TRAINLOG_ALLOW=main-push <명령>` |
+| G3 | `git push --force` | `TRAINLOG_ALLOW=force-push <명령>` |
+| G4 | `vercel ... --prod` (Git 연결로 `main` 병합이 곧 배포) | `TRAINLOG_ALLOW=prod-deploy <명령>` |
+| G5 | `main` 체크아웃에서 `Write`/`Edit` | `touch .agent-allow-main` (끝나면 지울 것) |
+
+통로는 **사용자가 명시적으로 지시한 경우에만** 씁니다(위 8번). 명령어에 그대로 드러나므로 승인
+화면에서 보입니다. 가드가 스스로 실패하면 차단하지 않고 통과시킵니다 — 안전망이지 관문이 아닙니다.
+
+`node_modules`는 worktree마다 설치하지 않고 메인 체크아웃에 심볼릭 링크합니다. `package.json`이나
+lock 파일을 바꾸는 작업이라면 링크를 끊고(`rm node_modules && npm ci`) 진행합니다.
+
+가드 로직에는 테스트가 있습니다(`src/test/agent-guard.test.mjs`). hook은 조용히 망가지면 아무도
+모르므로, 규칙을 고칠 때 테스트를 함께 고칩니다.

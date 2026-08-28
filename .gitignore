@@ -25,3 +25,6 @@ dist-ssr
 
 .vercel
 .env*
+
+# 워크플로 가드(G5)를 일시적으로 끄는 통로 파일. 커밋되면 가드가 영구히 꺼진다.
+.agent-allow-main
