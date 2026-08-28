@@ -91,7 +91,7 @@ describe.sequential('UF-26: 완료된 운동 기록 편집', () => {
     await screen.findByRole('heading', { name: '편집 대상 A', level: 2 })
     expect(screen.queryByText('수정됨')).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: '기록 수정' }))
+    await user.click(screen.getByRole('button', { name: '수정' }))
     await screen.findByRole('heading', { name: '기록 수정' })
 
     const firstWeight = within(editorSets()).getByLabelText('1세트 중량 (kg)')

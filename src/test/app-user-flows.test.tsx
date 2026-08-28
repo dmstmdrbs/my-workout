@@ -490,7 +490,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await screen.findByRole('heading', { name: '운동 기록' })
     expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions.some((session: { id: string }) => session.id === sessionId)).toBe(true)
 
-    await user.click(screen.getByRole('button', { name: '기록 삭제' }))
+    await user.click(screen.getByRole('button', { name: '삭제' }))
     const dialog = await screen.findByRole('dialog', { name: '운동 기록을 삭제할까요?' })
     expect(dialog.textContent).toContain('되돌릴 수 없어요.')
 
@@ -498,7 +498,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(screen.queryByRole('dialog', { name: '운동 기록을 삭제할까요?' })).toBeNull()
     expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions.some((session: { id: string }) => session.id === sessionId)).toBe(true)
 
-    await user.click(screen.getByRole('button', { name: '기록 삭제' }))
+    await user.click(screen.getByRole('button', { name: '삭제' }))
     await user.click(within(await screen.findByRole('dialog', { name: '운동 기록을 삭제할까요?' })).getByRole('button', { name: '삭제하기' }))
     await waitFor(() => expect(JSON.parse(localStorage.getItem(storeKey) ?? '{}').sessions.some((session: { id: string }) => session.id === sessionId)).toBe(false))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '운동 기록을 삭제할까요?' })).toBeNull())

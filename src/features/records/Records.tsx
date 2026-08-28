@@ -243,10 +243,10 @@ export function Records({ initialSelectedSessionId = null, onSelectSession, onEd
                       <Share2 size={15} aria-hidden="true" /> 공유
                     </button>
                     <button className="record-edit-button" type="button" onClick={() => onEditSession?.(selectedSession.id)}>
-                      <Pencil size={15} aria-hidden="true" /> 기록 수정
+                      <Pencil size={15} aria-hidden="true" /> 수정
                     </button>
                     <button className="record-delete-button" type="button" onClick={() => requestDelete(selectedSession)}>
-                      <Trash2 size={15} aria-hidden="true" /> 기록 삭제
+                      <Trash2 size={15} aria-hidden="true" /> 삭제
                     </button>
                   </div>
                 </div>
