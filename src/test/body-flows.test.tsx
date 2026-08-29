@@ -23,7 +23,7 @@ function createServicesWithFailingList(): AppServices {
       return Reflect.get(target, prop, receiver)
     },
   })
-  return { auth: base.auth, workoutRepository }
+  return { auth: base.auth, workoutRepository, socialRepository: base.socialRepository }
 }
 
 function renderAppWithServices(services: AppServices, initialPath = '/body') {

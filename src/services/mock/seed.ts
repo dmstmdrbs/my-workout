@@ -1,4 +1,4 @@
-import type { Exercise, Routine, UserProfile, UserSettings, WorkoutSession } from '../../types/domain'
+import type { Exercise, Routine, SocialProfile, UserProfile, UserSettings, WorkoutSession } from '../../types/domain'
 
 export const mockUser: UserProfile = {
   id: 'local-user',
@@ -8,6 +8,54 @@ export const mockUser: UserProfile = {
   createdAt: '2026-08-01T00:00:00.000Z',
   updatedAt: '2026-08-01T00:00:00.000Z',
 }
+
+/** Social-only seed data deliberately contains no email or other account fields. */
+export const mockSocialProfiles: SocialProfile[] = [
+  { userId: mockUser.id, displayName: mockUser.displayName, avatarUrl: null },
+  { userId: 'local-friend-accepted', displayName: '김서준', avatarUrl: null },
+  { userId: 'local-friend-incoming', displayName: '박지우', avatarUrl: null },
+  { userId: 'local-friend-outgoing', displayName: '이도윤', avatarUrl: null },
+  { userId: 'local-invite-owner', displayName: '최하린', avatarUrl: null },
+]
+
+export const mockFriendInvites = [
+  {
+    token: 'mock-invite-local-owner',
+    inviterId: 'local-invite-owner',
+    createdAt: '2026-08-20T00:00:00.000Z',
+    expiresAt: '2026-09-19T00:00:00.000Z',
+    revokedAt: null,
+  },
+]
+
+export const mockFriendships = [
+  {
+    id: 'local-friendship-accepted',
+    requesterId: mockUser.id,
+    addresseeId: 'local-friend-accepted',
+    status: 'accepted' as const,
+    requestedAt: '2026-08-10T09:00:00.000Z',
+    respondedAt: '2026-08-10T09:05:00.000Z',
+  },
+  {
+    id: 'local-friendship-incoming',
+    requesterId: 'local-friend-incoming',
+    addresseeId: mockUser.id,
+    status: 'pending' as const,
+    requestedAt: '2026-08-28T09:00:00.000Z',
+    respondedAt: null,
+  },
+  {
+    id: 'local-friendship-outgoing',
+    requesterId: mockUser.id,
+    addresseeId: 'local-friend-outgoing',
+    status: 'pending' as const,
+    requestedAt: '2026-08-27T09:00:00.000Z',
+    respondedAt: null,
+  },
+]
+
+export const mockBlocks: Array<{ blockerId: string; blockedId: string; blockedAt: string }> = []
 
 export const mockSettings: UserSettings = {
   userId: mockUser.id,

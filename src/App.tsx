@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { MemoryRouter, Navigate, Route, Routes, useInRouterContext, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   BarChart3,
@@ -14,6 +15,8 @@ import {
   Scale,
   SearchX,
   Settings2,
+  UserRound,
+  Users,
 } from 'lucide-react'
 import { BodyMeasurements } from './features/body/BodyMeasurements'
 import { Dashboard } from './features/dashboard/Dashboard'
@@ -27,6 +30,10 @@ import { RoutineManager } from './features/routines/RoutineManager'
 import { Settings } from './features/settings/Settings'
 import { Stats } from './features/stats/Stats'
 import { WorkoutRunner } from './features/workout/WorkoutRunner'
+import { FriendDetail } from './features/friends/FriendDetail'
+import { Friends } from './features/friends/Friends'
+import { InviteLanding } from './features/friends/InviteLanding'
+import { Profile } from './features/profile/Profile'
 import { readStoredWorkoutDraft, workoutDraftStorageKey, type StoredWorkoutDraft } from './features/workout/activeWorkoutDraft'
 import { useAppServices, useSettings } from './services'
 import type { AuthSession } from './services'
@@ -34,7 +41,7 @@ import { formatElapsedTime, getEffectivePausedSeconds } from './lib/duration'
 import { applyTheme } from './lib/theme'
 import './App.css'
 
-type PageId = 'dashboard' | 'programs' | 'workout' | 'routines' | 'records' | 'stats' | 'body' | 'exercises' | 'settings'
+type PageId = 'dashboard' | 'programs' | 'workout' | 'routines' | 'records' | 'stats' | 'body' | 'exercises' | 'friends' | 'profile' | 'settings'
 
 const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'dashboard', label: '대시보드', icon: Home },
@@ -42,9 +49,11 @@ const navigation: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'workout', label: '운동 시작', icon: Dumbbell },
   { id: 'routines', label: '루틴', icon: Layers3 },
   { id: 'records', label: '기록', icon: CalendarDays },
+  { id: 'friends', label: '친구', icon: Users },
   { id: 'stats', label: '통계', icon: BarChart3 },
   { id: 'body', label: '신체 기록', icon: Scale },
   { id: 'exercises', label: '종목 관리', icon: ListChecks },
+  { id: 'profile', label: '프로필', icon: UserRound },
   { id: 'settings', label: '설정', icon: Settings2 },
 ]
 
@@ -54,17 +63,19 @@ const pagePaths: Record<PageId, string> = {
   workout: '/workout',
   routines: '/routines',
   records: '/records',
+  friends: '/friends',
   stats: '/stats',
   body: '/body',
   exercises: '/exercises',
+  profile: '/profile',
   settings: '/settings',
 }
 
 // Explicit placement: slicing the navigation array silently reshuffles menus
 // whenever an entry is inserted.
-const sideNavPages: PageId[] = ['dashboard', 'programs', 'workout', 'routines', 'records', 'stats', 'body', 'exercises']
+const sideNavPages: PageId[] = ['dashboard', 'programs', 'workout', 'routines', 'records', 'friends', 'stats', 'body', 'exercises']
 const bottomNavPages: PageId[] = ['dashboard', 'programs', 'workout', 'records']
-const moreMenuPages: PageId[] = ['routines', 'stats', 'body', 'exercises', 'settings']
+const moreMenuPages: PageId[] = ['friends', 'profile', 'routines', 'stats', 'body', 'exercises', 'settings']
 
 function navItem(id: PageId) {
   const item = navigation.find((entry) => entry.id === id)
@@ -84,7 +95,7 @@ function App() {
 function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { auth } = useAppServices()
+  const { auth, socialRepository } = useAppServices()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false)
   const [activeWorkoutDraft, setActiveWorkoutDraft] = useState<StoredWorkoutDraft | null>(() => readStoredWorkoutDraft())
@@ -108,6 +119,14 @@ function AppShell() {
   // `enabled` keeps this from firing failing requests against the mock/
   // Supabase repository while signed out.
   const settingsQuery = useSettings({ enabled: Boolean(authState.session) })
+  const incomingFriendRequestQuery = useQuery({
+    queryKey: ['friend-incoming-count'],
+    queryFn: () => socialRepository.getIncomingRequestCount(),
+    enabled: Boolean(authState.session),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  })
+  const incomingFriendRequestCount = incomingFriendRequestQuery.data ?? 0
 
   // The database is the source of truth for theme (AGENTS rule 9). The
   // localStorage mirror only prevents a first-paint flash; this effect is
@@ -263,6 +282,11 @@ function AppShell() {
               >
                 <Icon size={19} aria-hidden="true" />
                 <span>{item.label}</span>
+                {item.id === 'friends' && incomingFriendRequestCount > 0 && (
+                  <span className="nav-badge" aria-label={`${incomingFriendRequestCount}개의 새 친구 요청`}>
+                    {formatRequestCount(incomingFriendRequestCount)}
+                  </span>
+                )}
               </button>
             )
           })}
@@ -314,7 +338,12 @@ function AppShell() {
                     const Icon = item.icon
                     return (
                       <button type="button" role="menuitem" key={id} onClick={() => selectPage(id)}>
-                        <Icon size={17} aria-hidden="true" /> {item.label}
+                        <Icon size={17} aria-hidden="true" /> <span>{item.label}</span>
+                        {item.id === 'friends' && incomingFriendRequestCount > 0 && (
+                          <span className="nav-badge" aria-label={`${incomingFriendRequestCount}개의 새 친구 요청`}>
+                            {formatRequestCount(incomingFriendRequestCount)}
+                          </span>
+                        )}
                       </button>
                     )
                   })}
@@ -359,6 +388,10 @@ function AppShell() {
           <Route path="/stats" element={<Stats />} />
           <Route path="/body" element={<BodyMeasurements />} />
           <Route path="/exercises" element={<ExerciseCatalog />} />
+          <Route path="/friends/invite/:token" element={<InviteLanding />} />
+          <Route path="/friends/:friendshipId" element={<FriendDetail />} />
+          <Route path="/friends" element={<Friends />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<UnknownPageRoute onGoHome={() => navigateTo('/')} />} />
         </Routes>
@@ -499,6 +532,8 @@ function getActivePage(pathname: string): PageId | null {
   if (pathname.startsWith('/programs')) return 'programs'
   if (pathname.startsWith('/routines')) return 'routines'
   if (pathname.startsWith('/records')) return 'records'
+  if (pathname.startsWith('/friends')) return 'friends'
+  if (pathname.startsWith('/profile')) return 'profile'
   if (pathname.startsWith('/settings')) return 'settings'
   if (pathname.startsWith('/body')) return 'body'
   if (pathname.startsWith('/exercises')) return 'exercises'
@@ -507,3 +542,7 @@ function getActivePage(pathname: string): PageId | null {
 }
 
 export default App
+
+function formatRequestCount(count: number) {
+  return count > 99 ? '99+' : String(count)
+}

@@ -1,11 +1,17 @@
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js'
 import type {
   BodyMeasurement,
+  BlockedUser,
   Equipment,
   Exercise,
   ExerciseOneRepMax,
   ExerciseBrand,
+  FriendInvite,
+  FriendOverview,
+  FriendRequest,
+  FriendSummary,
   Id,
+  InviteResolution,
   MuscleGroup,
   ProgramCardioTarget,
   ProgramDaySessionSummary,
@@ -18,6 +24,7 @@ import type {
   Routine,
   RoutineExercise,
   RoutineSetPrescription,
+  SocialProfile,
   SessionStatus,
   SetType,
   StartProgramRunInput,
@@ -29,7 +36,7 @@ import type {
   WorkoutSession,
   WorkoutSetRecord,
 } from '../../types/domain'
-import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, WorkoutRepository } from '../contracts'
+import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, SocialRepository, WorkoutRepository } from '../contracts'
 
 type Row = Record<string, unknown>
 
@@ -324,6 +331,20 @@ function mapMeasurement(row: Row): BodyMeasurement {
     createdAt: stringValue(row, 'created_at'),
     updatedAt: stringValue(row, 'updated_at'),
   }
+}
+
+function mapSocialProfile(row: Row): SocialProfile {
+  return {
+    userId: stringValue(row, 'user_id'),
+    displayName: stringValue(row, 'display_name', '트레이너'),
+    avatarUrl: nullableString(row, 'avatar_url'),
+  }
+}
+
+function relatedProfile(row: Row, key: 'requester' | 'addressee'): SocialProfile | null {
+  const value = row[key]
+  const related = Array.isArray(value) ? asRow(value[0]) : asRow(value)
+  return related ? mapSocialProfile(related) : null
 }
 
 class SupabaseAuthAdapter implements AuthAdapter {
@@ -734,10 +755,240 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
   }
 }
 
+class SupabaseSocialRepository implements SocialRepository {
+  private readonly client: SupabaseClient
+
+  constructor(client: SupabaseClient) {
+    this.client = client
+  }
+
+  private async requireUser(): Promise<User> {
+    const { data, error } = await this.client.auth.getUser()
+    if (error || !data.user) throw toError(error, '로그인이 필요해요.')
+    return data.user
+  }
+
+  private async ensureSocialProfile(): Promise<SocialProfile> {
+    const user = await this.requireUser()
+    const { data: existing, error: lookupError } = await this.client
+      .from('social_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (lookupError) throw toError(lookupError, '친구 프로필을 불러오지 못했어요.')
+    if (existing) return mapSocialProfile(existing as Row)
+
+    // A direct invite URL can be the first screen opened after OAuth. Ensure
+    // the private profile exists so its projection trigger can create the
+    // social profile before any friendship RPC runs.
+    const profile = mapUser(user)
+    const { error } = await this.client.from('profiles').upsert({
+      id: profile.id,
+      email: profile.email,
+      display_name: profile.displayName,
+      avatar_url: profile.avatarUrl,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' })
+    if (error) throw toError(error, '친구 프로필을 준비하지 못했어요.')
+
+    const { data, error: profileError } = await this.client
+      .from('social_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+    if (profileError) throw toError(profileError, '친구 프로필을 준비하지 못했어요.')
+    return mapSocialProfile(data as Row)
+  }
+
+  async getMySocialProfile() {
+    return this.ensureSocialProfile()
+  }
+
+  async getFriendOverview(): Promise<FriendOverview> {
+    const user = await this.requireUser()
+    const [friendshipsResult, inviteResult] = await Promise.all([
+      this.client
+        .from('friendships')
+        .select('*, requester:social_profiles!friendships_requester_id_fkey(*), addressee:social_profiles!friendships_addressee_id_fkey(*)')
+        .order('updated_at', { ascending: false }),
+      this.client
+        .from('friend_invites')
+        .select('*')
+        .is('revoked_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+    if (friendshipsResult.error) throw toError(friendshipsResult.error, '친구 목록을 불러오지 못했어요.')
+    if (inviteResult.error) throw toError(inviteResult.error, '초대 링크를 불러오지 못했어요.')
+
+    const friends: FriendSummary[] = []
+    const incomingRequests: FriendRequest[] = []
+    const outgoingRequests: FriendRequest[] = []
+    for (const row of asRows(friendshipsResult.data)) {
+      const outgoing = stringValue(row, 'requester_id') === user.id
+      const profile = relatedProfile(row, outgoing ? 'addressee' : 'requester')
+      if (!profile) continue
+      const friendshipId = stringValue(row, 'id')
+      if (stringValue(row, 'status') === 'accepted') {
+        friends.push({
+          friendshipId,
+          profile,
+          friendsSince: stringValue(row, 'accepted_at', stringValue(row, 'updated_at')),
+        })
+      } else {
+        const request: FriendRequest = {
+          friendshipId,
+          direction: outgoing ? 'outgoing' : 'incoming',
+          profile,
+          requestedAt: stringValue(row, 'created_at'),
+        }
+        if (outgoing) outgoingRequests.push(request)
+        else incomingRequests.push(request)
+      }
+    }
+
+    const inviteRow = inviteResult.data ? inviteResult.data as Row : null
+    const activeInvite: FriendInvite | null = inviteRow ? {
+      token: stringValue(inviteRow, 'token'),
+      createdAt: stringValue(inviteRow, 'created_at'),
+      expiresAt: stringValue(inviteRow, 'expires_at'),
+    } : null
+    return { friends, incomingRequests, outgoingRequests, activeInvite }
+  }
+
+  async getFriend(friendshipId: Id): Promise<FriendSummary | null> {
+    const user = await this.requireUser()
+    const { data, error } = await this.client
+      .from('friendships')
+      .select('*, requester:social_profiles!friendships_requester_id_fkey(*), addressee:social_profiles!friendships_addressee_id_fkey(*)')
+      .eq('id', friendshipId)
+      .eq('status', 'accepted')
+      .maybeSingle()
+    if (error) throw toError(error, '친구 정보를 불러오지 못했어요.')
+    if (!data) return null
+    const row = data as Row
+    const profile = relatedProfile(row, stringValue(row, 'requester_id') === user.id ? 'addressee' : 'requester')
+    return profile ? {
+      friendshipId: stringValue(row, 'id'),
+      profile,
+      friendsSince: stringValue(row, 'accepted_at', stringValue(row, 'updated_at')),
+    } : null
+  }
+
+  async createOrRotateInvite(): Promise<FriendInvite> {
+    await this.ensureSocialProfile()
+    const { data, error } = await this.client.rpc('create_or_rotate_friend_invite')
+    if (error) throw toError(error, '초대 링크를 만들지 못했어요.')
+    const row = asRows(data)[0]
+    if (!row) throw new Error('초대 링크를 만들지 못했어요.')
+    return {
+      token: stringValue(row, 'token'),
+      createdAt: stringValue(row, 'created_at'),
+      expiresAt: stringValue(row, 'expires_at'),
+    }
+  }
+
+  async resolveInvite(token: string): Promise<InviteResolution> {
+    await this.ensureSocialProfile()
+    const { data, error } = await this.client.rpc('resolve_friend_invite', { p_token: token })
+    if (error) throw toError(error, '초대 정보를 확인하지 못했어요.')
+    const row = asRows(data)[0]
+    if (!row) return { state: 'unavailable', profile: null, friendshipId: null }
+    const userId = nullableString(row, 'user_id')
+    return {
+      state: stringValue(row, 'resolution_state', 'unavailable') as InviteResolution['state'],
+      profile: userId ? mapSocialProfile(row) : null,
+      friendshipId: nullableString(row, 'friendship_id'),
+    }
+  }
+
+  async sendFriendRequest(token: string): Promise<FriendRequest> {
+    await this.ensureSocialProfile()
+    const { data, error } = await this.client.rpc('send_friend_request', { p_token: token })
+    if (error) throw toError(error, '친구 요청을 보내지 못했어요.')
+    const row = asRows(data)[0]
+    if (!row) throw new Error('친구 요청을 보내지 못했어요.')
+    return {
+      friendshipId: stringValue(row, 'friendship_id'),
+      direction: 'outgoing',
+      profile: {
+        userId: stringValue(row, 'target_user_id'),
+        displayName: stringValue(row, 'target_display_name', '트레이너'),
+        avatarUrl: nullableString(row, 'target_avatar_url'),
+      },
+      requestedAt: stringValue(row, 'requested_at'),
+    }
+  }
+
+  private async friendshipMutation(functionName: string, friendshipId: Id, fallback: string): Promise<void> {
+    await this.requireUser()
+    const { error } = await this.client.rpc(functionName, { p_friendship_id: friendshipId })
+    if (error) throw toError(error, fallback)
+  }
+
+  acceptRequest(friendshipId: Id) {
+    return this.friendshipMutation('accept_friend_request', friendshipId, '친구 요청을 수락하지 못했어요.')
+  }
+
+  declineRequest(friendshipId: Id) {
+    return this.friendshipMutation('decline_friend_request', friendshipId, '친구 요청을 거절하지 못했어요.')
+  }
+
+  cancelRequest(friendshipId: Id) {
+    return this.friendshipMutation('cancel_friend_request', friendshipId, '친구 요청을 취소하지 못했어요.')
+  }
+
+  removeFriend(friendshipId: Id) {
+    return this.friendshipMutation('remove_friend', friendshipId, '친구를 삭제하지 못했어요.')
+  }
+
+  async listBlockedUsers(): Promise<BlockedUser[]> {
+    await this.requireUser()
+    const { data, error } = await this.client
+      .from('user_blocks')
+      .select('*, blocked:social_profiles!user_blocks_blocked_id_fkey(*)')
+      .order('created_at', { ascending: false })
+    if (error) throw toError(error, '차단 목록을 불러오지 못했어요.')
+    return asRows(data).flatMap((row) => {
+      const value = row.blocked
+      const profileRow = Array.isArray(value) ? asRow(value[0]) : asRow(value)
+      return profileRow ? [{ profile: mapSocialProfile(profileRow), blockedAt: stringValue(row, 'created_at') }] : []
+    })
+  }
+
+  private async userMutation(functionName: string, userId: Id, fallback: string): Promise<void> {
+    await this.requireUser()
+    const { error } = await this.client.rpc(functionName, { p_user_id: userId })
+    if (error) throw toError(error, fallback)
+  }
+
+  blockUser(userId: Id) {
+    return this.userMutation('block_user', userId, '사용자를 차단하지 못했어요.')
+  }
+
+  unblockUser(userId: Id) {
+    return this.userMutation('unblock_user', userId, '차단을 해제하지 못했어요.')
+  }
+
+  async getIncomingRequestCount(): Promise<number> {
+    const user = await this.requireUser()
+    const { count, error } = await this.client
+      .from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .eq('addressee_id', user.id)
+      .eq('status', 'pending')
+    if (error) throw toError(error, '친구 요청 수를 확인하지 못했어요.')
+    return count ?? 0
+  }
+}
+
 /** Browser-only services: publishable key + RLS protect every request. */
 export function createSupabaseServices(client: SupabaseClient): AppServices {
   return {
     auth: new SupabaseAuthAdapter(client),
     workoutRepository: new SupabaseWorkoutRepository(client),
+    socialRepository: new SupabaseSocialRepository(client),
   }
 }
