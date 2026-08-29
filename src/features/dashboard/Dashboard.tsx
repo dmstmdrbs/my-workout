@@ -92,9 +92,11 @@ function DashboardContent({ profile, routines, weekSessions, recentSessions, act
 
       <section className="primary-grid" aria-label="이번 주 요약">
         <article className="start-card">
-          <div className="start-card-top"><span className="soft-icon"><Dumbbell size={19} /></span><span>{activeProgramRun ? '오늘의 프로그램' : '다음 운동'}</span></div>
-          <h2>{programToday ? `Day ${programToday.dayNumber} · ${programToday.title}` : activeProgramRun && programNext ? `다음: Day ${programNext.dayNumber} · ${programNext.title}` : nextRoutine?.name ?? '새 루틴 만들기'}</h2>
-          <p>{programToday ? programToday.dayType === 'rest' ? '오늘은 계획된 휴식일입니다. 회복 후 다음 Day를 이어가세요.' : programToday.workoutSession ? '오늘의 운동을 완료했습니다. 저장된 기록을 확인할 수 있어요.' : programToday.instructions ?? '오늘의 처방을 확인하고 운동을 시작하세요.' : activeProgramRun && programNext ? `${formatProgramDayDate(programNext.scheduledOn)} 예정 · 일정은 미수행 여부와 관계없이 고정됩니다.` : nextRoutine ? `${nextRoutine.exercises.length}개 종목 · ${countRoutineSets(nextRoutine)}세트 · ${nextRoutine.description ?? '나만의 루틴'}` : '내 첫 루틴을 설계해 보세요.'}</p>
+          {activeProgramRun ? <button className="start-card-summary" type="button" onClick={onOpenPrograms} aria-label={`${activeProgramRun.programName} 프로그램 정보 보기`}>
+            <StartCardSummary activeProgramRun={activeProgramRun} programToday={programToday} programNext={programNext} nextRoutine={nextRoutine} />
+          </button> : <div className="start-card-summary">
+            <StartCardSummary activeProgramRun={null} programToday={null} programNext={null} nextRoutine={nextRoutine} />
+          </div>}
           <button className="primary-button start-button" type="button" onClick={() => programToday && programToday.dayType !== 'rest' && !programToday.workoutSession ? onStartProgramDay(programToday.id) : activeProgramRun ? onOpenPrograms() : onStartWorkout()}>
             <Play size={17} fill="currentColor" aria-hidden="true" /> {programToday && programToday.dayType !== 'rest' && !programToday.workoutSession ? '오늘 운동 시작' : activeProgramRun ? '프로그램 보기' : '운동 시작'}
           </button>
@@ -134,6 +136,14 @@ function DashboardContent({ profile, routines, weekSessions, recentSessions, act
       <button className="mobile-start-fab" type="button" onClick={onStartWorkout} aria-label="운동 시작"><Play size={19} fill="currentColor" aria-hidden="true" /><span>운동 시작</span></button>
     </main>
   )
+}
+
+function StartCardSummary({ activeProgramRun, programToday, programNext, nextRoutine }: { activeProgramRun: ProgramRun | null; programToday: ProgramRun['days'][number] | null; programNext: ProgramRun['days'][number] | null; nextRoutine: Routine | undefined }) {
+  return <>
+    <span className="start-card-top"><span className="soft-icon"><Dumbbell size={19} aria-hidden="true" /></span><span>{activeProgramRun ? '오늘의 프로그램' : '다음 운동'}</span></span>
+    <h2>{programToday ? `Day ${programToday.dayNumber} · ${programToday.title}` : activeProgramRun && programNext ? `다음: Day ${programNext.dayNumber} · ${programNext.title}` : nextRoutine?.name ?? '새 루틴 만들기'}</h2>
+    <p>{programToday ? programToday.dayType === 'rest' ? '오늘은 계획된 휴식일입니다. 회복 후 다음 Day를 이어가세요.' : programToday.workoutSession ? '오늘의 운동을 완료했습니다. 저장된 기록을 확인할 수 있어요.' : programToday.instructions ?? '오늘의 처방을 확인하고 운동을 시작하세요.' : activeProgramRun && programNext ? `${formatProgramDayDate(programNext.scheduledOn)} 예정 · 일정은 미수행 여부와 관계없이 고정됩니다.` : nextRoutine ? `${nextRoutine.exercises.length}개 종목 · ${countRoutineSets(nextRoutine)}세트 · ${nextRoutine.description ?? '나만의 루틴'}` : '내 첫 루틴을 설계해 보세요.'}</p>
+  </>
 }
 
 function MetricCard({ icon, label, value, unit, note }: { icon: React.ReactNode; label: string; value: string; unit: string; note: string }) {

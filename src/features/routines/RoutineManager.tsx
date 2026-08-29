@@ -6,6 +6,7 @@ import { useAppServices, useSettings } from '../../services'
 import type { Exercise, ProgramRun, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
 import { CreateExerciseDialog, ExercisePickerSheet } from '../workout/ExercisePicker'
 import { snapshotExerciseName } from '../workout/exerciseLabels'
+import { setTypeLabel, setTypeOptions } from '../workout/setInput'
 import './RoutineManager.css'
 
 interface RoutineManagerData {
@@ -30,8 +31,6 @@ const rirOptions: Array<{ value: Rir; label: string }> = [
   { value: 4, label: 'RIR 4' },
   { value: 5, label: 'RIR 5+' },
 ]
-
-const setTypeLabels: Record<SetType, string> = { warmup: '워밍업', working: '작업', dropset: '드롭' }
 
 export function RoutineManager({ initialSelectedRoutineId = null, initialCreate = false, onRoutineChange, onStartProgramDay }: { initialSelectedRoutineId?: string | null; initialCreate?: boolean; onRoutineChange?: (routineId: string | 'new' | null) => void; onStartProgramDay?: (dayId: string) => void }) {
   const { workoutRepository } = useAppServices()
@@ -417,7 +416,7 @@ function ExerciseEditor({ exercise, isCardio, index, total, applyRir, onApplyRir
 
   return <article className="routine-exercise-card">
     <header className="routine-exercise-card-header">
-      <div className="routine-exercise-name"><span>{String(index + 1).padStart(2, '0')}</span><div><h3>{exercise.exerciseName}</h3><small>{sets.length}세트 · 작업 세트 {workingSetCount}개</small></div></div>
+      <div className="routine-exercise-name"><span>{String(index + 1).padStart(2, '0')}</span><div><h3>{exercise.exerciseName}</h3><small>{sets.length}세트 · 세트별 유형 지정</small></div></div>
       <div className="exercise-card-actions">
         <button type="button" className="compact-icon-button" disabled={index === 0} onClick={() => onMove(-1)} aria-label={`${exercise.exerciseName} 위로 이동`}><ArrowUp size={16} aria-hidden="true" /></button>
         <button type="button" className="compact-icon-button" disabled={index === total - 1} onClick={() => onMove(1)} aria-label={`${exercise.exerciseName} 아래로 이동`}><ArrowDown size={16} aria-hidden="true" /></button>
@@ -429,8 +428,8 @@ function ExerciseEditor({ exercise, isCardio, index, total, applyRir, onApplyRir
       {sets.map((set) => <PrescriptionSetRow key={set.id} set={set} isCardio={isCardio} onChange={(changes) => onUpdateSet(set.id, changes)} onRemove={() => onRemoveSet(set.id)} />)}
     </div>
     <div className="routine-exercise-footer">
-      <button className="text-add-set" type="button" onClick={onAddSet}><Plus size={16} aria-hidden="true" /> 작업 세트 추가</button>
-      <div className="apply-rir-control"><SlidersHorizontal size={15} aria-hidden="true" /><label>작업 세트 RIR <select value={rirValue(applyRir)} onChange={(event) => onApplyRirChange(parseRir(event.target.value))}>{rirOptions.map((option) => <option value={rirValue(option.value)} key={rirValue(option.value)}>{option.label}</option>)}</select></label><button type="button" onClick={onApplyRir} disabled={workingSetCount === 0}>일괄 적용</button></div>
+      <button className="text-add-set" type="button" onClick={onAddSet}><Plus size={16} aria-hidden="true" /> 본세트 추가</button>
+      <div className="apply-rir-control"><SlidersHorizontal size={15} aria-hidden="true" /><label>본세트 RIR <select value={rirValue(applyRir)} onChange={(event) => onApplyRirChange(parseRir(event.target.value))}>{rirOptions.map((option) => <option value={rirValue(option.value)} key={rirValue(option.value)}>{option.label}</option>)}</select></label><button type="button" onClick={onApplyRir} disabled={workingSetCount === 0}>일괄 적용</button></div>
     </div>
   </article>
 }
@@ -438,7 +437,7 @@ function ExerciseEditor({ exercise, isCardio, index, total, applyRir, onApplyRir
 function PrescriptionSetRow({ set, isCardio, onChange, onRemove }: { set: RoutineSetPrescription; isCardio: boolean; onChange: (changes: Partial<RoutineSetPrescription>) => void; onRemove: () => void }) {
   return <div className="routine-set-row">
     <span className="prescription-set-number"><small>세트</small>{set.setOrder}</span>
-    <label><span className="routine-mobile-field-label">유형</span><select aria-label={`${set.setOrder}세트 유형`} value={set.setType} onChange={(event) => onChange({ setType: event.target.value as SetType })}>{(Object.keys(setTypeLabels) as SetType[]).map((type) => <option value={type} key={type}>{setTypeLabels[type]}</option>)}</select></label>
+    <label><span className="routine-mobile-field-label">유형</span><select aria-label={`${set.setOrder}세트 유형`} value={set.setType} onChange={(event) => onChange({ setType: event.target.value as SetType })}>{setTypeOptions.map((type) => <option value={type} key={type}>{setTypeLabel(type)}</option>)}</select></label>
     {isCardio ? <>
       <label><span className="routine-mobile-field-label">시간 분</span><input aria-label={`${set.setOrder}세트 목표 시간(분)`} type="number" inputMode="numeric" min="0" step="1" value={set.targetDurationSeconds === null ? '' : Math.round(set.targetDurationSeconds / 60)} onChange={(event) => onChange({ targetDurationSeconds: minutesToSeconds(event.target.value) })} placeholder="–" /></label>
       <label><span className="routine-mobile-field-label">거리 km</span><input aria-label={`${set.setOrder}세트 목표 거리(km)`} type="number" inputMode="decimal" min="0" step="0.1" value={set.targetDistanceKm ?? ''} onChange={(event) => onChange({ targetDistanceKm: toNullableNumber(event.target.value) })} placeholder="–" /></label>
@@ -500,6 +499,8 @@ function draftFingerprint(draft: RoutineDraft) {
         targetWeightKg: set.targetWeightKg,
         targetRepsMin: set.targetRepsMin,
         targetRepsMax: set.targetRepsMax,
+        targetDurationSeconds: set.targetDurationSeconds,
+        targetDistanceKm: set.targetDistanceKm,
         targetRir: set.targetRir,
         restSeconds: set.restSeconds,
       })),

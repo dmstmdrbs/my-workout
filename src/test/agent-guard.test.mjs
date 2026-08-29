@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { ALLOW_MARKER, evaluate } from '../../scripts/agent-guard.mjs'
 
@@ -9,7 +10,7 @@ import { ALLOW_MARKER, evaluate } from '../../scripts/agent-guard.mjs'
  * 실제 git을 부르지 않고 컨텍스트를 주입한다 -- main 브랜치의 저장소를
  * 테스트마다 만들 수는 없다.
  */
-const REPO = '/repo'
+const REPO = path.resolve('/repo')
 
 function context({ branch = 'main', root = REPO, marker = false } = {}) {
   return {

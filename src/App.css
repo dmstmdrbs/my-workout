@@ -65,8 +65,10 @@
   .side-nav { width: 220px; transform: translateX(-100%); transition: transform .2s ease; box-shadow: var(--shadow-float); }
   .side-nav.is-open { transform: translateX(0); }
   .app-content { margin-left: 0; padding-bottom: 82px; }
-  .top-bar { justify-content: space-between; min-height: 64px; padding: 0 20px; }
-  .mobile-menu-button, .mobile-brand { display: flex; }
+  .top-bar { justify-content: center; min-height: 64px; padding: 0 20px; }
+  .mobile-brand { display: flex; }
+  .mobile-menu-button, .top-bar-menu > .icon-button { display: none; }
+  .top-bar-actions, .top-bar-menu { width: 0; }
   .bottom-nav { display: grid; position: fixed; z-index: 15; right: 0; bottom: 0; left: 0; grid-template-columns: repeat(5, 1fr); min-height: 70px; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--surface) 93%, transparent); border-top: 1px solid var(--border); backdrop-filter: blur(14px); }
   .bottom-nav button { display: grid; grid-template-rows: 21px auto; align-content: center; justify-items: center; gap: 3px; min-width: 0; padding: 0; color: var(--text-muted); background: transparent; border: 0; border-radius: 8px; font-size: .66rem; font-weight: 650; line-height: 1; }
   .bottom-nav button > svg { display: block; align-self: center; }

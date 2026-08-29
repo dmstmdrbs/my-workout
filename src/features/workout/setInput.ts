@@ -12,6 +12,16 @@ export const REPS_STEP = 1
 export const DURATION_STEP_SECONDS = 60
 export const DISTANCE_STEP_KM = 0.1
 
+export const setTypeOptions = ['warmup', 'working', 'topset', 'backoff', 'dropset'] as const satisfies readonly SetType[]
+
+const setTypeLabels: Record<SetType, string> = {
+  warmup: '웜업',
+  working: '본세트',
+  topset: '탑세트',
+  backoff: '백오프',
+  dropset: '드롭',
+}
+
 export const rirChoices: Array<{ value: number; label: string }> = [
   { value: 0, label: '0' },
   { value: 1, label: '1' },
@@ -39,4 +49,4 @@ export function incrementValue(value: number | null, step: number, floor = 0) { 
 export function decrementValue(value: number | null, step: number, floor = 0) { return Math.max(floor, (value ?? 0) - step) }
 
 export function formatRir(rir: Rir) { if (rir === null) return '–'; return rir >= 5 ? '5+' : String(rir) }
-export function setTypeLabel(setType: SetType) { return setType === 'warmup' ? '워밍업' : setType === 'dropset' ? '드롭' : '작업' }
+export function setTypeLabel(setType: SetType) { return setTypeLabels[setType] ?? '본세트' }
