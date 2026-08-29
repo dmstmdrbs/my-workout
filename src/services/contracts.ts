@@ -63,6 +63,7 @@ export interface WorkoutRepository {
   getActiveProgramRun(): Promise<ProgramRun | null>
   getProgramRunDay(id: Id): Promise<ProgramRunDay | null>
   startProgramRun(input: StartProgramRunInput): Promise<ProgramRun>
+  refreshProgramRun(id: Id, preserveBeforeDate: string, input: StartProgramRunInput): Promise<ProgramRun>
   completeProgramRunDay(id: Id): Promise<void>
   endProgramRun(id: Id, outcome: 'completed' | 'withdrawn', reason?: string | null): Promise<void>
 

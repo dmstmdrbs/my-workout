@@ -74,6 +74,11 @@ export function Programs({ onStartDay, onSelectSession }: ProgramsProps) {
   const activeRunStartDate = activeRun?.startDate
   const activeRunDurationWeeks = activeRun?.durationWeeks
   const selectedProgram = getTrainingProgram(selectedProgramKey)
+  const activeProgramDefinition = activeRun ? trainingProgramCatalog.find((program) => program.key === activeRun.programKey) : undefined
+  const latestActiveProgramInput = activeRun && activeProgramDefinition ? activeProgramDefinition.build(activeRun.startDate) : null
+  const availableTemplateVersion = activeRun && latestActiveProgramInput && latestActiveProgramInput.templateVersion > activeRun.templateVersion
+    ? latestActiveProgramInput.templateVersion
+    : null
 
   useEffect(() => {
     if (!startDate) setStartDate(today)
@@ -147,6 +152,19 @@ export function Programs({ onStartDay, onSelectSession }: ProgramsProps) {
     onSuccess: refreshProgramQueries,
   })
 
+  const refreshRunMutation = useMutation({
+    mutationFn: () => {
+      if (!activeRun || !latestActiveProgramInput || !personalizationQuery.data) throw new Error('적용할 최신 프로그램을 찾지 못했어요.')
+      const personalized = personalizeProgramRun(
+        latestActiveProgramInput,
+        personalizationQuery.data.exercises,
+        personalizationQuery.data.maxes,
+      )
+      return workoutRepository.refreshProgramRun(activeRun.id, today, personalized)
+    },
+    onSuccess: refreshProgramQueries,
+  })
+
   if (runsQuery.isPending || settingsQuery.isPending || personalizationQuery.isPending) return <ProgramsLoading />
   if (runsQuery.isError || settingsQuery.isError || personalizationQuery.isError || !personalizationQuery.data) return <ProgramsError onRetry={() => { void runsQuery.refetch(); void settingsQuery.refetch(); void personalizationQuery.refetch() }} />
 
@@ -170,6 +188,11 @@ export function Programs({ onStartDay, onSelectSession }: ProgramsProps) {
       ? '이 프로그램 회차를 완료할까요? 저장된 운동 기록은 그대로 유지됩니다.'
       : '프로그램을 중도 하차할까요? 지금까지 저장한 운동 기록은 유지되며, 다시 시작하면 새로운 회차의 Day 1부터 시작합니다.'
     if (window.confirm(message)) endMutation.mutate({ run, outcome })
+  }
+
+  const refreshActiveRun = () => {
+    const message = `오늘(${formatDate(today)})부터 아직 완료하지 않았고 운동 기록도 연결되지 않은 Day만 최신 처방으로 바꿉니다. 이전 날짜와 완료·기록된 Day는 그대로 유지됩니다. 적용할까요?`
+    if (window.confirm(message)) refreshRunMutation.mutate()
   }
 
   return <main className="programs-page">
@@ -198,6 +221,10 @@ export function Programs({ onStartDay, onSelectSession }: ProgramsProps) {
           onCompleteRest={(dayId) => completeRestMutation.mutate(dayId)}
           completingRestDayId={completeRestMutation.isPending ? completeRestMutation.variables : null}
           restCompletionError={completeRestMutation.isError ? getErrorMessage(completeRestMutation.error) : null}
+          availableTemplateVersion={availableTemplateVersion}
+          onRefresh={refreshActiveRun}
+          isRefreshing={refreshRunMutation.isPending}
+          refreshError={refreshRunMutation.isError ? getErrorMessage(refreshRunMutation.error) : null}
           onEnd={(outcome) => endRun(activeRun, outcome)}
           isEnding={endMutation.isPending}
         /> : <ProgramEmptyState onExplore={() => setActiveSection('explore')} />}
@@ -410,7 +437,7 @@ function ProgramTemplateDay({ day }: { day: ReturnType<TrainingProgramDefinition
   </article>
 }
 
-function ActiveProgram({ run, today, selectedWeek, onSelectWeek, onStartDay, onSelectSession, onCompleteRest, completingRestDayId, restCompletionError, onEnd, isEnding }: { run: ProgramRun; today: string; selectedWeek: number; onSelectWeek: (week: number) => void; onStartDay: (dayId: string) => void; onSelectSession: (sessionId: string) => void; onCompleteRest: (dayId: string) => void; completingRestDayId: string | null; restCompletionError: string | null; onEnd: (outcome: 'completed' | 'withdrawn') => void; isEnding: boolean }) {
+function ActiveProgram({ run, today, selectedWeek, onSelectWeek, onStartDay, onSelectSession, onCompleteRest, completingRestDayId, restCompletionError, availableTemplateVersion, onRefresh, isRefreshing, refreshError, onEnd, isEnding }: { run: ProgramRun; today: string; selectedWeek: number; onSelectWeek: (week: number) => void; onStartDay: (dayId: string) => void; onSelectSession: (sessionId: string) => void; onCompleteRest: (dayId: string) => void; completingRestDayId: string | null; restCompletionError: string | null; availableTemplateVersion: number | null; onRefresh: () => void; isRefreshing: boolean; refreshError: string | null; onEnd: (outcome: 'completed' | 'withdrawn') => void; isEnding: boolean }) {
   const todayDay = run.days.find((day) => day.scheduledOn === today) ?? null
   const completed = run.days.filter(isProgramDayCompleted).length
   const totalDays = run.days.length
@@ -426,6 +453,11 @@ function ActiveProgram({ run, today, selectedWeek, onSelectWeek, onStartDay, onS
     ?? weekDays[0]
 
   return <>
+    {availableTemplateVersion && <section className="program-update-banner" aria-label="프로그램 업데이트">
+      <span className="program-update-icon"><RefreshCw size={20} /></span>
+      <div><p className="card-kicker">ROUTINE UPDATE · V{run.templateVersion} → V{availableTemplateVersion}</p><h2>진행 기록은 유지하고 최신 처방을 적용할 수 있어요.</h2><p>오늘 이후의 미완료 Day만 바뀌며, 이전 날짜와 완료했거나 운동 기록이 연결된 Day는 그대로 남습니다.</p>{refreshError && <p className="program-error" role="alert">{refreshError}</p>}</div>
+      <button className="primary-button" type="button" onClick={onRefresh} disabled={isRefreshing}><RefreshCw size={16} /> {isRefreshing ? '적용 중' : '최신 처방 적용'}</button>
+    </section>}
     <div className="program-active-workspace">
       <section className="program-now-grid" aria-label="현재 프로그램 요약">
         <article className="program-today-card" data-kind={focusDay.dayType}>
