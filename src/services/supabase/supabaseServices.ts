@@ -597,6 +597,19 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
     return run
   }
 
+  async refreshProgramRun(id: Id, preserveBeforeDate: string, input: StartProgramRunInput) {
+    await this.requireUser()
+    const { error } = await this.client.rpc('refresh_active_program_run', {
+      target_run_id: id,
+      preserve_before_date: preserveBeforeDate,
+      payload: input,
+    })
+    if (error) throw toError(error, '최신 프로그램 처방을 적용하지 못했어요.')
+    const run = await this.getProgramRun(id)
+    if (!run) throw new Error('업데이트한 프로그램 회차를 다시 불러오지 못했어요.')
+    return run
+  }
+
   async completeProgramRunDay(id: Id) {
     await this.requireUser()
     const { error } = await this.client.rpc('complete_program_rest_day', { target_day_id: id })

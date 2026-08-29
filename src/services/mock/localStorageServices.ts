@@ -240,6 +240,41 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
     updateStore((next) => { next.programRuns.push(run) })
     return clone(run)
   }
+  async refreshProgramRun(id: Id, preserveBeforeDate: string, input: StartProgramRunInput) {
+    const timestamp = now()
+    let refreshedRun: ProgramRun | null = null
+    updateStore((store) => {
+      const run = store.programRuns.find((item) => item.id === id && item.status === 'active')
+      if (!run || run.programKey !== input.programKey || run.startDate !== input.startDate || run.durationWeeks !== input.durationWeeks) return
+      if (input.templateVersion <= run.templateVersion) {
+        refreshedRun = attachProgramSessions(run, store.sessions)
+        return
+      }
+
+      const latestDayByNumber = new Map(input.days.map((day) => [day.dayNumber, day]))
+      run.days = run.days.map((day) => {
+        const latest = latestDayByNumber.get(day.dayNumber)
+        const hasLinkedSession = store.sessions.some((session) => session.programRunDayId === day.id)
+        if (!latest || day.scheduledOn < preserveBeforeDate || day.completedAt || hasLinkedSession) return day
+        return {
+          ...day,
+          dayType: latest.dayType,
+          title: latest.title,
+          instructions: latest.instructions,
+          routineSnapshot: clone(latest.routineSnapshot),
+          cardioTarget: clone(latest.cardioTarget),
+          isOptional: latest.isOptional,
+          updatedAt: timestamp,
+        }
+      })
+      run.programName = input.programName
+      run.templateVersion = input.templateVersion
+      run.updatedAt = timestamp
+      refreshedRun = attachProgramSessions(run, store.sessions)
+    })
+    if (!refreshedRun) throw new Error('업데이트할 수 있는 활성 프로그램 회차를 찾지 못했어요.')
+    return clone(refreshedRun)
+  }
   async completeProgramRunDay(id: Id) {
     const timestamp = now()
     let found = false
