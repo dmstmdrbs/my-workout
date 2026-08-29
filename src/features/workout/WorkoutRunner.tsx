@@ -649,7 +649,7 @@ function ExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChan
         onComplete={() => onCompleteSet(set)}
       />)}
     </div>
-    <button className="add-set-button" type="button" onClick={onAddSet}><Plus size={17} /> 작업 세트 추가</button>
+    <button className="add-set-button" type="button" onClick={onAddSet}><Plus size={17} /> 본세트 추가</button>
   </section>
 }
 

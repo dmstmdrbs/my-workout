@@ -6,14 +6,14 @@ import { beforeAll, describe, expect, test } from 'vitest'
 import App from '../App'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
 
-function renderRoutines() {
+function renderRoutines(initialPath = '/routines/new') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 0 }, mutations: { retry: false } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
       <AppServicesProvider services={createLocalStorageServices()}>
-        <MemoryRouter initialEntries={['/routines/new']}>
+        <MemoryRouter initialEntries={[initialPath]}>
           <App />
         </MemoryRouter>
       </AppServicesProvider>
@@ -62,5 +62,28 @@ describe.sequential('UF-22: 루틴 편집에서 종목 추가', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '새 운동 만들기' })).toBeNull())
     expect(screen.queryByRole('dialog', { name: '종목 추가' })).toBeNull()
     expect(await screen.findByText('케이블 크런치')).toBeTruthy()
+  })
+
+  test('각 세트를 웜업·본세트·탑세트·백오프·드롭으로 지정해 저장한다', async () => {
+    const user = userEvent.setup()
+    renderRoutines('/routines/pull-day')
+
+    await screen.findByRole('heading', { name: '루틴 관리' })
+    const firstExercise = document.querySelector<HTMLElement>('.routine-exercise-card')
+    expect(firstExercise).not.toBeNull()
+    const exercise = within(firstExercise!)
+    const firstSetType = exercise.getByRole('combobox', { name: '1세트 유형' })
+    expect(within(firstSetType).getAllByRole('option').map((option) => option.textContent)).toEqual([
+      '웜업', '본세트', '탑세트', '백오프', '드롭',
+    ])
+
+    await user.selectOptions(firstSetType, 'topset')
+    await user.selectOptions(exercise.getByRole('combobox', { name: '2세트 유형' }), 'backoff')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    await screen.findByText('루틴을 저장했어요.')
+
+    const store = JSON.parse(localStorage.getItem('trainlog:mock-store:v1') ?? '{}')
+    const pullDay = store.routines.find((routine: { id: string }) => routine.id === 'pull-day')
+    expect(pullDay.exercises[0].sets.map((set: { setType: string }) => set.setType)).toEqual(['topset', 'backoff', 'working'])
   })
 })

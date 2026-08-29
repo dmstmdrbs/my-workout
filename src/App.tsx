@@ -150,7 +150,11 @@ function AppShell() {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       setIsMoreMenuOpen(false)
-      moreMenuButtonRef.current?.focus()
+      const isMobileViewport = window.matchMedia
+        ? window.matchMedia('(max-width: 899px)').matches
+        : window.innerWidth <= 899
+      const toggleRef = isMobileViewport ? moreMenuBottomButtonRef : moreMenuButtonRef
+      toggleRef.current?.focus()
     }
 
     document.addEventListener('pointerdown', closeOnOutsideClick)

@@ -178,6 +178,12 @@ describe.sequential('UF-25: 고정 7일 프로그램 회차', () => {
     expect(activeWorkspace?.lastElementChild?.classList.contains('program-week-section')).toBe(true)
     const personalizedRun = await services.workoutRepository.getActiveProgramRun()
     expect(personalizedRun?.days[0].routineSnapshot?.exercises[0].sets[0].targetWeightKg).toBe(92.5)
+
+    await user.click(screen.getAllByRole('button', { name: '대시보드' })[0])
+    await screen.findByRole('heading', { name: /좋은 하루예요/ })
+    await user.click(screen.getByRole('button', { name: '8주 2분할 + 러닝 정체기 돌파 프로그램 정보 보기' }))
+    await screen.findByRole('button', { name: '중도 하차' })
+
     await user.click(screen.getAllByRole('button', { name: '운동 시작' })[0])
     const programRoutine = await screen.findByRole('button', { name: /PROGRAM DAY 1.*상체 강도/ })
     await user.click(programRoutine)
