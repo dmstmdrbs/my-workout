@@ -472,7 +472,7 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
 
   async listExercises(options: { includeArchived?: boolean } = {}) {
     const user = await this.requireUser()
-    let query = this.client.from('exercises').select('*').or(`user_id.is.null,user_id.eq.${user.id}`).order('name')
+    let query = this.client.from('exercises').select('*').eq('user_id', user.id).order('name')
     if (!options.includeArchived) query = query.eq('is_archived', false)
     const { data, error } = await query
     if (error) throw toError(error, '운동 목록을 불러오지 못했어요.')
@@ -480,8 +480,8 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
   }
 
   async getExercise(id: Id) {
-    await this.requireUser()
-    const { data, error } = await this.client.from('exercises').select('*').eq('id', id).maybeSingle()
+    const user = await this.requireUser()
+    const { data, error } = await this.client.from('exercises').select('*').eq('id', id).eq('user_id', user.id).maybeSingle()
     if (error) throw toError(error, '운동을 불러오지 못했어요.')
     return data ? mapExercise(data as Row) : null
   }

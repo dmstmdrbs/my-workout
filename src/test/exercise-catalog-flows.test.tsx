@@ -24,7 +24,7 @@ function renderApp(initialPath = '/exercises') {
   )
 }
 
-function readExercises(): Array<{ id: string; name: string; brand: string | null; isArchived: boolean }> {
+function readExercises(): Array<{ id: string; userId: string | null; name: string; brand: string | null; isArchived: boolean }> {
   return JSON.parse(localStorage.getItem(storeKey) ?? '{}').exercises ?? []
 }
 
@@ -73,7 +73,10 @@ describe.sequential('UF-23: 종목 관리와 브랜드', () => {
     await user.click(dialog.getByRole('button', { name: '저장' }))
 
     await waitFor(() => {
-      expect(readExercises().find((item) => item.id === 'leg-press')?.brand).toBe('hammer_strength')
+      expect(readExercises().find((item) => item.id === 'leg-press')).toMatchObject({
+        userId: 'local-user',
+        brand: 'hammer_strength',
+      })
     })
 
     await user.click(screen.getByRole('button', { name: '레그 프레스 보관' }))
