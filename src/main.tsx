@@ -3,11 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import './index.css'
 import App from './App.tsx'
 import { AppServicesProvider } from './services'
 import { applyTheme, readMirroredTheme } from './lib/theme'
-import { normalizeAnalyticsUrl } from './lib/analytics'
+import { scrubAnalyticsEvent } from './lib/analytics'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,11 +33,7 @@ createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </AppServicesProvider>
     </QueryClientProvider>
-    <Analytics
-      beforeSend={(event) => {
-        const url = normalizeAnalyticsUrl(event.url)
-        return url === null ? null : { ...event, url }
-      }}
-    />
+    <Analytics beforeSend={scrubAnalyticsEvent} />
+    <SpeedInsights beforeSend={scrubAnalyticsEvent} />
   </StrictMode>,
 )

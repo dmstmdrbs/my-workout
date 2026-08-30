@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { normalizeAnalyticsPath, normalizeAnalyticsUrl } from './analytics'
+import { normalizeAnalyticsPath, normalizeAnalyticsUrl, scrubAnalyticsEvent } from './analytics'
 
 const TOKEN = '3f2504e0-4f89-11d3-9a0c-0305e82c3301'
 const SESSION_ID = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'
@@ -48,5 +48,38 @@ describe('normalizeAnalyticsUrl', () => {
   test('파싱할 수 없으면 이벤트를 버린다', () => {
     // 원본을 그대로 흘려보내면 마스킹되지 않은 토큰이 나갈 수 있다.
     expect(normalizeAnalyticsUrl('not a url')).toBeNull()
+  })
+})
+
+describe('scrubAnalyticsEvent', () => {
+  test('두 제품이 같은 규칙으로 URL을 가린다', () => {
+    const pageview = { type: 'pageview' as const, url: `https://trainlog-psi.vercel.app/friends/invite/${TOKEN}` }
+    const vital = { type: 'vital' as const, url: `https://trainlog-psi.vercel.app/friends/invite/${TOKEN}` }
+
+    expect(scrubAnalyticsEvent(pageview)?.url).toBe('https://trainlog-psi.vercel.app/friends/invite/[token]')
+    expect(scrubAnalyticsEvent(vital)?.url).toBe('https://trainlog-psi.vercel.app/friends/invite/[token]')
+  })
+
+  test('type 같은 다른 필드는 그대로 통과시킨다', () => {
+    const event = { type: 'vital' as const, url: 'https://trainlog-psi.vercel.app/stats', name: 'LCP' }
+    expect(scrubAnalyticsEvent(event)).toEqual({
+      type: 'vital',
+      url: 'https://trainlog-psi.vercel.app/stats',
+      name: 'LCP',
+    })
+  })
+
+  test('route가 붙어 오면 그것도 가린다', () => {
+    // 지금은 아무도 route를 넘기지 않지만, 넘기게 됐을 때 새면 안 된다.
+    const event = {
+      type: 'vital' as const,
+      url: `https://trainlog-psi.vercel.app/records/${SESSION_ID}`,
+      route: `/records/${SESSION_ID}`,
+    }
+    expect(scrubAnalyticsEvent(event)?.route).toBe('/records/[id]')
+  })
+
+  test('파싱할 수 없으면 이벤트를 버린다', () => {
+    expect(scrubAnalyticsEvent({ type: 'vital' as const, url: 'not a url' })).toBeNull()
   })
 })
