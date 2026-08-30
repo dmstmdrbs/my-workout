@@ -640,6 +640,8 @@ git commit -m "feat: 공유 카드 브랜드 록업을 BrandLogo로 바꾼다"
 - Delete: `public/trainlog-icon.png`, `public/icons.svg`
 - Modify: `index.html:5`
 - Modify: `vite.config.ts` — manifest
+- Modify: `src/lib/restAlerts.ts:38-39` — 알림 아이콘을 새 자산으로
+- Test: `src/test/rest-alert-flows.test.ts` — 아이콘 경로 회귀 테스트 추가
 
 **Interfaces:**
 - Consumes: `brandArt.ts`의 `CHECK_PATH`, `DUMBBELL_PATHS`, `ICON_COLORS`, `STROKE_WIDTH`, `SYMBOL_VIEWBOX`
@@ -759,9 +761,44 @@ sips -Z 320 brand-preview.local/fav16.png --out brand-preview.local/fav16-zoom.p
         ],
 ```
 
-- [ ] **Step 5: 참조가 사라졌는지 확인하고 죽은 파일을 지운다**
+- [ ] **Step 5: 휴식 알림의 아이콘을 새 자산으로 옮긴다**
 
-`index.html`과 manifest를 이미 새 자산으로 바꿨으므로, 이제 옛 파일을 가리키는 곳이 없어야 한다.
+`src/lib/restAlerts.ts:38-39`가 휴식 완료 알림의 `icon`과 `badge`로
+`/trainlog-icon.png`를 쓴다. **이 파일을 지우기 전에 여기를 먼저 옮겨야 한다** —
+안 옮기면 알림 아이콘이 조용히 깨진다. 예외도 나지 않고, 이를 잡는 테스트도 없다.
+
+```ts
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+```
+
+SVG가 아니라 PNG를 쓰는 이유: 브라우저 알림의 아이콘 SVG 지원이 고르지 않다.
+`icon`과 `badge`를 같은 파일로 두던 기존 동작은 그대로 유지한다.
+
+그리고 이 결합을 고정하는 회귀 테스트를 `src/test/rest-alert-flows.test.ts`에
+추가한다. 지금은 아이콘 경로를 검증하는 테스트가 하나도 없어서, 자산 이름이
+바뀌면 아무도 모르게 깨진다.
+
+```ts
+test('휴식 완료 알림은 public/ 에 실재하는 아이콘을 가리킨다', async () => {
+  // 이 경로는 scripts/build-brand-assets.mjs 가 만드는 파일 이름과 묶여 있다.
+  // 자산 이름을 바꾸면 여기도 함께 바꿔야 알림 아이콘이 살아 있다.
+  const shown = vi.fn()
+  // ... 기존 파일의 알림 목 설정 방식을 따른다 ...
+  expect(shown.mock.calls[0][1]).toMatchObject({
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+  })
+})
+```
+
+기존 파일이 `Notification`과 `serviceWorker.getRegistration`을 어떻게 목킹하는지
+먼저 읽고, 그 방식을 그대로 재사용한다. 새 목킹 패턴을 만들지 않는다.
+
+- [ ] **Step 6: 참조가 사라졌는지 확인하고 죽은 파일을 지운다**
+
+`index.html`, manifest, `restAlerts.ts`를 모두 새 자산으로 바꿨으므로, 이제 옛
+파일을 가리키는 곳이 없어야 한다.
 
 ```bash
 grep -rn "trainlog-icon\|icons.svg" --include="*.tsx" --include="*.ts" --include="*.css" --include="*.html" src index.html vite.config.ts
@@ -773,7 +810,7 @@ Expected: 결과 없음. 결과가 나오면 그 참조를 먼저 정리하고 �
 git rm public/trainlog-icon.png public/icons.svg
 ```
 
-- [ ] **Step 6: 빌드 산출물에 아이콘이 들어갔는지 확인**
+- [ ] **Step 7: 빌드 산출물에 아이콘이 들어갔는지 확인**
 
 ```bash
 npm run build
@@ -783,10 +820,10 @@ ls dist/icon-*.png dist/favicon.svg dist/apple-touch-icon.png
 
 Expected: `manifest.webmanifest`의 `icons` 배열에 3개 항목이 있고, `dist/`에 파일이 복사돼 있다.
 
-- [ ] **Step 7: 커밋**
+- [ ] **Step 8: 커밋**
 
 ```bash
-git add scripts/build-brand-assets.mjs public index.html vite.config.ts
+git add scripts/build-brand-assets.mjs public index.html vite.config.ts src/lib/restAlerts.ts src/test/rest-alert-flows.test.ts
 git commit -m "feat: favicon과 PWA 아이콘을 브랜드 심볼에서 생성한다"
 ```
 
