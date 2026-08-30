@@ -50,7 +50,13 @@ export const ICON_COLORS = { tile: '#171717', ink: '#ffffff', accent: '#3b82f6' 
  * 워드마크도 같은 만큼 옮겨 심볼과 하나의 베이스라인 체계를 공유하게 했다.
  * x좌표는 원안 그대로다.
  */
-export const LOCKUP_VIEWBOX = '0 0 126 24'
+
+/**
+ * 워드마크의 viewBox. 록업(심볼+글자)을 만들지 않기로 해서, 캔버스를 잉크의
+ * 실제 경계에 맞춘다. 가로세로비가 약 4.6:1이라 헤더에서는 높이가 아니라
+ * 폭이 배치를 지배한다.
+ */
+export const WORDMARK_VIEWBOX = '27.7 1.4 97.4 21.1'
 
 /** t r a i n -- 본문색(currentColor). */
 export const WORDMARK_INK_PATHS: readonly string[] = [
