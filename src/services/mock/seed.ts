@@ -102,7 +102,7 @@ const exerciseSeeds: Array<[string, string, Exercise['primaryMuscle'], Exercise[
 
 export const mockExercises: Exercise[] = exerciseSeeds.map(([id, name, primaryMuscle, secondaryMuscles, equipment, brand]) => ({
   id,
-  userId: null,
+  userId: mockUser.id,
   name,
   primaryMuscle,
   secondaryMuscles,
