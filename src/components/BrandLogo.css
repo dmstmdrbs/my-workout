@@ -1,0 +1,6 @@
+/*
+ * 크기는 호출부의 font-size가 정한다. height: 1em 이면 로고가 옆 텍스트의
+ * 크기를 따라가고, 헤더에서 rem 값 하나만 만지면 심볼과 워드마크가 같은
+ * 비율로 함께 움직인다.
+ */
+.brand-logo { display: block; width: auto; height: 1em; }

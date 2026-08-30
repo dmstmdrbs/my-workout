@@ -18,6 +18,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react'
+import { BrandLogo } from './components/BrandLogo'
 import { BodyMeasurements } from './features/body/BodyMeasurements'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { ExerciseCatalog } from './features/exercises/ExerciseCatalog'
@@ -265,9 +266,8 @@ function AppShell() {
   return (
     <div className="app-shell">
       <aside className={`side-nav ${isMobileMenuOpen ? 'is-open' : ''}`} aria-label="주 메뉴">
-        <div className="brand-mark" aria-label="Trainlog 홈">
-          <BrandIcon />
-          <span>trainlog</span>
+        <div className="brand-mark">
+          <BrandLogo title="Trainlog" />
         </div>
         <nav className="side-nav-links">
           {sideNavPages.map((id) => {
@@ -314,7 +314,7 @@ function AppShell() {
           >
             <Menu size={21} aria-hidden="true" />
           </button>
-          <div className="mobile-brand">trainlog</div>
+          <div className="mobile-brand"><BrandLogo title="Trainlog" /></div>
           <div className="top-bar-actions">
             <span className="sync-indicator" title="기기에 안전하게 저장됨">
               <span aria-hidden="true" /> 저장됨
@@ -447,15 +447,14 @@ function AppShell() {
 
 function AuthLoading() {
   return <main className="auth-gate" aria-label="로그인 상태를 확인하는 중">
-    <div className="auth-gate-card"><BrandIcon /><p>안전하게 운동 기록을 불러오는 중…</p></div>
+    <div className="auth-gate-card"><BrandLogo title="Trainlog" /><p>안전하게 운동 기록을 불러오는 중…</p></div>
   </main>
 }
 
 function SignInGate({ error, onSignIn }: { error: string | null; onSignIn: () => void }) {
   return <main className="auth-gate" aria-labelledby="sign-in-title">
     <section className="auth-gate-card">
-      <BrandIcon />
-      <p className="eyebrow">TRAINLOG</p>
+      <BrandLogo title="Trainlog" />
       <h1 id="sign-in-title">나의 트레이닝을 이어가세요.</h1>
       <p>Google 계정으로 로그인하면 운동 기록과 RIR 설정을 모든 기기에서 안전하게 관리할 수 있어요.</p>
       {error && <p className="auth-gate-error" role="alert">{error}</p>}
@@ -463,10 +462,6 @@ function SignInGate({ error, onSignIn }: { error: string | null; onSignIn: () =>
       <small>개인 운동 기록만 본인 계정에서 볼 수 있습니다.</small>
     </section>
   </main>
-}
-
-function BrandIcon() {
-  return <span className="brand-symbol" aria-hidden="true"><img src="/trainlog-icon.png" alt="" /></span>
 }
 
 /**
