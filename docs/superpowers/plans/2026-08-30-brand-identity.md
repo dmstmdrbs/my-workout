@@ -16,7 +16,8 @@
 - `scripts/build-brand-assets.mjs`는 **수동 실행 전용**이다. `npm run build`나 Vercel 빌드 경로에 넣지 않는다.
 - 색은 두 값만 참조한다: `currentColor`, `var(--brand-accent, var(--accent))`. 컴포넌트 안에 하드코딩된 색을 두지 않는다.
 - 앱 아이콘(favicon/PWA)의 고정 색: 타일 `#171717`, 덤벨 `#ffffff`, 체크 `#3b82f6`. `#2563eb`는 다크 타일 위에서 탁하므로 쓰지 않는다.
-- 심볼 `viewBox="0 0 24 24"`, 록업 `viewBox="0 0 126 24"`. 획은 전부 `stroke-width="2.2"`, `stroke-linecap="round"`, `stroke-linejoin="round"`.
+- 심볼 `viewBox="0 0 24 24"`, 워드마크 `viewBox="27.7 1.4 97.4 21.1"`. 획은 전부 `stroke-width="2.2"`, `stroke-linecap="round"`, `stroke-linejoin="round"`.
+- **심볼과 워드마크를 한 그림에 같이 넣지 않는다.** Task 2 이후 확정된 결정이다(스펙의 "심볼과 워드마크를 나란히 두지 않는 이유" 절). Task 2의 본문에 남아 있는 "록업" 표현은 그 결정 이전에 쓰인 기록이다.
 - 커밋 메시지는 conventional commits + 한글 제목. 각 Task 끝에서 커밋한다.
 - `brand-preview.local/`은 `.gitignore`의 `*.local` 패턴에 걸리는 시각 검증용 스크래치 디렉터리다. 커밋하지 않는다.
 
@@ -224,7 +225,33 @@ git commit -m "feat: 워드마크 패스 데이터를 추가한다"
 
 **Interfaces:**
 - Consumes: Task 1·2의 `brandArt.ts` 상수 전부
-- Produces: `export function BrandLogo(props: { variant?: 'lockup' | 'symbol'; className?: string; title?: string }): JSX.Element`
+- Produces:
+  - `export function BrandLogo(props: { variant?: 'wordmark' | 'symbol'; className?: string; title?: string }): JSX.Element`
+  - `export const WORDMARK_VIEWBOX = '27.7 1.4 97.4 21.1'` (`brandArt.ts`에 추가)
+
+> **Task 2 이후 바뀐 결정 — 록업은 만들지 않는다.** 원안은 심볼+워드마크를 한
+> 록업으로 묶으려 했으나, 31px 헤더 크기로 렌더해 보니 세로로 쌓인 심볼이
+> 뭉개져 폐기했다(스펙의 "심볼과 워드마크를 나란히 두지 않는 이유" 절 참조).
+> 그래서 variant는 `'lockup'`이 아니라 `'wordmark'`이고, 기본값도 `'wordmark'`다.
+> `LOCKUP_VIEWBOX`는 더 이상 쓰이지 않으므로 `brandArt.ts`에서 **삭제**하고,
+> 잉크 경계에 맞춘 `WORDMARK_VIEWBOX`를 대신 넣는다.
+
+- [ ] **Step 0: `brandArt.ts`의 viewBox를 록업에서 워드마크로 바꾼다**
+
+`LOCKUP_VIEWBOX`를 지우고 그 자리에 아래를 넣는다. 값은 워드마크 잉크의 실제
+경계다 — 왼쪽은 `t` 크로스바(28.8 − 1.1), 오른쪽은 `g` 볼(124 + 1.1), 위는
+어센더(2.5 − 1.1), 아래는 디센더(21.4 + 1.1).
+
+```ts
+/**
+ * 워드마크의 viewBox. 록업(심볼+글자)을 만들지 않기로 해서, 캔버스를 잉크의
+ * 실제 경계에 맞춘다. 가로세로비가 약 4.6:1이라 헤더에서는 높이가 아니라
+ * 폭이 배치를 지배한다.
+ */
+export const WORDMARK_VIEWBOX = '27.7 1.4 97.4 21.1'
+```
+
+그 위의 워드마크 doc 주석에서 록업을 전제한 문장이 있으면 함께 고친다.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -246,9 +273,11 @@ describe('BrandLogo', () => {
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
   })
 
-  test('기본 variant는 워드마크를 포함한 록업이다', () => {
+  test('기본 variant는 워드마크다', () => {
     const { container } = render(<BrandLogo />)
-    expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 126 24')
+    const svg = container.querySelector('svg')
+    expect(svg?.getAttribute('viewBox')).toBe('27.7 1.4 97.4 21.1')
+    expect(svg?.querySelector('circle')).not.toBeNull() // i의 점 = 워드마크가 있다
   })
 
   test('symbol variant는 정사각 심볼만 그린다', () => {
@@ -256,6 +285,13 @@ describe('BrandLogo', () => {
     const svg = container.querySelector('svg')
     expect(svg?.getAttribute('viewBox')).toBe('0 0 24 24')
     expect(svg?.querySelector('circle')).toBeNull() // i의 점이 없다 = 워드마크가 없다
+  })
+
+  test('두 variant는 서로 다른 패스를 그린다', () => {
+    const wordmark = render(<BrandLogo />).container.querySelectorAll('path').length
+    const symbol = render(<BrandLogo variant="symbol" />).container.querySelectorAll('path').length
+    expect(wordmark).toBe(12) // ink 8 + accent 4
+    expect(symbol).toBe(6)    // check 1 + dumbbell 5
   })
 
   test('className을 주면 기본 클래스와 함께 붙는다', () => {
@@ -279,17 +315,22 @@ Expected: FAIL — `Failed to resolve import "../components/BrandLogo"`
 import {
   CHECK_PATH,
   DUMBBELL_PATHS,
-  LOCKUP_VIEWBOX,
   STROKE_WIDTH,
   SYMBOL_VIEWBOX,
   WORDMARK_ACCENT_PATHS,
   WORDMARK_DOT,
   WORDMARK_INK_PATHS,
+  WORDMARK_VIEWBOX,
 } from './brandArt'
 import './BrandLogo.css'
 
 /**
  * 브랜드 로고. 앱 안에서 로고가 나오는 모든 자리가 이 컴포넌트를 쓴다.
+ *
+ * 심볼과 워드마크는 **한 그림에 같이 놓지 않는다**. 심볼은 체크가 위, 덤벨이
+ * 아래로 쌓인 구조라, 가로 록업에 넣으면 두 요소가 각각 글자 하나보다 작아져
+ * 헤더 크기(31px)에서 뭉개진다. 심볼은 정사각 앱 아이콘에서, 워드마크는 가로로
+ * 긴 헤더에서 각자 제 몫을 한다.
  *
  * 인라인 SVG인 이유가 두 개 있다. (1) 외부 CSS가 닿아야 `currentColor`로
  * 테마를 따라간다 -- `<img src>` 안의 SVG에는 페이지 CSS가 닿지 않아 다크/
@@ -303,7 +344,7 @@ import './BrandLogo.css'
  */
 
 type BrandLogoProps = {
-  variant?: 'lockup' | 'symbol'
+  variant?: 'wordmark' | 'symbol'
   className?: string
   /** 주면 로고가 그 이름을 가진 이미지가 된다. 없으면 장식으로 숨는다. */
   title?: string
@@ -311,12 +352,12 @@ type BrandLogoProps = {
 
 const ACCENT = 'var(--brand-accent, var(--accent))'
 
-export function BrandLogo({ variant = 'lockup', className, title }: BrandLogoProps) {
-  const isLockup = variant === 'lockup'
+export function BrandLogo({ variant = 'wordmark', className, title }: BrandLogoProps) {
+  const isSymbol = variant === 'symbol'
   return (
     <svg
       className={className ? `brand-logo ${className}` : 'brand-logo'}
-      viewBox={isLockup ? LOCKUP_VIEWBOX : SYMBOL_VIEWBOX}
+      viewBox={isSymbol ? SYMBOL_VIEWBOX : WORDMARK_VIEWBOX}
       role={title ? 'img' : undefined}
       aria-hidden={title ? undefined : true}
       fill="none"
@@ -325,15 +366,18 @@ export function BrandLogo({ variant = 'lockup', className, title }: BrandLogoPro
       strokeLinejoin="round"
     >
       {title ? <title>{title}</title> : null}
-      <path d={CHECK_PATH} stroke={ACCENT} />
-      {DUMBBELL_PATHS.map((d) => <path d={d} key={d} stroke="currentColor" />)}
-      {isLockup ? (
+      {isSymbol ? (
+        <>
+          <path d={CHECK_PATH} stroke={ACCENT} />
+          {DUMBBELL_PATHS.map((d) => <path d={d} key={d} stroke="currentColor" />)}
+        </>
+      ) : (
         <>
           {WORDMARK_INK_PATHS.map((d) => <path d={d} key={d} stroke="currentColor" />)}
           <circle cx={WORDMARK_DOT.cx} cy={WORDMARK_DOT.cy} r={WORDMARK_DOT.r} fill="currentColor" stroke="none" />
           {WORDMARK_ACCENT_PATHS.map((d) => <path d={d} key={d} stroke={ACCENT} />)}
         </>
-      ) : null}
+      )}
     </svg>
   )
 }
@@ -443,7 +487,7 @@ Expected: PASS — 전부. 브랜드 자산을 참조하는 기존 테스트는 
 npm run dev
 ```
 
-확인: 데스크톱 사이드바 로고, 390px 모바일 상단바 로고(**심볼이 새로 생겼는지**), 라이트/다크 전환 시 색이 따라오는지. 라이트에서 검은 사각형 타일이 더는 보이지 않아야 한다.
+확인: 데스크톱 사이드바 로고, 390px 모바일 상단바 로고, 라이트/다크 전환 시 `train`은 본문색·`log`는 accent로 따라오는지. 라이트에서 검은 사각형 타일이 더는 보이지 않아야 한다. 모바일 상단바에서 워드마크가 좌우로 넘치지 않는지도 본다 — 워드마크는 가로세로비 4.6:1이라 높이보다 폭이 문제가 된다.
 
 - [ ] **Step 7: 커밋**
 
@@ -476,7 +520,7 @@ function AuthLoading() {
 
 - [ ] **Step 2: `SignInGate`의 브랜드를 교체하고 중복 문구를 뺀다**
 
-기존은 `<BrandIcon />` 바로 아래에 `<p className="eyebrow">TRAINLOG</p>`가 있다. 록업이 이미 이름을 담으므로 이 eyebrow는 같은 말을 두 번 하는 것이 된다. 함께 지운다.
+기존은 `<BrandIcon />` 바로 아래에 `<p className="eyebrow">TRAINLOG</p>`가 있다. 워드마크가 이미 이름을 담으므로 이 eyebrow는 같은 말을 두 번 하는 것이 된다. 함께 지운다.
 
 ```tsx
 <section className="auth-gate-card">
@@ -504,7 +548,7 @@ function BrandIcon() {
 .brand-symbol img { display: block; width: 100%; height: 100%; object-fit: cover; }
 ```
 
-51행과 58행의 `.brand-symbol`을 `.brand-logo`로 바꾸고, 록업은 심볼보다 가로로 기므로 높이를 명시한다.
+51행과 58행의 `.brand-symbol`을 `.brand-logo`로 바꾸고, 워드마크는 정사각 심볼보다 훨씬 가로로 기므로 높이를 명시한다(높이 26px이면 폭은 약 120px이 된다).
 
 ```css
 .auth-gate-card > .brand-logo { height: 26px; margin-bottom: 28px; }
@@ -781,9 +825,9 @@ Expected: 결과 없음.
 
 | 표면 | 확인 |
 | --- | --- |
-| 데스크톱 사이드바 | 록업이 라이트/다크 모두에서 자연스럽고, 검은 타일이 뜨지 않는다 |
-| 모바일 상단바 | 심볼이 새로 생겼고, 폭 390px에서 상단바 밖으로 넘치지 않는다 |
-| 로그인 게이트 | 록업이 잘리지 않고, `TRAINLOG` eyebrow 중복이 사라졌다 |
+| 데스크톱 사이드바 | 워드마크가 라이트/다크 모두에서 자연스럽고, 검은 타일이 뜨지 않는다 |
+| 모바일 상단바 | 워드마크가 폭 390px에서 상단바 밖으로 넘치지 않는다 |
+| 로그인 게이트 | 워드마크가 잘리지 않고, `TRAINLOG` eyebrow 중복이 사라졌다 |
 | 공유 PNG | 내보낸 이미지에 로고가 빈칸 아닌 정상 상태로 들어간다 |
 | 브라우저 탭 | favicon이 새 심볼이다(보라 번개가 아니다) |
 
