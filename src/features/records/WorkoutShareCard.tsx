@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, type CSSProperties } from 'react'
 import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import type { WorkoutSession } from '../../types/domain'
@@ -14,7 +14,13 @@ export const WorkoutShareCard = forwardRef<HTMLElement, { session: WorkoutSessio
 
   return <article className="workout-share-card" ref={cardRef} aria-label={`${session.routineName ?? '자유 운동'} 공유 카드`}>
     <header className="share-card-header">
-      <div className="share-card-brand-lockup"><BrandLogo /></div>
+      {/*
+        --brand-accent is set inline, not in Records.css, on purpose: html-to-image
+        clones an <svg> deeply but never resolves stylesheet custom properties for
+        its child <path> elements, so a CSS-only value here would export with the
+        wrong (theme-dependent) accent colour. Do not "tidy" this back into the CSS file.
+      */}
+      <div className="share-card-brand-lockup" style={{ '--brand-accent': '#3b82f6' } as CSSProperties}><BrandLogo /></div>
       <div className="share-card-date"><strong>{formatCardDate(session.startedAt)}</strong><span>{formatWorkoutDuration(session)}</span></div>
     </header>
     <div className="share-card-title"><span>WORKOUT COMPLETE</span><h3>{session.routineName ?? '자유 운동'}</h3></div>

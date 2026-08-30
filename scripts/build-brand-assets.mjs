@@ -12,7 +12,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   CHECK_PATH,
   DUMBBELL_PATHS,
@@ -20,8 +20,6 @@ import {
   STROKE_WIDTH,
   SYMBOL_VIEWBOX,
 } from '../src/components/brandArt.ts'
-
-const publicDir = fileURLToPath(new URL('../public/', import.meta.url))
 
 function requireRsvg() {
   try {
@@ -38,7 +36,7 @@ function requireRsvg() {
  *   maskable 아이콘은 Android가 가장자리를 잘라내므로 0.1(=콘텐츠 80%)을 준다.
  * @param {number} options.radius 타일 모서리 반경(24 단위 기준). 0이면 각진 사각형.
  */
-function symbolSvg({ inset = 0, radius = 0 } = {}) {
+export function symbolSvg({ inset = 0, radius = 0 } = {}) {
   const scale = 1 - inset * 2
   const offset = 24 * inset
   const strokes = DUMBBELL_PATHS.map((d) => `<path d="${d}" stroke="${ICON_COLORS.ink}"/>`).join('')
@@ -50,7 +48,7 @@ function symbolSvg({ inset = 0, radius = 0 } = {}) {
     + `</g></svg>`
 }
 
-function writePng(svg, size, name) {
+function writePng(publicDir, svg, size, name) {
   const dir = mkdtempSync(path.join(tmpdir(), 'trainlog-brand-'))
   const svgPath = path.join(dir, 'icon.svg')
   writeFileSync(svgPath, svg)
@@ -59,18 +57,30 @@ function writePng(svg, size, name) {
   console.log(`  ${name} (${size}x${size})`)
 }
 
-requireRsvg()
-console.log('브랜드 자산 생성:')
+// `symbolSvg`를 테스트(brand-asset-drift.test.ts)가 import 해서 쓸 수 있도록,
+// 실제 생성 작업(rsvg-convert 호출·파일 쓰기, publicDir 경로 계산 포함)은
+// 모듈 최상단이 아니라 이 아래 `main()` 안에 두고, 이 파일이 CLI로 직접
+// 실행됐을 때만 호출한다. 그래야 import만 해도 부수효과가 도는 것을 막는다.
+function main() {
+  const publicDir = fileURLToPath(new URL('../public/', import.meta.url))
 
-// favicon 은 브라우저 탭에서 각진 사각형으로 보이므로 모서리를 둥글린다.
-writeFileSync(path.join(publicDir, 'favicon.svg'), symbolSvg({ radius: 5 }))
-console.log('  favicon.svg')
+  requireRsvg()
+  console.log('브랜드 자산 생성:')
 
-writePng(symbolSvg({ radius: 5 }), 180, 'apple-touch-icon.png')
-writePng(symbolSvg({ radius: 5 }), 192, 'icon-192.png')
-writePng(symbolSvg({ radius: 5 }), 512, 'icon-512.png')
-// maskable 은 OS 가 자기 모양으로 자른다. 모서리를 둥글리지 않고 꽉 채우되,
-// 심볼은 안전 영역(80%) 안으로 넣는다.
-writePng(symbolSvg({ inset: 0.1, radius: 0 }), 512, 'icon-maskable-512.png')
+  // favicon 은 브라우저 탭에서 각진 사각형으로 보이므로 모서리를 둥글린다.
+  writeFileSync(path.join(publicDir, 'favicon.svg'), symbolSvg({ radius: 5 }))
+  console.log('  favicon.svg')
 
-console.log('완료. 산출물을 커밋하세요.')
+  writePng(publicDir, symbolSvg({ radius: 5 }), 180, 'apple-touch-icon.png')
+  writePng(publicDir, symbolSvg({ radius: 5 }), 192, 'icon-192.png')
+  writePng(publicDir, symbolSvg({ radius: 5 }), 512, 'icon-512.png')
+  // maskable 은 OS 가 자기 모양으로 자른다. 모서리를 둥글리지 않고 꽉 채우되,
+  // 심볼은 안전 영역(80%) 안으로 넣는다.
+  writePng(publicDir, symbolSvg({ inset: 0.1, radius: 0 }), 512, 'icon-maskable-512.png')
+
+  console.log('완료. 산출물을 커밋하세요.')
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+}
