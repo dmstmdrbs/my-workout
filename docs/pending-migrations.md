@@ -1,6 +1,6 @@
 # 적용해야 할 마이그레이션 (2026-08-29 갱신)
 
-푸시 전에 **DB를 먼저** 적용해야 하는 파일 목록입니다. 세 파일 모두 비파괴적입니다. 특히 진행 중 프로그램 갱신 버튼은 세 번째 RPC가 없으면 실패하므로 DB를 먼저 적용합니다.
+푸시 전에 **DB를 먼저** 적용해야 하는 파일 목록입니다. 기존 운동 데이터는 삭제하지 않습니다. 특히 진행 중 프로그램 갱신과 친구 기능은 해당 RPC가 없으면 실패하므로 DB를 먼저 적용합니다.
 
 Supabase 대시보드 → **SQL Editor**에 파일 내용을 그대로 붙여 실행하시면 됩니다.
 
@@ -86,7 +86,52 @@ where proname = 'refresh_active_program_run';
 
 ---
 
-## 4. 이미 적용하신 것 (기록용)
+## 4. `20260829165016_add_friend_system.sql`
+
+친구 MVP에 필요한 공개 프로필, 초대, 관계, 차단 테이블과 RPC를 추가합니다.
+
+- 기존 `profiles`의 이메일은 계속 본인만 볼 수 있고, 친구 기능에는 `social_profiles`의 표시 이름과 아바타만 노출
+- UUID 초대 링크는 30일 유효하며 새 링크를 만들면 이전 링크 폐기
+- 친구 요청 수락·거절·취소, 친구 삭제, 차단·해제를 원자적 RPC로 처리
+- 새 테이블은 RLS를 켜고 인증 사용자에게 필요한 `select`만 부여
+- 변경 RPC는 `auth.uid()`를 다시 확인하며 `anon`과 `public` 실행 권한을 제거
+- 기존 운동 기록 테이블과 정책은 변경하지 않음
+
+### 적용 후 확인
+
+```sql
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public'
+  and tablename in ('social_profiles', 'friend_invites', 'friendships', 'user_blocks')
+order by tablename;
+```
+
+네 행 모두 `rowsecurity`가 **`true`**여야 합니다. RPC 실행 권한도 인증 사용자에게만 있어야 합니다.
+
+```sql
+select routine_name, grantee
+from information_schema.routine_privileges
+where routine_schema = 'public'
+  and routine_name in (
+    'create_or_rotate_friend_invite',
+    'resolve_friend_invite',
+    'send_friend_request',
+    'accept_friend_request',
+    'decline_friend_request',
+    'cancel_friend_request',
+    'remove_friend',
+    'block_user',
+    'unblock_user'
+  )
+order by routine_name, grantee;
+```
+
+각 함수에 `authenticated`가 나오고 `anon`·`PUBLIC`은 나오지 않아야 합니다.
+
+---
+
+## 5. 이미 적용하신 것 (기록용)
 
 - `20260818120000_exercise_brand.sql` — 종목 브랜드. **적용 완료**
 - `20260819090000_cardio_set_metrics.sql` — 유산소 기록(시간·거리) + `save_workout_session` 재정의. **적용 완료**
@@ -104,6 +149,8 @@ where proname = 'refresh_active_program_run';
 5. **완료된 기록을 `수정`으로 고쳐 저장한 뒤, 다시 열어 값이 남아 있고 `수정됨` 배지가 붙는지.** 값은 남는데 배지가 없으면 `20260827090000`이 적용되지 않은 것입니다. 저장 자체가 실패하면 그건 컬럼 문제가 아니라 `save_workout_session`의 UPDATE 경로 문제입니다.
 6. 그 기록에서 세트를 하나 더하고 하나 지운 뒤 저장 → 세트 번호가 1부터 빈칸 없이 남는지. (`unique (workout_exercise_id, set_order)`가 걸려 있어 번호가 겹치면 저장이 실패합니다.)
 7. 이전 템플릿 버전의 활성 회차에서 `최신 처방 적용` → 오늘 이후 미완료 Day는 새 처방으로 바뀌고 과거·완료·기록 연결 Day는 그대로인지.
+8. 사용자 A가 친구 링크 생성 → 사용자 B가 별도 브라우저에서 링크로 요청 → A가 수락했을 때 양쪽 친구 목록에 같은 관계가 보이는지.
+9. A가 B를 차단했을 때 양쪽 친구 관계가 사라지고, B가 이전 링크로 다시 요청할 수 없는지. A의 차단 해제 후에도 친구 관계는 자동 복원되지 않아야 합니다.
 
 ## 마이그레이션이 필요 없는 이번 변경
 

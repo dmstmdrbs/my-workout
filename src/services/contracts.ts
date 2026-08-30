@@ -1,13 +1,20 @@
 import type {
   BodyMeasurement,
+  BlockedUser,
   Exercise,
   ExerciseOneRepMax,
+  FriendInvite,
+  FriendOverview,
+  FriendRequest,
+  FriendSummary,
   Id,
+  InviteResolution,
   IsoDateTime,
   ProgramRun,
   ProgramRunDay,
-  StartProgramRunInput,
   Routine,
+  SocialProfile,
+  StartProgramRunInput,
   UserProfile,
   UserSettings,
   WorkoutSession,
@@ -103,7 +110,26 @@ export interface WorkoutRepository {
   saveBodyMeasurement(measurement: Omit<BodyMeasurement, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { id?: Id }): Promise<BodyMeasurement>
 }
 
+/** 친구·초대·차단은 운동 기록 소유권과 별개인 경계로 유지한다. */
+export interface SocialRepository {
+  getMySocialProfile(): Promise<SocialProfile>
+  getFriendOverview(): Promise<FriendOverview>
+  getFriend(friendshipId: Id): Promise<FriendSummary | null>
+  createOrRotateInvite(): Promise<FriendInvite>
+  resolveInvite(token: string): Promise<InviteResolution>
+  sendFriendRequest(token: string): Promise<FriendRequest>
+  acceptRequest(friendshipId: Id): Promise<void>
+  declineRequest(friendshipId: Id): Promise<void>
+  cancelRequest(friendshipId: Id): Promise<void>
+  removeFriend(friendshipId: Id): Promise<void>
+  listBlockedUsers(): Promise<BlockedUser[]>
+  blockUser(userId: Id): Promise<void>
+  unblockUser(userId: Id): Promise<void>
+  getIncomingRequestCount(): Promise<number>
+}
+
 export interface AppServices {
   auth: AuthAdapter
   workoutRepository: WorkoutRepository
+  socialRepository: SocialRepository
 }

@@ -11,6 +11,8 @@ export type SetType = 'warmup' | 'working' | 'topset' | 'backoff' | 'dropset'
 export type SessionStatus = 'in_progress' | 'completed' | 'abandoned'
 export type ProgramRunStatus = 'active' | 'completed' | 'withdrawn'
 export type ProgramDayType = 'strength' | 'cardio' | 'rest'
+export type FriendshipStatus = 'pending' | 'accepted'
+export type InviteResolutionState = 'self' | 'available' | 'outgoing_pending' | 'incoming_pending' | 'friends' | 'unavailable'
 export type Equipment = 'barbell' | 'dumbbell' | 'machine' | 'cable' | 'bodyweight' | 'cardio' | 'other'
 
 /**
@@ -52,6 +54,50 @@ export interface UserProfile {
   avatarUrl: string | null
   createdAt: IsoDateTime
   updatedAt: IsoDateTime
+}
+
+/** 친구 화면과 초대 미리보기에만 노출되는 이메일 없는 프로필. */
+export interface SocialProfile {
+  userId: Id
+  displayName: string
+  avatarUrl: string | null
+}
+
+export interface FriendSummary {
+  friendshipId: Id
+  profile: SocialProfile
+  friendsSince: IsoDateTime
+}
+
+export interface FriendRequest {
+  friendshipId: Id
+  direction: 'incoming' | 'outgoing'
+  profile: SocialProfile
+  requestedAt: IsoDateTime
+}
+
+export interface FriendInvite {
+  token: string
+  createdAt: IsoDateTime
+  expiresAt: IsoDateTime
+}
+
+export interface FriendOverview {
+  friends: FriendSummary[]
+  incomingRequests: FriendRequest[]
+  outgoingRequests: FriendRequest[]
+  activeInvite: FriendInvite | null
+}
+
+export interface InviteResolution {
+  state: InviteResolutionState
+  profile: SocialProfile | null
+  friendshipId: Id | null
+}
+
+export interface BlockedUser {
+  profile: SocialProfile
+  blockedAt: IsoDateTime
 }
 
 export interface UserSettings {

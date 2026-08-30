@@ -1,11 +1,18 @@
 import type {
   BodyMeasurement,
+  BlockedUser,
   Exercise,
   ExerciseOneRepMax,
+  FriendInvite,
+  FriendOverview,
+  FriendRequest,
+  FriendSummary,
   Id,
+  InviteResolution,
   ProgramRun,
   ProgramRunDay,
   Routine,
+  SocialProfile,
   StartProgramRunInput,
   UserProfile,
   UserSettings,
@@ -13,11 +20,41 @@ import type {
   WorkoutSetRecord,
 } from '../../types/domain'
 import { addCalendarDays } from '../../lib/localDate'
-import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, WorkoutRepository } from '../contracts'
-import { mockExercises, mockRoutines, mockSessions, mockSettings, mockUser } from './seed'
+import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, SocialRepository, WorkoutRepository } from '../contracts'
+import {
+  mockBlocks,
+  mockExercises,
+  mockFriendInvites,
+  mockFriendships,
+  mockRoutines,
+  mockSessions,
+  mockSettings,
+  mockSocialProfiles,
+  mockUser,
+} from './seed'
+
+interface LocalFriendInvite extends FriendInvite {
+  inviterId: Id
+  revokedAt: string | null
+}
+
+interface LocalFriendship {
+  id: Id
+  requesterId: Id
+  addresseeId: Id
+  status: 'pending' | 'accepted'
+  requestedAt: string
+  respondedAt: string | null
+}
+
+interface LocalBlock {
+  blockerId: Id
+  blockedId: Id
+  blockedAt: string
+}
 
 interface LocalStore {
-  version: 1
+  version: 2
   signedIn: boolean
   profile: UserProfile
   settings: UserSettings
@@ -27,6 +64,10 @@ interface LocalStore {
   measurements: BodyMeasurement[]
   programRuns: ProgramRun[]
   exerciseOneRepMaxes: ExerciseOneRepMax[]
+  socialProfiles: SocialProfile[]
+  friendInvites: LocalFriendInvite[]
+  friendships: LocalFriendship[]
+  blocks: LocalBlock[]
 }
 
 const storageKey = 'trainlog:mock-store:v1'
@@ -56,7 +97,7 @@ function completedSetsForExerciseInSession(session: WorkoutSession, exerciseId: 
 
 function createStore(): LocalStore {
   return {
-    version: 1,
+    version: 2,
     signedIn: true,
     profile: clone(mockUser),
     settings: clone(mockSettings),
@@ -66,21 +107,46 @@ function createStore(): LocalStore {
     measurements: [],
     programRuns: [],
     exerciseOneRepMaxes: [],
+    socialProfiles: clone(mockSocialProfiles),
+    friendInvites: clone(mockFriendInvites),
+    friendships: clone(mockFriendships),
+    blocks: clone(mockBlocks),
   }
 }
 
 function readStore(): LocalStore {
-  if (inMemoryStore) return inMemoryStore
+  if (inMemoryStore) {
+    // Tests and the mock sign-out flow may intentionally clear localStorage.
+    // Treat that as a reset instead of keeping stale process memory alive.
+    if (!globalThis.localStorage || globalThis.localStorage.getItem(storageKey)) return inMemoryStore
+    inMemoryStore = null
+  }
   try {
     const raw = globalThis.localStorage?.getItem(storageKey)
     if (raw) {
       inMemoryStore = JSON.parse(raw) as LocalStore
+      inMemoryStore.version = 2
       inMemoryStore.programRuns ??= []
       inMemoryStore.exerciseOneRepMaxes ??= []
+      inMemoryStore.socialProfiles ??= []
+      inMemoryStore.friendInvites ??= []
+      inMemoryStore.friendships ??= []
+      inMemoryStore.blocks ??= []
+      if (!inMemoryStore.socialProfiles.some((profile) => profile.userId === inMemoryStore!.profile.id)) {
+        inMemoryStore.socialProfiles.push({
+          userId: inMemoryStore.profile.id,
+          displayName: inMemoryStore.profile.displayName,
+          avatarUrl: inMemoryStore.profile.avatarUrl,
+        })
+      }
+      // Persist the migration so a v1 local store is upgraded once without
+      // disturbing any existing workout data.
+      try { globalThis.localStorage?.setItem(storageKey, JSON.stringify(inMemoryStore)) } catch { /* memory fallback */ }
       return inMemoryStore
     }
   } catch { /* localStorage can be disabled; memory fallback remains usable. */ }
   inMemoryStore = createStore()
+  try { globalThis.localStorage?.setItem(storageKey, JSON.stringify(inMemoryStore)) } catch { /* memory fallback */ }
   return inMemoryStore
 }
 
@@ -134,7 +200,17 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
   async getProfile() { return clone(this.requireStore().profile) }
   async updateProfile(changes: Pick<UserProfile, 'displayName' | 'avatarUrl'>) {
     let profile!: UserProfile
-    updateStore((store) => { profile = { ...store.profile, ...changes, updatedAt: now() }; store.profile = profile })
+    updateStore((store) => {
+      profile = { ...store.profile, ...changes, updatedAt: now() }
+      store.profile = profile
+      const socialProfile = store.socialProfiles.find((item) => item.userId === profile.id)
+      if (socialProfile) {
+        socialProfile.displayName = profile.displayName
+        socialProfile.avatarUrl = profile.avatarUrl
+      } else {
+        store.socialProfiles.push({ userId: profile.id, displayName: profile.displayName, avatarUrl: profile.avatarUrl })
+      }
+    })
     return clone(profile)
   }
   async getSettings() { return clone(this.requireStore().settings) }
@@ -363,9 +439,237 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
   }
 }
 
+function socialProfileFor(store: LocalStore, userId: Id): SocialProfile | null {
+  return store.socialProfiles.find((profile) => profile.userId === userId) ?? null
+}
+
+function pairContains(record: { requesterId: Id; addresseeId: Id }, a: Id, b: Id): boolean {
+  return (record.requesterId === a && record.addresseeId === b) || (record.requesterId === b && record.addresseeId === a)
+}
+
+function involvesUser(record: { requesterId: Id; addresseeId: Id }, userId: Id): boolean {
+  return record.requesterId === userId || record.addresseeId === userId
+}
+
+function otherUserId(record: { requesterId: Id; addresseeId: Id }, userId: Id): Id {
+  return record.requesterId === userId ? record.addresseeId : record.requesterId
+}
+
+function isBlocked(store: LocalStore, a: Id, b: Id): boolean {
+  return store.blocks.some((block) => (block.blockerId === a && block.blockedId === b) || (block.blockerId === b && block.blockedId === a))
+}
+
+function activeInviteFor(store: LocalStore, inviterId: Id, timestamp = Date.now()): LocalFriendInvite | null {
+  return store.friendInvites
+    .filter((invite) => invite.inviterId === inviterId && !invite.revokedAt && new Date(invite.expiresAt).getTime() > timestamp)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null
+}
+
+function friendRequestFor(store: LocalStore, friendship: LocalFriendship, currentUserId: Id): FriendRequest | null {
+  const otherUserId = friendship.requesterId === currentUserId ? friendship.addresseeId : friendship.requesterId
+  const profile = socialProfileFor(store, otherUserId)
+  if (!profile) return null
+  return {
+    friendshipId: friendship.id,
+    direction: friendship.requesterId === currentUserId ? 'outgoing' : 'incoming',
+    profile: clone(profile),
+    requestedAt: friendship.requestedAt,
+  }
+}
+
+function friendSummaryFor(store: LocalStore, friendship: LocalFriendship, currentUserId: Id): FriendSummary | null {
+  const otherUserId = friendship.requesterId === currentUserId ? friendship.addresseeId : friendship.requesterId
+  const profile = socialProfileFor(store, otherUserId)
+  if (!profile) return null
+  return {
+    friendshipId: friendship.id,
+    profile: clone(profile),
+    friendsSince: friendship.respondedAt ?? friendship.requestedAt,
+  }
+}
+
+class LocalStorageSocialRepository implements SocialRepository {
+  private requireStore(): LocalStore {
+    const store = readStore()
+    if (!store.signedIn) throw new Error('An authenticated user is required.')
+    return store
+  }
+
+  async getMySocialProfile() {
+    const store = this.requireStore()
+    const profile = socialProfileFor(store, store.profile.id)
+    if (!profile) throw new Error('소셜 프로필을 찾지 못했어요.')
+    return clone(profile)
+  }
+
+  async getFriendOverview(): Promise<FriendOverview> {
+    const store = this.requireStore()
+    const currentUserId = store.profile.id
+    const accepted = store.friendships
+      .filter((friendship) => friendship.status === 'accepted' && involvesUser(friendship, currentUserId) && !isBlocked(store, currentUserId, otherUserId(friendship, currentUserId)))
+      .map((friendship) => friendSummaryFor(store, friendship, currentUserId))
+      .filter((summary): summary is FriendSummary => summary !== null)
+      .sort((a, b) => a.profile.displayName.localeCompare(b.profile.displayName, 'ko') || a.profile.userId.localeCompare(b.profile.userId))
+    const pending = store.friendships
+      .filter((friendship) => friendship.status === 'pending' && (friendship.requesterId === currentUserId || friendship.addresseeId === currentUserId))
+      .filter((friendship) => !isBlocked(store, currentUserId, friendship.requesterId === currentUserId ? friendship.addresseeId : friendship.requesterId))
+      .map((friendship) => friendRequestFor(store, friendship, currentUserId))
+      .filter((request): request is FriendRequest => request !== null)
+      .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt) || a.friendshipId.localeCompare(b.friendshipId))
+    const activeInvite = activeInviteFor(store, currentUserId)
+    return clone({
+      friends: accepted,
+      incomingRequests: pending.filter((request) => request.direction === 'incoming'),
+      outgoingRequests: pending.filter((request) => request.direction === 'outgoing'),
+      activeInvite: activeInvite ? { token: activeInvite.token, createdAt: activeInvite.createdAt, expiresAt: activeInvite.expiresAt } : null,
+    })
+  }
+
+  async getFriend(friendshipId: Id): Promise<FriendSummary | null> {
+    const store = this.requireStore()
+    const currentUserId = store.profile.id
+    const friendship = store.friendships.find((item) => item.id === friendshipId && item.status === 'accepted')
+    if (!friendship || !involvesUser(friendship, currentUserId) || isBlocked(store, currentUserId, otherUserId(friendship, currentUserId))) return null
+    return clone(friendSummaryFor(store, friendship, currentUserId))
+  }
+
+  async createOrRotateInvite(): Promise<FriendInvite> {
+    const store = this.requireStore()
+    const currentUserId = store.profile.id
+    const createdAt = now()
+    const invite: LocalFriendInvite = {
+      token: newId(),
+      inviterId: currentUserId,
+      createdAt,
+      expiresAt: new Date(Date.parse(createdAt) + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      revokedAt: null,
+    }
+    updateStore((next) => {
+      next.friendInvites = next.friendInvites.filter((item) => item.inviterId !== currentUserId)
+      next.friendInvites.push(invite)
+    })
+    return clone({ token: invite.token, createdAt: invite.createdAt, expiresAt: invite.expiresAt })
+  }
+
+  async resolveInvite(token: string): Promise<InviteResolution> {
+    const store = this.requireStore()
+    const currentUserId = store.profile.id
+    const invite = store.friendInvites.find((item) => item.token === token && !item.revokedAt && new Date(item.expiresAt).getTime() > Date.now())
+    if (!invite) return { state: 'unavailable', profile: null, friendshipId: null }
+    const profile = socialProfileFor(store, invite.inviterId)
+    if (!profile || isBlocked(store, currentUserId, invite.inviterId)) return { state: 'unavailable', profile: null, friendshipId: null }
+    if (invite.inviterId === currentUserId) return { state: 'self', profile: clone(profile), friendshipId: null }
+    const friendship = store.friendships.find((item) => pairContains(item, currentUserId, invite.inviterId))
+    if (!friendship) return { state: 'available', profile: clone(profile), friendshipId: null }
+    if (friendship.status === 'accepted') return { state: 'friends', profile: clone(profile), friendshipId: friendship.id }
+    return {
+      state: friendship.requesterId === currentUserId ? 'outgoing_pending' : 'incoming_pending',
+      profile: clone(profile),
+      friendshipId: friendship.id,
+    }
+  }
+
+  async sendFriendRequest(token: string): Promise<FriendRequest> {
+    const store = this.requireStore()
+    const currentUserId = store.profile.id
+    let request!: FriendRequest
+    updateStore((next) => {
+      const invite = next.friendInvites.find((item) => item.token === token && !item.revokedAt && new Date(item.expiresAt).getTime() > Date.now())
+      if (!invite) throw new Error('사용할 수 없는 초대 링크예요.')
+      if (invite.inviterId === currentUserId) throw new Error('내 초대 링크로는 친구 요청을 보낼 수 없어요.')
+      if (isBlocked(next, currentUserId, invite.inviterId)) throw new Error('친구 요청을 보낼 수 없는 사용자예요.')
+      const profile = socialProfileFor(next, invite.inviterId)
+      if (!profile) throw new Error('사용자를 찾지 못했어요.')
+      const existing = next.friendships.find((item) => pairContains(item, currentUserId, invite.inviterId))
+      if (existing) {
+        if (existing.status === 'accepted') throw new Error('이미 친구인 사용자예요.')
+        throw new Error(existing.requesterId === currentUserId ? '이미 친구 요청을 보냈어요.' : '받은 친구 요청이 있어요.')
+      }
+      const created: LocalFriendship = { id: newId(), requesterId: currentUserId, addresseeId: invite.inviterId, status: 'pending', requestedAt: now(), respondedAt: null }
+      next.friendships.push(created)
+      request = { friendshipId: created.id, direction: 'outgoing', profile: clone(profile), requestedAt: created.requestedAt }
+    })
+    return clone(request)
+  }
+
+  async acceptRequest(friendshipId: Id): Promise<void> {
+    const currentUserId = this.requireStore().profile.id
+    updateStore((store) => {
+      const friendship = store.friendships.find((item) => item.id === friendshipId && item.status === 'pending' && item.addresseeId === currentUserId)
+      if (!friendship) throw new Error('받은 친구 요청을 찾지 못했어요.')
+      if (isBlocked(store, currentUserId, friendship.requesterId)) throw new Error('친구 요청을 수락할 수 없어요.')
+      friendship.status = 'accepted'
+      friendship.respondedAt = now()
+    })
+  }
+
+  async declineRequest(friendshipId: Id): Promise<void> {
+    const currentUserId = this.requireStore().profile.id
+    updateStore((store) => {
+      const friendship = store.friendships.find((item) => item.id === friendshipId && item.status === 'pending' && item.addresseeId === currentUserId)
+      if (!friendship) throw new Error('받은 친구 요청을 찾지 못했어요.')
+      store.friendships = store.friendships.filter((item) => item.id !== friendshipId)
+    })
+  }
+
+  async cancelRequest(friendshipId: Id): Promise<void> {
+    const currentUserId = this.requireStore().profile.id
+    updateStore((store) => {
+      const friendship = store.friendships.find((item) => item.id === friendshipId && item.status === 'pending' && item.requesterId === currentUserId)
+      if (!friendship) throw new Error('보낸 친구 요청을 찾지 못했어요.')
+      store.friendships = store.friendships.filter((item) => item.id !== friendshipId)
+    })
+  }
+
+  async removeFriend(friendshipId: Id): Promise<void> {
+    const currentUserId = this.requireStore().profile.id
+    updateStore((store) => {
+      const friendship = store.friendships.find((item) => item.id === friendshipId && item.status === 'accepted' && (item.requesterId === currentUserId || item.addresseeId === currentUserId))
+      if (!friendship) throw new Error('친구 관계를 찾지 못했어요.')
+      store.friendships = store.friendships.filter((item) => item.id !== friendshipId)
+    })
+  }
+
+  async listBlockedUsers(): Promise<BlockedUser[]> {
+    const store = this.requireStore()
+    return clone(store.blocks
+      .filter((block) => block.blockerId === store.profile.id)
+      .map((block) => ({ profile: socialProfileFor(store, block.blockedId), blockedAt: block.blockedAt }))
+      .filter((blocked): blocked is { profile: SocialProfile; blockedAt: string } => blocked.profile !== null)
+      .sort((a, b) => a.profile.displayName.localeCompare(b.profile.displayName, 'ko') || a.profile.userId.localeCompare(b.profile.userId)))
+  }
+
+  async blockUser(userId: Id): Promise<void> {
+    const currentUserId = this.requireStore().profile.id
+    updateStore((store) => {
+      if (userId === currentUserId) throw new Error('자기 자신은 차단할 수 없어요.')
+      if (!socialProfileFor(store, userId)) throw new Error('사용자를 찾지 못했어요.')
+      if (!store.blocks.some((block) => block.blockerId === currentUserId && block.blockedId === userId)) {
+        store.blocks.push({ blockerId: currentUserId, blockedId: userId, blockedAt: now() })
+      }
+      store.friendships = store.friendships.filter((item) => !pairContains(item, currentUserId, userId))
+    })
+  }
+
+  async unblockUser(userId: Id): Promise<void> {
+    const currentUserId = this.requireStore().profile.id
+    updateStore((store) => { store.blocks = store.blocks.filter((block) => !(block.blockerId === currentUserId && block.blockedId === userId)) })
+  }
+
+  async getIncomingRequestCount(): Promise<number> {
+    const store = this.requireStore()
+    const currentUserId = store.profile.id
+    return store.friendships.filter((item) => item.status === 'pending' && item.addresseeId === currentUserId && !isBlocked(store, currentUserId, item.requesterId)).length
+  }
+}
+
 /** Default development services. Swap this factory for Supabase implementations at app composition only. */
 export function createLocalStorageServices(): AppServices {
-  return { auth: new LocalStorageAuthAdapter(), workoutRepository: new LocalStorageWorkoutRepository() }
+  return {
+    auth: new LocalStorageAuthAdapter(),
+    workoutRepository: new LocalStorageWorkoutRepository(),
+    socialRepository: new LocalStorageSocialRepository(),
+  }
 }
 
 function attachProgramSessions(run: ProgramRun, sessions: WorkoutSession[]): ProgramRun {

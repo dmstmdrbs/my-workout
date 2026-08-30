@@ -23,6 +23,7 @@
 }
 .nav-link:hover { color: var(--text); background: var(--surface-subtle); }
 .nav-link.is-active { color: var(--text); background: var(--surface-emphasis); }
+.nav-badge { display: inline-grid; flex: 0 0 auto; min-width: 19px; height: 19px; margin-left: auto; padding: 0 5px; color: var(--contrast-text); background: var(--accent); border-radius: 999px; font-size: .65rem; font-weight: 800; line-height: 19px; text-align: center; }
 
 .app-content { min-height: 100svh; margin-left: 248px; }
 .top-bar { display: flex; align-items: center; justify-content: flex-end; min-height: 74px; padding: 0 clamp(24px, 4vw, 60px); }
@@ -30,6 +31,7 @@
 .top-bar-menu { position: relative; }
 .top-bar-popover { display: grid; position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; width: 150px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 11px; box-shadow: var(--shadow-float); }
 .top-bar-popover button { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 11px; color: var(--text); background: transparent; border: 0; border-radius: 7px; font-size: .82rem; font-weight: 650; text-align: left; }
+.top-bar-popover button > .nav-badge { margin-left: auto; }
 .top-bar-popover button:hover, .top-bar-popover button:focus-visible { color: var(--accent); background: var(--accent-subtle); }
 .sync-indicator { display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: .76rem; font-weight: 650; }
 .sync-indicator > span { width: 7px; height: 7px; background: var(--success); border-radius: 999px; box-shadow: 0 0 0 3px var(--success-subtle); }
