@@ -3,6 +3,7 @@ import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import type { WorkoutSession } from '../../types/domain'
 import { muscleLabel } from '../workout/exerciseLabels'
+import { BrandLogo } from '../../components/BrandLogo'
 import { formatWeight, formatWorkoutDuration, formatWorkoutNumber, formatWorkoutRir, formatWorkoutSet } from './workoutShareFormat'
 
 export const WorkoutShareCard = forwardRef<HTMLElement, { session: WorkoutSession; weightUnit: string; includeRir: boolean }>(function WorkoutShareCard({ session, weightUnit, includeRir }, cardRef) {
@@ -13,7 +14,7 @@ export const WorkoutShareCard = forwardRef<HTMLElement, { session: WorkoutSessio
 
   return <article className="workout-share-card" ref={cardRef} aria-label={`${session.routineName ?? '자유 운동'} 공유 카드`}>
     <header className="share-card-header">
-      <div className="share-card-brand-lockup"><img src="/trainlog-icon.png" alt="" /><span>TRAINLOG</span></div>
+      <div className="share-card-brand-lockup"><BrandLogo /></div>
       <div className="share-card-date"><strong>{formatCardDate(session.startedAt)}</strong><span>{formatWorkoutDuration(session)}</span></div>
     </header>
     <div className="share-card-title"><span>WORKOUT COMPLETE</span><h3>{session.routineName ?? '자유 운동'}</h3></div>

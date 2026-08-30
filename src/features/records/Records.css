@@ -53,9 +53,8 @@
   font-family: Pretendard, "Noto Sans KR", sans-serif;
 }
 .share-card-header { align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--share-line); }
-.share-card-brand-lockup { display: flex; align-items: center; gap: 8px; }
-.share-card-brand-lockup img { width: 25px; height: 25px; border-radius: 7px; }
-.share-card-brand-lockup span { color: #f8fafc; font-size: .67rem; font-weight: 900; letter-spacing: .13em; }
+.share-card-brand-lockup { display: flex; align-items: center; color: #f8fafc; --brand-accent: #3b82f6; }
+.share-card-brand-lockup .brand-logo { height: 15px; }
 .share-card-date { display: grid; justify-items: end; gap: 2px; }
 .share-card-date strong { color: #f8fafc; font-size: .7rem; }
 .share-card-date span { color: #8993a1; font-size: .6rem; }
@@ -86,9 +85,7 @@
 
 .share-card-export-target .workout-share-card { padding: 36px 32px 28px; }
 .share-card-export-target .share-card-header { padding-bottom: 21px; }
-.share-card-export-target .share-card-brand-lockup { gap: 11px; }
-.share-card-export-target .share-card-brand-lockup img { width: 36px; height: 36px; border-radius: 10px; }
-.share-card-export-target .share-card-brand-lockup span { font-size: .9rem; }
+.share-card-export-target .share-card-brand-lockup .brand-logo { height: 21px; }
 .share-card-export-target .share-card-date strong { font-size: .91rem; }
 .share-card-export-target .share-card-date span { font-size: .76rem; }
 .share-card-export-target .share-card-title { gap: 7px; margin-top: 24px; }
