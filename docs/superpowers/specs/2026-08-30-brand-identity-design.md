@@ -81,10 +81,15 @@ correction)으로 ±0.5 단위 조정할 수 있다. 조정해도 "체크는 위
 "trainlog"를 **모노라인 지오메트릭 소문자**로 아웃라인화한다. 획 굵기를 심볼과
 같은 값으로 맞춰 심볼과 워드마크가 한 몸으로 읽히게 하는 것이 이 선택의 이유다.
 
-- x-height 14 단위, 획 굵기 2.2(심볼과 동일), 원형 자소의 지름 14 단위
+- x-height 12 단위, 획 굵기 2.2(심볼과 동일), 원형 자소의 지름 12 단위
 - 자소 구성: `t`(스템+크로스바), `r`(스템+짧은 아치), `a`(원+스템), `i`(스템+점),
   `n`(스템+아치), `l`(스템), `o`(원), `g`(원+디센더)
 - 자간은 패스 좌표에 직접 반영한다. 현재 CSS의 `letter-spacing: -0.06em`은 사라진다.
+- 그리드: 베이스라인 y=18, x-하이트 상단 y=6, 어센더 상단 y=2.5, 디센더 하단
+  y=21.4, 볼 중심 y=12. 심볼과 같은 단위계이고, 심볼이 승인 과정에서 1단위
+  위로 옮겨진 것을 반영한 값이다.
+- `viewBox`는 잉크의 실제 경계에 맞춘다: `27.7 1.4 97.4 21.1`. 가로세로비가
+  약 4.6:1이라 헤더에서는 높이가 아니라 **폭**이 배치를 지배한다.
 
 색 분할: `train`은 본문색, `log`는 accent. "기록"이 제품의 핵심이라는 것을 색으로
 집는다.
@@ -113,14 +118,27 @@ correction)으로 ±0.5 단위 조정할 수 있다. 조정해도 "체크는 위
 
 ```tsx
 type BrandLogoProps = {
-  variant?: 'lockup' | 'symbol'  // 기본 'lockup'
+  variant?: 'wordmark' | 'symbol'  // 기본 'wordmark'
   className?: string
-  title?: string                 // 없으면 aria-hidden="true"
+  title?: string                   // 없으면 aria-hidden="true"
 }
 ```
 
-- `lockup` — 심볼 + 워드마크. 헤더, 로그인 화면, 공유 카드에서 쓴다.
-- `symbol` — 심볼만. 공간이 없는 곳을 위해 둔다.
+- `wordmark` — 글자만. 헤더, 로그인 화면, 공유 카드에서 쓴다.
+- `symbol` — 심볼만. favicon·PWA 아이콘과, 글자가 들어갈 수 없는 좁은 자리에서 쓴다.
+
+### 심볼과 워드마크를 나란히 두지 않는 이유
+
+원안은 "심볼 + 워드마크" 록업 하나로 세 표면을 덮으려 했다. 구현 중 실제로
+렌더해 보고 폐기했다. 심볼은 체크가 위, 덤벨이 아래로 **쌓인** 구조라, 록업
+높이를 글자에 맞추면 두 요소가 각각 글자 하나보다 작아진다. 헤더 실제 크기인
+31px에서 덤벨은 얼룩으로, 체크는 짧은 틱으로 뭉개졌다. 심볼을 1.35배 키워도
+덤벨이 아래로 밀려 바닥에 붙을 뿐 읽히지 않았다 — 세로로 쌓인 마크를 가로
+록업에 넣는 구조적 한계다.
+
+그래서 둘을 분리한다. 심볼은 자기가 제일 잘 작동하는 정사각 타일(앱 아이콘)에
+두고, 가로로 긴 헤더에는 가로로 긴 워드마크를 둔다. 각자 맞는 그릇에 담는
+편이, 하나의 록업으로 양쪽을 어중간하게 만족시키는 것보다 낫다.
 - 크기는 CSS가 정한다. SVG는 `height: 1em`·`width: auto`를 기본으로 두고 호출부가
   `font-size`나 `className`으로 조절한다.
 - 인라인 SVG여야 하는 이유: (1) 외부 CSS가 닿아야 테마 대응이 되고, (2)
@@ -153,9 +171,9 @@ type BrandLogoProps = {
 
 | 표면 | 파일 | 변경 |
 | --- | --- | --- |
-| 데스크톱 헤더 | `src/App.tsx`, `src/App.css` | `BrandIcon()` 제거, `.brand-mark`가 `<BrandLogo />` 하나만 담는다. `<span>trainlog</span>` 삭제 |
-| 모바일 헤더 | 〃 | `.mobile-brand`의 평문을 `<BrandLogo />`로 교체. 심볼이 생긴다 |
-| 로그인·로딩 | 〃 | `.auth-gate-card`의 `<BrandIcon />`를 `<BrandLogo />`로 교체 |
+| 데스크톱 헤더 | `src/App.tsx`, `src/App.css` | `BrandIcon()` 제거, `.brand-mark`가 워드마크 `<BrandLogo />` 하나만 담는다. `<span>trainlog</span>` 삭제 |
+| 모바일 헤더 | 〃 | `.mobile-brand`의 평문을 워드마크 `<BrandLogo />`로 교체. 기기별로 달랐던 글자꼴이 고정된다 |
+| 로그인·로딩 | 〃 | `.auth-gate-card`의 `<BrandIcon />`를 워드마크 `<BrandLogo />`로 교체 |
 | 공유 카드 | `src/features/records/WorkoutShareCard.tsx`, `Records.css` | `<img>`+`<span>TRAINLOG</span>`를 `<BrandLogo />`로 교체. `--brand-accent` 지정 |
 | favicon | `index.html` | `href="/trainlog-icon.png"` → `/favicon.svg`, `apple-touch-icon` 링크 추가 |
 | PWA | `vite.config.ts` | manifest에 `icons` 배열 추가(192/512/maskable) |
@@ -167,7 +185,7 @@ type BrandLogoProps = {
 
 ## 접근성
 
-- 헤더 lockup은 `title="Trainlog"`를 받아 `<title>` 엘리먼트를 갖는다. 현재
+- 헤더 워드마크는 `title="Trainlog"`를 받아 `<title>` 엘리먼트를 갖는다. 현재
   `.brand-mark`의 `aria-label="Trainlog 홈"`는 클릭 불가 요소에 붙어 있어
   의미가 약했다 — 로고 자체가 이름을 갖게 한다.
 - 장식으로만 쓰이는 자리(공유 카드 등)는 `title` 없이 `aria-hidden="true"`.
