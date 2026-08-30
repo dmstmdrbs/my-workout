@@ -1,12 +1,15 @@
-// Vercel Web Analytics records the raw URL of every page view. This app puts
-// two kinds of value in the URL that must not end up in that dashboard:
+// Vercel Web Analytics and Speed Insights both record the raw URL of every
+// event. This app puts two kinds of value in the URL that must not end up in
+// either dashboard:
 //
 //   1. `/friends/invite/<token>` — a live credential. Anyone holding it can
 //      send a friend request for 30 days.
 //   2. Row ids (`/records/<uuid>`, `?programDay=<uuid>`) — not secret, but one
 //      distinct URL per row makes the page-view report useless.
 //
-// Both are normalised before the event leaves the browser.
+// Both are normalised before the event leaves the browser. `scrubAnalyticsEvent`
+// is the single `beforeSend` shared by the two products, so a path fixed here
+// cannot stay unfixed in the other.
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -51,4 +54,25 @@ export function normalizeAnalyticsUrl(rawUrl: string): string | null {
 
   url.hash = ''
   return url.toString()
+}
+
+/**
+ * `beforeSend` for both `<Analytics>` and `<SpeedInsights>`.
+ *
+ * Returns `null` to drop the event when its URL cannot be parsed.
+ */
+export function scrubAnalyticsEvent<T extends { url: string; route?: string | null }>(
+  event: T,
+): T | null {
+  const url = normalizeAnalyticsUrl(event.url)
+  if (url === null) return null
+
+  const scrubbed = { ...event, url }
+  // Speed Insights carries a separate `route` when a framework supplies one.
+  // Nothing sets it here today, but leaving it unhandled is how a later change
+  // starts leaking again.
+  if (typeof event.route === 'string') {
+    scrubbed.route = normalizeAnalyticsPath(event.route)
+  }
+  return scrubbed
 }
