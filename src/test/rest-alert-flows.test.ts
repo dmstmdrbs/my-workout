@@ -7,7 +7,7 @@ const originalVibrate = Object.getOwnPropertyDescriptor(navigator, 'vibrate')
 const originalNotification = Object.getOwnPropertyDescriptor(window, 'Notification')
 
 describe('휴식 완료 알림', () => {
-  const showNotification = vi.fn(async () => undefined)
+  const showNotification = vi.fn(async (_title: string, _options?: NotificationOptions) => undefined)
 
   beforeEach(() => {
     localStorage.clear()
@@ -39,6 +39,18 @@ describe('휴식 완료 알림', () => {
       tag: 'trainlog-rest-complete',
       data: { url: '/workout' },
     }))
+  })
+
+  test('휴식 완료 알림은 public/ 에 실재하는 아이콘을 가리킨다', async () => {
+    // 이 경로는 scripts/build-brand-assets.mjs 가 만드는 파일 이름과 묶여 있다.
+    // 자산 이름을 바꾸면 여기도 함께 바꿔야 알림 아이콘이 살아 있다.
+    expect(await requestRestAlerts()).toBe(true)
+    await notifyRestComplete()
+
+    expect(showNotification.mock.calls[0][1]).toMatchObject({
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+    })
   })
 })
 

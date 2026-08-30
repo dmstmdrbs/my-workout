@@ -35,8 +35,8 @@ export async function notifyRestComplete() {
 
   const options: NotificationOptions = {
     body: '다음 세트를 시작할 시간이에요.',
-    icon: '/trainlog-icon.png',
-    badge: '/trainlog-icon.png',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     tag: 'trainlog-rest-complete',
     data: { url: '/workout' },
   }
