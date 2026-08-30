@@ -18,6 +18,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react'
+import { BrandLogo } from './components/BrandLogo'
 import { BodyMeasurements } from './features/body/BodyMeasurements'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { ExerciseCatalog } from './features/exercises/ExerciseCatalog'
@@ -265,9 +266,8 @@ function AppShell() {
   return (
     <div className="app-shell">
       <aside className={`side-nav ${isMobileMenuOpen ? 'is-open' : ''}`} aria-label="주 메뉴">
-        <div className="brand-mark" aria-label="Trainlog 홈">
-          <BrandIcon />
-          <span>trainlog</span>
+        <div className="brand-mark">
+          <BrandLogo title="Trainlog" />
         </div>
         <nav className="side-nav-links">
           {sideNavPages.map((id) => {
@@ -314,7 +314,7 @@ function AppShell() {
           >
             <Menu size={21} aria-hidden="true" />
           </button>
-          <div className="mobile-brand">trainlog</div>
+          <div className="mobile-brand"><BrandLogo title="Trainlog" /></div>
           <div className="top-bar-actions">
             <span className="sync-indicator" title="기기에 안전하게 저장됨">
               <span aria-hidden="true" /> 저장됨
