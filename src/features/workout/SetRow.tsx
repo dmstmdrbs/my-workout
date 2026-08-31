@@ -49,7 +49,7 @@ export function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyw
   if (isCardio) return <CardioSetRow set={set} rirInputEnabled={rirInputEnabled} onChange={onChange} onComplete={onComplete} onDelete={onDelete} deleteDisabledReason={deleteDisabledReason} />
 
   return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''} ${rirInputEnabled ? '' : 'is-rir-hidden'}`}>
-    <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
+    <span className="set-number"><small>세트</small>{set.setOrder}<em className={`set-type-badge set-type-${set.setType}`}>{setTypeLabel(set.setType)}</em></span>
     <label>
       <span className="mobile-field-label">{weightLabel}</span>
       <div className="numeric-stepper">
@@ -84,7 +84,7 @@ function CardioSetRow({ set, rirInputEnabled, onChange, onComplete, onDelete, de
   const stepDistance = (delta: number) => onChange({ distanceKm: roundDistance(Math.max(0, (set.distanceKm ?? 0) + delta)) })
 
   return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''} ${rirInputEnabled ? '' : 'is-rir-hidden'}`}>
-    <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
+    <span className="set-number"><small>세트</small>{set.setOrder}<em className={`set-type-badge set-type-${set.setType}`}>{setTypeLabel(set.setType)}</em></span>
     <label>
       <span className="mobile-field-label">시간 (분)</span>
       <div className="numeric-stepper">

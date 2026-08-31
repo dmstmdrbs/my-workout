@@ -171,3 +171,8 @@
   .rest-timer-dock .timer-adjust { height: 28px; }
 }
 .choice-check, .exercise-add-fab { color: var(--on-accent); }
+.set-number .set-type-badge { justify-self: start; padding: 2px 5px; border-radius: 999px; }
+.set-number .set-type-topset { color: #c2410c; background: color-mix(in srgb, #f97316 14%, transparent); }
+.set-number .set-type-backoff { color: #2563eb; background: color-mix(in srgb, #3b82f6 13%, transparent); }
+.set-number .set-type-warmup { color: #047857; background: color-mix(in srgb, #10b981 12%, transparent); }
+.set-number .set-type-dropset { color: #9333ea; background: color-mix(in srgb, #a855f7 12%, transparent); }
