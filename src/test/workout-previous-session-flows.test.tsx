@@ -50,6 +50,8 @@ describe.sequential('운동 화면: 이전 완료 세션 세트별 비교', () =
     await screen.findByRole('heading', { name: '오늘 어떤 운동을 할까요?' })
     await user.click(screen.getByText('Pull Day', { selector: 'strong' }).closest('button')!)
     await user.click(screen.getByRole('button', { name: 'Pull Day 시작' }))
+    await screen.findByRole('heading', { name: '초기 작업 중량 확인' })
+    await user.click(screen.getByRole('button', { name: '이 중량으로 시작' }))
 
     const heading = await screen.findByRole('heading', { name: '체스트 서포티드 시티드 로우' })
     const card = within(heading.closest('section')!)
