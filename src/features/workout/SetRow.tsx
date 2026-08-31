@@ -32,6 +32,10 @@ import './WorkoutRunner.css'
  */
 export interface SetRowProps {
   set: WorkoutSetRecord
+  /** 현재 운동과 같은 setOrder를 가진, 직전 완료 세션의 세트. */
+  previousSet?: WorkoutSetRecord | null
+  /** 운동 실행 화면에서만 세트별 이전 세션 보조값을 표시한다. */
+  showPreviousSet?: boolean
   weightUnit: string
   weightLabel: string
   weightShortLabel: string
@@ -45,8 +49,8 @@ export interface SetRowProps {
   deleteDisabledReason?: string
 }
 
-export function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyweight, isCardio, rirInputEnabled, onChange, onComplete, onDelete, deleteDisabledReason }: SetRowProps) {
-  if (isCardio) return <CardioSetRow set={set} rirInputEnabled={rirInputEnabled} onChange={onChange} onComplete={onComplete} onDelete={onDelete} deleteDisabledReason={deleteDisabledReason} />
+export function SetRow({ set, previousSet, showPreviousSet = false, weightUnit, weightLabel, weightShortLabel, isBodyweight, isCardio, rirInputEnabled, onChange, onComplete, onDelete, deleteDisabledReason }: SetRowProps) {
+  if (isCardio) return <CardioSetRow set={set} previousSet={previousSet} showPreviousSet={showPreviousSet} rirInputEnabled={rirInputEnabled} onChange={onChange} onComplete={onComplete} onDelete={onDelete} deleteDisabledReason={deleteDisabledReason} />
 
   return <div className={`set-row ${set.isCompleted ? 'is-completed' : ''} ${rirInputEnabled ? '' : 'is-rir-hidden'}`}>
     <span className="set-number"><small>세트</small>{set.setOrder}<em>{setTypeLabel(set.setType)}</em></span>
@@ -57,6 +61,7 @@ export function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyw
         <input aria-label={`${set.setOrder}세트 ${weightLabel}`} inputMode="decimal" type="number" min="0" step="0.5" placeholder={isBodyweight ? '맨몸' : undefined} value={set.weightKg ?? ''} onChange={(event) => onChange({ weightKg: toNullableNumber(event.target.value) })} />
         <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 ${weightShortLabel} ${WEIGHT_STEP}${weightUnit} 증가`} onClick={() => onChange({ weightKg: incrementValue(set.weightKg, WEIGHT_STEP) })}><Plus size={14} /></button>
       </div>
+      {showPreviousSet && <PreviousSetHint set={previousSet ?? null} weightUnit={weightUnit} />}
     </label>
     <label>
       <span className="mobile-field-label">횟수</span>
@@ -78,7 +83,7 @@ export function SetRow({ set, weightUnit, weightLabel, weightShortLabel, isBodyw
  * RIR 열은 그대로 두되 값이 없으면 비워 둔다. 유산소에 목표 RIR을 처방하는
  * 경우는 드물지만, 넣고 싶은 사람의 자리를 없앨 이유도 없다.
  */
-function CardioSetRow({ set, rirInputEnabled, onChange, onComplete, onDelete, deleteDisabledReason }: Pick<SetRowProps, 'set' | 'rirInputEnabled' | 'onChange' | 'onComplete' | 'onDelete' | 'deleteDisabledReason'>) {
+function CardioSetRow({ set, previousSet, showPreviousSet, rirInputEnabled, onChange, onComplete, onDelete, deleteDisabledReason }: Pick<SetRowProps, 'set' | 'previousSet' | 'showPreviousSet' | 'rirInputEnabled' | 'onChange' | 'onComplete' | 'onDelete' | 'deleteDisabledReason'>) {
   const minutes = set.durationSeconds === null ? '' : String(Math.round(set.durationSeconds / 60))
   const stepDuration = (delta: number) => onChange({ durationSeconds: Math.max(0, (set.durationSeconds ?? 0) + delta) })
   const stepDistance = (delta: number) => onChange({ distanceKm: roundDistance(Math.max(0, (set.distanceKm ?? 0) + delta)) })
@@ -92,6 +97,7 @@ function CardioSetRow({ set, rirInputEnabled, onChange, onComplete, onDelete, de
         <input aria-label={`${set.setOrder}세트 시간 (분)`} inputMode="numeric" type="number" min="0" step="1" value={minutes} onChange={(event) => onChange({ durationSeconds: toNullableMinutes(event.target.value) })} />
         <button type="button" className="stepper-button" aria-label={`${set.setOrder}세트 시간 1분 증가`} onClick={() => stepDuration(DURATION_STEP_SECONDS)}><Plus size={14} /></button>
       </div>
+      {showPreviousSet && <PreviousSetHint set={previousSet ?? null} weightUnit="" />}
     </label>
     <label>
       <span className="mobile-field-label">거리 (km)</span>
@@ -105,6 +111,14 @@ function CardioSetRow({ set, rirInputEnabled, onChange, onComplete, onDelete, de
     {rirInputEnabled && <ActualRirPicker set={set} onChange={onChange} />}
     <SetRowTrailingAction set={set} onComplete={onComplete} onDelete={onDelete} deleteDisabledReason={deleteDisabledReason} />
   </div>
+}
+
+function PreviousSetHint({ set, weightUnit }: { set: WorkoutSetRecord | null; weightUnit: string }) {
+  if (!set) return <small className="previous-set-hint">이전 세션 대응 기록 없음</small>
+  const value = set.durationSeconds !== null || set.distanceKm !== null
+    ? [set.durationSeconds === null ? null : `${Math.round(set.durationSeconds / 60)}분`, set.distanceKm === null ? null : `${set.distanceKm}km`].filter(Boolean).join(' · ')
+    : set.weightKg !== null && set.reps !== null ? `${set.weightKg}${weightUnit} × ${set.reps}회` : '값 없음'
+  return <small className="previous-set-hint">이전 {set.setOrder}세트 · {setTypeLabel(set.setType)} · {value}</small>
 }
 
 function ActualRirPicker({ set, onChange }: Pick<SetRowProps, 'set' | 'onChange'>) {

@@ -20,7 +20,7 @@ import type {
   WorkoutSetRecord,
 } from '../../types/domain'
 import { addCalendarDays } from '../../lib/localDate'
-import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, SocialRepository, WorkoutRepository } from '../contracts'
+import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, PreviousExerciseSession, SocialRepository, WorkoutRepository } from '../contracts'
 import {
   mockBlocks,
   mockExercises,
@@ -91,7 +91,7 @@ function completedSetsForExerciseInSession(session: WorkoutSession, exerciseId: 
   return session.exercises
     .filter((exercise) => exercise.exerciseId === exerciseId)
     .sort((a, b) => a.exerciseOrder - b.exerciseOrder)
-    .flatMap((exercise) => exercise.sets)
+    .flatMap((exercise) => [...exercise.sets].sort((a, b) => a.setOrder - b.setOrder))
     .filter((set) => set.isCompleted)
 }
 
@@ -392,13 +392,17 @@ class LocalStorageWorkoutRepository implements WorkoutRepository {
   }
   async getSession(id: Id) { return clone(this.requireStore().sessions.find((item) => item.id === id) ?? null) }
   async getLastCompletedSetForExercise(exerciseId: Id) {
+    const previousSession = await this.getPreviousCompletedSessionForExercise(exerciseId)
+    return previousSession?.sets.at(-1) ?? null
+  }
+  async getPreviousCompletedSessionForExercise(exerciseId: Id): Promise<PreviousExerciseSession | null> {
     const at = (value: string) => new Date(value).getTime()
     const sessions = clone(this.requireStore().sessions)
       .filter((session) => session.status === 'completed')
       .sort((a, b) => at(b.startedAt) - at(a.startedAt))
     for (const session of sessions) {
-      const set = completedSetsForExerciseInSession(session, exerciseId).at(-1)
-      if (set) return set
+      const sets = completedSetsForExerciseInSession(session, exerciseId)
+      if (sets.length > 0) return { sessionId: session.id, startedAt: session.startedAt, sets }
     }
     return null
   }

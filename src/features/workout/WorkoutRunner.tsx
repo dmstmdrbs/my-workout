@@ -25,7 +25,7 @@ import { playRestFinishedAlert, primeRestAlert } from '../../lib/restAlert'
 import { requestScreenWakeLock } from '../../lib/wakeLock'
 import { getDateInTimeZone } from '../../lib/localDate'
 import { disableRestAlerts, notifyRestComplete, readRestAlertsEnabled, requestRestAlerts } from '../../lib/restAlerts'
-import { useAppServices, useSettings } from '../../services'
+import { useAppServices, useSettings, type PreviousExerciseSession } from '../../services'
 import type { Equipment, Exercise, Id, IsoDateTime, ProgramRun, ProgramRunDay, Routine, Rir, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
@@ -55,7 +55,7 @@ interface WorkoutSetupData {
   activeProgramRun: ProgramRun | null
 }
 
-function lastCompletedSetQueryKey(exerciseId: string) { return ['last-completed-set', exerciseId] as const }
+function previousExerciseSessionQueryKey(exerciseId: string) { return ['previous-exercise-session', exerciseId] as const }
 
 export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialProgramRunDayId = null, onSelectProgramDay }: WorkoutRunnerProps) {
   const { workoutRepository } = useAppServices()
@@ -150,10 +150,10 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
       // 방금 끝낸 운동이 루틴 선택 화면의 "마지막 수행"에 바로 반영되도록.
       void queryClient.invalidateQueries({ queryKey: routineLastPerformedQueryKey })
       // Prefix match (no `exact: true`) so every exercise id under
-      // 'last-completed-set' is covered, not just the one active when this
+      // 'previous-exercise-session' is covered, not just the one active when this
       // workout finished -- otherwise a workout started within the 30s
       // staleTime still shows the pre-workout "지난 기록" value.
-      void queryClient.invalidateQueries({ queryKey: ['last-completed-set'] })
+      void queryClient.invalidateQueries({ queryKey: ['previous-exercise-session'] })
       onFinish(saved.id)
     },
   })
@@ -260,11 +260,11 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
 
   const addExercises = async (selectedExercises: Exercise[]) => {
     if (!draft || selectedExercises.length === 0) return
-    const previousSets = await Promise.all(selectedExercises.map(async (exercise) => {
+    const previousSessions = await Promise.all(selectedExercises.map(async (exercise) => {
       try {
         return await queryClient.fetchQuery({
-          queryKey: lastCompletedSetQueryKey(exercise.id),
-          queryFn: () => workoutRepository.getLastCompletedSetForExercise(exercise.id),
+          queryKey: previousExerciseSessionQueryKey(exercise.id),
+          queryFn: () => workoutRepository.getPreviousCompletedSessionForExercise(exercise.id),
         })
       } catch {
         // 한 종목의 지난 기록 조회가 실패해도 나머지 선택 종목은 모두 추가한다.
@@ -275,7 +275,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     const nextExercises = selectedExercises.map((exercise, index) => createFreeWorkoutExercise({
       exercise,
       exerciseOrder: firstExerciseOrder + index,
-      previousSet: previousSets[index],
+      previousSet: previousSessions[index]?.sets.at(-1) ?? null,
       defaultRestSeconds,
       defaultRir,
     }))
@@ -639,11 +639,12 @@ function ExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChan
   onRemove: () => void
 }) {
   const { workoutRepository } = useAppServices()
-  const lastCompletedSetQuery = useQuery({
-    queryKey: lastCompletedSetQueryKey(exercise.exerciseId),
-    queryFn: () => workoutRepository.getLastCompletedSetForExercise(exercise.exerciseId),
+  const previousSessionQuery = useQuery({
+    queryKey: previousExerciseSessionQueryKey(exercise.exerciseId),
+    queryFn: () => workoutRepository.getPreviousCompletedSessionForExercise(exercise.exerciseId),
   })
-  const previousSet = lastCompletedSetQuery.data ?? null
+  const previousSession = previousSessionQuery.data ?? null
+  const previousSet = previousSession?.sets.at(-1) ?? null
   const titleId = `exercise-title-${exercise.id}`
   const isBodyweight = equipment === 'bodyweight'
   // 유산소는 중량 × 횟수로 적을 수 없다. 같은 자리에 시간과 거리를 받는다.
@@ -658,7 +659,7 @@ function ExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChan
         <h2 id={titleId}>{exercise.exerciseName}</h2>
         {exercise.notes && <p className="exercise-note">{exercise.notes}</p>}
       </div>
-      <div className="exercise-workspace-actions"><div className="previous-context"><span>지난 기록</span><strong>{formatPrevious(previousSet, weightUnit)}</strong></div><button className="exercise-remove-button" type="button" onClick={onRemove}><Trash2 size={15} /> 종목 삭제</button></div>
+      <div className="exercise-workspace-actions"><div className="previous-context"><span>이전 완료 세션</span><strong>{formatPreviousSessionSummary(previousSession)}</strong></div><button className="exercise-remove-button" type="button" onClick={onRemove}><Trash2 size={15} /> 종목 삭제</button></div>
     </div>
 
     {rirInputEnabled && <LoadSuggestionBanner
@@ -675,6 +676,8 @@ function ExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChan
       {exercise.sets.map((set) => <SetRow
         key={set.id}
         set={set}
+        previousSet={previousSession?.sets.find((previous) => previous.setOrder === set.setOrder) ?? null}
+        showPreviousSet
         weightUnit={weightUnit}
         weightLabel={weightLabel}
         weightShortLabel={weightShortLabel}
@@ -985,15 +988,8 @@ function createFreeWorkoutExercise({ exercise, exerciseOrder, previousSet, defau
 function sortExercises(exercises: WorkoutExercise[]) { return [...exercises].sort((left, right) => left.exerciseOrder - right.exerciseOrder) }
 function normalizeExerciseOrder(exercises: WorkoutExercise[]) { return exercises.map((exercise, index) => ({ ...exercise, exerciseOrder: index + 1 })) }
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `workout-${Date.now()}-${Math.random().toString(36).slice(2)}` }
-function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) {
-  if (!set) return '기록 없음'
-  if (set.durationSeconds !== null || set.distanceKm !== null) {
-    const parts = []
-    if (set.durationSeconds !== null) parts.push(`${Math.round(set.durationSeconds / 60)}분`)
-    if (set.distanceKm !== null) parts.push(`${set.distanceKm}km`)
-    return parts.join(' · ')
-  }
-  return set.weightKg !== null && set.reps !== null ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음'
+function formatPreviousSessionSummary(session: PreviousExerciseSession | null) {
+  return session ? `${session.sets.length}세트 기록` : '완료 기록 없음'
 }
 function formatTimer(seconds: number) { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
 /** 볼륨은 kg 소수점을 보여줄 만큼 정밀하지 않아 정수로 끊고 천 단위만 구분한다. */
