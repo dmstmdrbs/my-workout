@@ -11,7 +11,7 @@ function renderApp(initialPath = '/workout') {
   // this test actually exercises the staleness window the finding
   // describes. A queryClient with staleTime 0 (as most other test files
   // use) would make every query refetch regardless of whether the
-  // `['last-completed-set']` cache was invalidated, so it could not tell
+  // `['previous-exercise-session']` cache was invalidated, so it could not tell
   // the fix apart from its absence.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 30_000 }, mutations: { retry: false } },
@@ -41,7 +41,7 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     await screen.findByRole('heading', { name: '첫 운동을 추가해 주세요.' })
 
     // barbell-bench-press has seeded history (80kg range), which primes the
-    // `['last-completed-set', 'barbell-bench-press']` cache with that old
+    // `['previous-exercise-session', 'barbell-bench-press']` cache with that old
     // value once added below.
     await user.click(screen.getByRole('button', { name: '종목 추가' }))
     await screen.findByRole('dialog', { name: '종목 추가' })
@@ -81,7 +81,7 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     // here -- not the pre-workout seeded value that would otherwise still
     // sit in the unexpired 30s cache.
     await waitFor(() => {
-      expect(document.querySelector('.previous-context strong')?.textContent).toBe('123kg × 4')
+      expect(screen.getByText('이전 1세트 · 본세트 · 123kg × 4회')).toBeTruthy()
     })
   })
 })

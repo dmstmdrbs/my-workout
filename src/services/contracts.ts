@@ -48,6 +48,13 @@ export interface ExerciseProgressEntry {
   sets: WorkoutSetRecord[]
 }
 
+/** 운동 중 세트별 비교에 쓰는, 해당 종목의 가장 최근 완료 세션 기록. */
+export interface PreviousExerciseSession {
+  sessionId: Id
+  startedAt: IsoDateTime
+  sets: WorkoutSetRecord[]
+}
+
 export interface WorkoutRepository {
   getProfile(): Promise<UserProfile>
   updateProfile(changes: Pick<UserProfile, 'displayName' | 'avatarUrl'>): Promise<UserProfile>
@@ -95,6 +102,8 @@ export interface WorkoutRepository {
   deleteSession(id: Id): Promise<void>
   /** 지난 기록 표시용. 세션 목록 전체를 받지 않고 필요한 한 세트만 가져온다. */
   getLastCompletedSetForExercise(exerciseId: Id): Promise<WorkoutSetRecord | null>
+  /** 세트 순서별 지난 기록 표시용. 가장 최근 완료 세션의 해당 종목 완료 세트만 가져온다. */
+  getPreviousCompletedSessionForExercise(exerciseId: Id): Promise<PreviousExerciseSession | null>
   /**
    * 종목별 완료 세트의 시계열(통계 화면의 중량 추이 차트용). 위
    * `getLastCompletedSetForExercise`가 한 건만 주는 것과 달리 기간 전체가

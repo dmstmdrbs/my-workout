@@ -95,6 +95,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     expect(pullDayCard).not.toBeNull()
     await user.click(pullDayCard!)
     await user.click(screen.getByRole('button', { name: 'Pull Day 시작' }))
+    await user.click(await screen.findByRole('button', { name: '이 중량으로 시작' }))
 
     await screen.findByRole('heading', { name: 'Pull Day' })
     // Pull Day has three exercises, all visible at once in the stacked
@@ -379,6 +380,7 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await screen.findByRole('heading', { name: '오늘 어떤 운동을 할까요?' })
     await user.click(screen.getByText('Push Day', { selector: 'strong' }).closest('button')!)
     await user.click(screen.getByRole('button', { name: 'Push Day 시작' }))
+    await user.click(await screen.findByRole('button', { name: '이 중량으로 시작' }))
     await screen.findByRole('heading', { name: 'Push Day' })
 
     // Push Day has two exercises; scope to the first (바벨 벤치프레스 = exercises[0]).

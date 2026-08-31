@@ -71,6 +71,21 @@ describe.sequential('저장소 조회 계약', () => {
     expect(await repo.getLastCompletedSetForExercise('없는-종목-id')).toBeNull()
   })
 
+  test('종목별 이전 완료 세션은 가장 최근 세션의 완료 세트를 순서와 유형 그대로 돌려준다', async () => {
+    const previous = await repo.getPreviousCompletedSessionForExercise('seated-cable-row')
+
+    expect(previous?.sessionId).toBe('session-2026-08-14')
+    expect(previous?.sets.map((set) => [set.setOrder, set.setType, set.weightKg, set.reps])).toEqual([
+      [1, 'working', 60, 10],
+      [2, 'working', 60, 10],
+      [3, 'working', 60, 10],
+    ])
+  })
+
+  test('완료 세트가 없는 종목은 이전 완료 세션도 null이다', async () => {
+    expect(await repo.getPreviousCompletedSessionForExercise('없는-종목-id')).toBeNull()
+  })
+
   test('종목별 진행 시계열은 그 종목이 나온 세션만 오래된 순으로 돌려준다', async () => {
     // Seed data: 'seated-cable-row' has completed sets in both
     // session-2026-08-11 and session-2026-08-14 (see src/services/mock/seed.ts).

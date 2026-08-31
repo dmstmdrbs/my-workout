@@ -36,7 +36,7 @@ import type {
   WorkoutSession,
   WorkoutSetRecord,
 } from '../../types/domain'
-import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, SocialRepository, WorkoutRepository } from '../contracts'
+import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, PreviousExerciseSession, SocialRepository, WorkoutRepository } from '../contracts'
 
 type Row = Record<string, unknown>
 
@@ -660,18 +660,45 @@ class SupabaseWorkoutRepository implements WorkoutRepository {
   }
 
   async getLastCompletedSetForExercise(exerciseId: Id) {
+    const previousSession = await this.getPreviousCompletedSessionForExercise(exerciseId)
+    return previousSession?.sets.at(-1) ?? null
+  }
+
+  async getPreviousCompletedSessionForExercise(exerciseId: Id): Promise<PreviousExerciseSession | null> {
     await this.requireUser()
-    const { data, error } = await this.client
-      .from('workout_set_records')
-      .select('*, workout_exercises!inner(exercise_id, session_id, workout_sessions!inner(started_at, status))')
+    const { data: sessionData, error: sessionError } = await this.client
+      .from('workout_sessions')
+      .select('id, started_at, workout_exercises!inner(id, exercise_id, exercise_order)')
+      .eq('status', 'completed')
       .eq('workout_exercises.exercise_id', exerciseId)
-      .eq('workout_exercises.workout_sessions.status', 'completed')
-      .eq('is_completed', true)
-      .order('completed_at', { ascending: false, nullsFirst: false })
+      .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-    if (error) throw toError(error, '지난 기록을 불러오지 못했어요.')
-    return data ? mapWorkoutSet(data as Row) : null
+    if (sessionError) throw toError(sessionError, '이전 운동 세션을 불러오지 못했어요.')
+    if (!sessionData) return null
+
+    const session = sessionData as Row
+    const workoutExercises = asRows(session.workout_exercises)
+      .sort((a, b) => numberValue(a, 'exercise_order') - numberValue(b, 'exercise_order'))
+    const exerciseOrderById = new Map(workoutExercises.map((row, index) => [stringValue(row, 'id'), index]))
+    const workoutExerciseIds = [...exerciseOrderById.keys()].filter(Boolean)
+    if (workoutExerciseIds.length === 0) return null
+
+    const { data: setData, error: setError } = await this.client
+      .from('workout_set_records')
+      .select('*')
+      .in('workout_exercise_id', workoutExerciseIds)
+      .eq('is_completed', true)
+    if (setError) throw toError(setError, '이전 운동 세트 기록을 불러오지 못했어요.')
+
+    const sets = asRows(setData)
+      .sort((a, b) => {
+        const exerciseOrder = (exerciseOrderById.get(stringValue(a, 'workout_exercise_id')) ?? 0)
+          - (exerciseOrderById.get(stringValue(b, 'workout_exercise_id')) ?? 0)
+        return exerciseOrder || numberValue(a, 'set_order') - numberValue(b, 'set_order')
+      })
+      .map(mapWorkoutSet)
+    return sets.length > 0 ? { sessionId: stringValue(session, 'id'), startedAt: stringValue(session, 'started_at'), sets } : null
   }
 
   async listExerciseProgress(exerciseId: Id, options: { completedAfter: string }): Promise<ExerciseProgressEntry[]> {

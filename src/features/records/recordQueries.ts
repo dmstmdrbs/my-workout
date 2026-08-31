@@ -7,7 +7,7 @@ import type { QueryClient } from '@tanstack/react-query'
  * 키를 더하면 다른 쪽에서만 화면이 낡은 값을 계속 보여주는데, 그건 눈에 띄지
  * 않아서 오래 남는 종류의 버그다.
  *
- * 접두사 일치(`exact: true`를 쓰지 않음)라 `['last-completed-set', <id>]`처럼
+ * 접두사 일치(`exact: true`를 쓰지 않음)라 `['previous-exercise-session', <id>]`처럼
  * 뒤에 식별자가 붙는 키도 모두 덮인다.
  */
 const recordDependentQueryKeys = [
@@ -18,6 +18,7 @@ const recordDependentQueryKeys = [
   ['weekly-stats'],
   ['exercise-progress'],
   ['last-completed-set'],
+  ['previous-exercise-session'],
 ]
 
 export function invalidateRecordQueries(queryClient: QueryClient) {

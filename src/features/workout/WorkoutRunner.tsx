@@ -25,7 +25,7 @@ import { playRestFinishedAlert, primeRestAlert } from '../../lib/restAlert'
 import { requestScreenWakeLock } from '../../lib/wakeLock'
 import { getDateInTimeZone } from '../../lib/localDate'
 import { disableRestAlerts, notifyRestComplete, readRestAlertsEnabled, requestRestAlerts } from '../../lib/restAlerts'
-import { useAppServices, useSettings } from '../../services'
+import { useAppServices, useSettings, type PreviousExerciseSession } from '../../services'
 import type { Equipment, Exercise, Id, IsoDateTime, ProgramRun, ProgramRunDay, Routine, Rir, WorkoutExercise, WorkoutSetRecord } from '../../types/domain'
 import {
   clearStoredWorkoutDraft,
@@ -36,6 +36,7 @@ import {
 } from './activeWorkoutDraft'
 import { CreateExerciseDialog, ExercisePickerSheet } from './ExercisePicker'
 import { muscleLabel, snapshotExerciseName } from './exerciseLabels'
+import { applyInitialWorkingWeights, getInitialWorkingWeightItems, type InitialWorkingWeightItem } from './initialWorkingWeights'
 import { SetRow } from './SetRow'
 import './WorkoutRunner.css'
 
@@ -54,7 +55,7 @@ interface WorkoutSetupData {
   activeProgramRun: ProgramRun | null
 }
 
-function lastCompletedSetQueryKey(exerciseId: string) { return ['last-completed-set', exerciseId] as const }
+function previousExerciseSessionQueryKey(exerciseId: string) { return ['previous-exercise-session', exerciseId] as const }
 
 export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialProgramRunDayId = null, onSelectProgramDay }: WorkoutRunnerProps) {
   const { workoutRepository } = useAppServices()
@@ -72,6 +73,8 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isReorderOpen, setIsReorderOpen] = useState(false)
   const [isFinishConfirmOpen, setIsFinishConfirmOpen] = useState(false)
+  const [pendingDraft, setPendingDraft] = useState<WorkoutDraft | null>(null)
+  const [initialWeightDrafts, setInitialWeightDrafts] = useState<Record<string, string>>({})
   const [draggingExerciseId, setDraggingExerciseId] = useState<string | null>(null)
   const draggingExerciseIdRef = useRef<string | null>(null)
 
@@ -147,10 +150,10 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
       // 방금 끝낸 운동이 루틴 선택 화면의 "마지막 수행"에 바로 반영되도록.
       void queryClient.invalidateQueries({ queryKey: routineLastPerformedQueryKey })
       // Prefix match (no `exact: true`) so every exercise id under
-      // 'last-completed-set' is covered, not just the one active when this
+      // 'previous-exercise-session' is covered, not just the one active when this
       // workout finished -- otherwise a workout started within the 30s
       // staleTime still shows the pre-workout "지난 기록" value.
-      void queryClient.invalidateQueries({ queryKey: ['last-completed-set'] })
+      void queryClient.invalidateQueries({ queryKey: ['previous-exercise-session'] })
       onFinish(saved.id)
     },
   })
@@ -257,11 +260,11 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
 
   const addExercises = async (selectedExercises: Exercise[]) => {
     if (!draft || selectedExercises.length === 0) return
-    const previousSets = await Promise.all(selectedExercises.map(async (exercise) => {
+    const previousSessions = await Promise.all(selectedExercises.map(async (exercise) => {
       try {
         return await queryClient.fetchQuery({
-          queryKey: lastCompletedSetQueryKey(exercise.id),
-          queryFn: () => workoutRepository.getLastCompletedSetForExercise(exercise.id),
+          queryKey: previousExerciseSessionQueryKey(exercise.id),
+          queryFn: () => workoutRepository.getPreviousCompletedSessionForExercise(exercise.id),
         })
       } catch {
         // 한 종목의 지난 기록 조회가 실패해도 나머지 선택 종목은 모두 추가한다.
@@ -272,7 +275,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     const nextExercises = selectedExercises.map((exercise, index) => createFreeWorkoutExercise({
       exercise,
       exerciseOrder: firstExerciseOrder + index,
-      previousSet: previousSets[index],
+      previousSet: previousSessions[index]?.sets.at(-1) ?? null,
       defaultRestSeconds,
       defaultRir,
     }))
@@ -291,6 +294,29 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     void addExercises([exercise])
   }
 
+  const startOrConfirmWeights = (session: WorkoutDraft) => {
+    const weightItems = getInitialWorkingWeightItems(session.exercises, exercises)
+    if (weightItems.length === 0) {
+      setDraft(session)
+      setActiveExerciseId(session.exercises[0]?.id ?? null)
+      return
+    }
+    setPendingDraft(session)
+    setInitialWeightDrafts(Object.fromEntries(weightItems.map((item) => [item.exerciseId, item.suggestedWeightKg === null ? '' : String(item.suggestedWeightKg)])))
+  }
+
+  const confirmInitialWeights = () => {
+    if (!pendingDraft) return
+    const weightItems = getInitialWorkingWeightItems(pendingDraft.exercises, exercises)
+    const selectedWeights = Object.fromEntries(weightItems.map((item) => [item.exerciseId, Number(initialWeightDrafts[item.exerciseId])]))
+    if (Object.values(selectedWeights).some((weight) => !Number.isFinite(weight) || weight < 0)) return
+    const session = { ...pendingDraft, exercises: applyInitialWorkingWeights(pendingDraft.exercises, selectedWeights) }
+    setPendingDraft(null)
+    setInitialWeightDrafts({})
+    setDraft(session)
+    setActiveExerciseId(session.exercises[0]?.id ?? null)
+  }
+
   const beginWorkout = () => {
     const storedDraft = readStoredWorkoutDraft()
     if (storedDraft) {
@@ -303,8 +329,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     }
     if (!selectedRoutine) return
     const session = createDraft(selectedRoutine, exercises)
-    setDraft(session)
-    setActiveExerciseId(session.exercises[0]?.id ?? null)
+    startOrConfirmWeights(session)
   }
 
   const beginFreeWorkout = () => {
@@ -334,8 +359,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     }
     if (!programDay) return
     const session = createProgramDraft(programDay, exercises)
-    setDraft(session)
-    setActiveExerciseId(session.exercises[0]?.id ?? null)
+    startOrConfirmWeights(session)
   }
 
   const finishWorkout = () => {
@@ -428,6 +452,18 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
   }
 
   if (!draft) {
+    if (pendingDraft) {
+      const weightItems = getInitialWorkingWeightItems(pendingDraft.exercises, exercises)
+      return <InitialWorkingWeightSetup
+        title={pendingDraft.routineName ?? '운동'}
+        items={weightItems}
+        values={initialWeightDrafts}
+        weightUnit={weightUnit}
+        onChange={(exerciseId, value) => setInitialWeightDrafts((current) => ({ ...current, [exerciseId]: value }))}
+        onConfirm={confirmInitialWeights}
+        onCancel={() => { setPendingDraft(null); setInitialWeightDrafts({}) }}
+      />
+    }
     if (initialProgramRunDayId) {
       if (!programDay) return <ProgramDayUnavailable onCancel={onCancel} />
       const missingExercises = getMissingProgramExercises(programDay, exercises)
@@ -603,11 +639,12 @@ function ExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChan
   onRemove: () => void
 }) {
   const { workoutRepository } = useAppServices()
-  const lastCompletedSetQuery = useQuery({
-    queryKey: lastCompletedSetQueryKey(exercise.exerciseId),
-    queryFn: () => workoutRepository.getLastCompletedSetForExercise(exercise.exerciseId),
+  const previousSessionQuery = useQuery({
+    queryKey: previousExerciseSessionQueryKey(exercise.exerciseId),
+    queryFn: () => workoutRepository.getPreviousCompletedSessionForExercise(exercise.exerciseId),
   })
-  const previousSet = lastCompletedSetQuery.data ?? null
+  const previousSession = previousSessionQuery.data ?? null
+  const previousSet = previousSession?.sets.at(-1) ?? null
   const titleId = `exercise-title-${exercise.id}`
   const isBodyweight = equipment === 'bodyweight'
   // 유산소는 중량 × 횟수로 적을 수 없다. 같은 자리에 시간과 거리를 받는다.
@@ -622,7 +659,7 @@ function ExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChan
         <h2 id={titleId}>{exercise.exerciseName}</h2>
         {exercise.notes && <p className="exercise-note">{exercise.notes}</p>}
       </div>
-      <div className="exercise-workspace-actions"><div className="previous-context"><span>지난 기록</span><strong>{formatPrevious(previousSet, weightUnit)}</strong></div><button className="exercise-remove-button" type="button" onClick={onRemove}><Trash2 size={15} /> 종목 삭제</button></div>
+      <div className="exercise-workspace-actions"><div className="previous-context"><span>이전 완료 세션</span><strong>{formatPreviousSessionSummary(previousSession)}</strong></div><button className="exercise-remove-button" type="button" onClick={onRemove}><Trash2 size={15} /> 종목 삭제</button></div>
     </div>
 
     {rirInputEnabled && <LoadSuggestionBanner
@@ -639,6 +676,8 @@ function ExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChan
       {exercise.sets.map((set) => <SetRow
         key={set.id}
         set={set}
+        previousSet={previousSession?.sets.find((previous) => previous.setOrder === set.setOrder) ?? null}
+        showPreviousSet
         weightUnit={weightUnit}
         weightLabel={weightLabel}
         weightShortLabel={weightShortLabel}
@@ -800,6 +839,48 @@ function ProgramDayUnavailable({ onCancel }: { onCancel: () => void }) {
   return <main className="routine-picker-page runner-error"><Dumbbell size={24} /><h1>시작할 수 없는 프로그램 Day예요.</h1><p>종료된 회차이거나 존재하지 않는 일정입니다.</p><div><button className="primary-button" type="button" onClick={onCancel}>프로그램으로 돌아가기</button></div></main>
 }
 
+function InitialWorkingWeightSetup({ title, items, values, weightUnit, onChange, onConfirm, onCancel }: {
+  title: string
+  items: InitialWorkingWeightItem[]
+  values: Record<string, string>
+  weightUnit: string
+  onChange: (exerciseId: string, value: string) => void
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const isComplete = items.every((item) => {
+    const value = values[item.exerciseId]?.trim() ?? ''
+    return value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0
+  })
+
+  return <main className="routine-picker-page initial-weight-page" aria-labelledby="initial-weight-title">
+    <section className="routine-picker-heading"><div><p className="eyebrow">BEFORE TRAINING</p><h1 id="initial-weight-title">초기 작업 중량 확인</h1><p>{title}의 시작 중량을 확인해 주세요. 운동 중에도 세트별로 바꿀 수 있어요.</p></div><button className="runner-text-button" type="button" onClick={onCancel}>이전으로</button></section>
+    <form className="initial-weight-card" onSubmit={(event) => { event.preventDefault(); onConfirm() }}>
+      <div className="initial-weight-intro"><Dumbbell size={21} aria-hidden="true" /><div><strong>종목별 첫 작업 중량</strong><span>처방 또는 1RM 계산값이 있으면 제안값으로 채웠어요.</span></div></div>
+      <div className="initial-weight-fields">
+        {items.map((item, index) => <label key={item.exerciseId}>
+          <span><strong>{item.exerciseName}</strong><small>{item.suggestedWeightKg === null ? '직접 입력' : `제안 ${formatSuggestionWeight(item.suggestedWeightKg)}${weightUnit}`}</small></span>
+          <span className="initial-weight-input"><input
+            data-overlay-initial-focus={index === 0 || undefined}
+            aria-label={`${item.exerciseName} 초기 작업 중량`}
+            type="number"
+            inputMode="decimal"
+            min="0"
+            max="1000"
+            step="0.5"
+            placeholder="0"
+            required
+            value={values[item.exerciseId] ?? ''}
+            onChange={(event) => onChange(item.exerciseId, event.target.value)}
+          /><small>{weightUnit}</small></span>
+        </label>)}
+      </div>
+      <p className="initial-weight-help">세트별 처방 중량 차이는 유지하고, 비어 있던 세트에는 입력한 중량을 넣습니다. 맨몸·유산소 종목은 이 단계에서 제외됩니다.</p>
+      <div className="initial-weight-actions"><button className="secondary-button" type="button" onClick={onCancel}>취소</button><button className="primary-button" type="submit" disabled={!isComplete}><Play size={17} fill="currentColor" /> 이 중량으로 시작</button></div>
+    </form>
+  </main>
+}
+
 function ProgramDayStarter({ day, missingExercises, onBegin, onCancel }: { day: ProgramRunDay; missingExercises: string[]; onBegin: () => void; onCancel: () => void }) {
   const target = day.cardioTarget
   const summary = day.dayType === 'cardio' && target
@@ -907,15 +988,8 @@ function createFreeWorkoutExercise({ exercise, exerciseOrder, previousSet, defau
 function sortExercises(exercises: WorkoutExercise[]) { return [...exercises].sort((left, right) => left.exerciseOrder - right.exerciseOrder) }
 function normalizeExerciseOrder(exercises: WorkoutExercise[]) { return exercises.map((exercise, index) => ({ ...exercise, exerciseOrder: index + 1 })) }
 function createId() { return globalThis.crypto?.randomUUID?.() ?? `workout-${Date.now()}-${Math.random().toString(36).slice(2)}` }
-function formatPrevious(set: WorkoutSetRecord | null, weightUnit: string) {
-  if (!set) return '기록 없음'
-  if (set.durationSeconds !== null || set.distanceKm !== null) {
-    const parts = []
-    if (set.durationSeconds !== null) parts.push(`${Math.round(set.durationSeconds / 60)}분`)
-    if (set.distanceKm !== null) parts.push(`${set.distanceKm}km`)
-    return parts.join(' · ')
-  }
-  return set.weightKg !== null && set.reps !== null ? `${set.weightKg}${weightUnit} × ${set.reps}` : '기록 없음'
+function formatPreviousSessionSummary(session: PreviousExerciseSession | null) {
+  return session ? `${session.sets.length}세트 기록` : '완료 기록 없음'
 }
 function formatTimer(seconds: number) { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` }
 /** 볼륨은 kg 소수점을 보여줄 만큼 정밀하지 않아 정수로 끊고 천 단위만 구분한다. */

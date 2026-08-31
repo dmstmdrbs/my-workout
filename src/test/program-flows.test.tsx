@@ -192,6 +192,13 @@ describe.sequential('UF-25: 고정 7일 프로그램 회차', () => {
     const starter = document.querySelector<HTMLElement>('.program-day-starter')
     expect(starter).not.toBeNull()
     await user.click(within(starter!).getByRole('button', { name: '운동 시작' }))
+    const weightSetup = await screen.findByRole('heading', { name: '초기 작업 중량 확인' })
+    expect(weightSetup).toBeTruthy()
+    expect((screen.getByRole('spinbutton', { name: '바벨 벤치프레스 초기 작업 중량' }) as HTMLInputElement).value).toBe('92.5')
+    for (const input of screen.getAllByRole('spinbutton')) {
+      if ((input as HTMLInputElement).value === '') fireEvent.change(input, { target: { value: '20' } })
+    }
+    await user.click(screen.getByRole('button', { name: '이 중량으로 시작' }))
 
     await screen.findByRole('heading', { name: 'Day 1 · 상체 강도' })
     const benchHeading = screen.getByRole('heading', { name: '바벨 벤치프레스' })

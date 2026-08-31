@@ -82,6 +82,10 @@ https://<project-ref>.supabase.co/auth/v1/callback
 
 Supabase Auth URL Configuration에는 로컬 주소와 운영 도메인을 Redirect URL로 추가합니다.
 
+Google 동의 화면의 서비스명·로고, 공개 홈페이지/개인정보처리방침 요건과 Vercel/Supabase
+커스텀 도메인의 안전한 적용 순서는
+[Google OAuth 브랜딩과 커스텀 도메인 적용 가이드](docs/google-oauth-branding.md)를 참고하세요.
+
 ## 배포
 
 Vercel 프로젝트에 아래 환경 변수를 **Production**으로 설정한 뒤 배포합니다.
