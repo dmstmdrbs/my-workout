@@ -51,8 +51,8 @@ const upperStrength: ProgramRoutineSnapshot = {
   description: '벤치프레스 진행과 등·어깨 보완을 함께 가져가는 상체 강도일',
   exercises: [
     exercise('바벨 벤치프레스', 1, [
-      ...sets(1, { setType: 'working', targetWeightKg: null, targetOneRepMaxPercent: 80, targetRepsMin: 6, targetRepsMax: 8, targetRir: 1, restSeconds: 180, notes: '탑 세트' }),
-      ...sets(2, { setType: 'working', targetWeightKg: null, targetOneRepMaxPercent: 72.5, targetRepsMin: 8, targetRepsMax: 10, targetRir: 2, restSeconds: 180, notes: '백오프' }).map((set, index) => ({ ...set, setOrder: index + 2 })),
+      ...sets(1, { setType: 'topset', targetWeightKg: null, targetOneRepMaxPercent: 80, targetRepsMin: 6, targetRepsMax: 8, targetRir: 1, restSeconds: 180, notes: '탑 세트' }),
+      ...sets(2, { setType: 'backoff', targetWeightKg: null, targetOneRepMaxPercent: 72.5, targetRepsMin: 8, targetRepsMax: 10, targetRir: 2, restSeconds: 180, notes: '백오프' }).map((set, index) => ({ ...set, setOrder: index + 2 })),
     ], '탑 세트가 8회 RIR 1-2면 다음 노출에서 2.5kg 증량'),
     exercise('체스트 서포티드 시티드 로우', 2, sets(3, { setType: 'working', targetWeightKg: null, targetRepsMin: 8, targetRepsMax: 12, targetRir: 2, restSeconds: 120 }), '넓게 잡고 상부 등까지 채우기'),
     exercise('바벨 오버헤드 프레스', 3, sets(3, { setType: 'working', targetWeightKg: null, targetOneRepMaxPercent: 75, targetRepsMin: 5, targetRepsMax: 8, targetRir: 2, restSeconds: 150 }), '오른쪽 어깨가 불편하면 뉴트럴 그립 머신/덤벨로 교체'),
@@ -67,8 +67,8 @@ const lowerStrength: ProgramRoutineSnapshot = {
   description: '스쿼트 기술과 중량 진행을 우선하는 하체 강도일',
   exercises: [
     exercise('스쿼트', 1, [
-      ...sets(1, { setType: 'working', targetWeightKg: null, targetOneRepMaxPercent: 80, targetRepsMin: 4, targetRepsMax: 6, targetRir: 2, restSeconds: 180, notes: '탑 세트' }),
-      ...sets(2, { setType: 'working', targetWeightKg: null, targetOneRepMaxPercent: 72.5, targetRepsMin: 6, targetRepsMax: 8, targetRir: 2, restSeconds: 180, notes: '백오프' }).map((set, index) => ({ ...set, setOrder: index + 2 })),
+      ...sets(1, { setType: 'topset', targetWeightKg: null, targetOneRepMaxPercent: 80, targetRepsMin: 4, targetRepsMax: 6, targetRir: 2, restSeconds: 180, notes: '탑 세트' }),
+      ...sets(2, { setType: 'backoff', targetWeightKg: null, targetOneRepMaxPercent: 72.5, targetRepsMin: 6, targetRepsMax: 8, targetRir: 2, restSeconds: 180, notes: '백오프' }).map((set, index) => ({ ...set, setOrder: index + 2 })),
     ], '무릎 자신감이나 동작 품질이 떨어지면 증량하지 않고 반복'),
     exercise('루마니안 데드리프트', 2, sets(2, { setType: 'working', targetWeightKg: null, targetOneRepMaxPercent: 70, targetRepsMin: 6, targetRepsMax: 8, targetRir: 2, restSeconds: 150 })),
     exercise('레그 프레스', 3, sets(2, { setType: 'working', targetWeightKg: null, targetRepsMin: 10, targetRepsMax: 15, targetRir: 2, restSeconds: 120 })),

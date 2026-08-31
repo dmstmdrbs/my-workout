@@ -39,7 +39,7 @@ function renderApp(initialPath: string) {
   )
 }
 
-async function seedSession(repo: WorkoutRepository, name: string, startedAt: string, completedAt: string) {
+async function seedSession(repo: WorkoutRepository, name: string, startedAt: string, completedAt: string, setType: 'working' | 'topset' = 'working') {
   const saved = await repo.saveSession({
     routineId: null,
     routineName: name,
@@ -57,7 +57,7 @@ async function seedSession(repo: WorkoutRepository, name: string, startedAt: str
       sets: [{
         id: `${name}-set-1`,
         setOrder: 1,
-        setType: 'working',
+        setType,
         weightKg: 60,
         reps: 10,
         durationSeconds: null,
@@ -83,7 +83,7 @@ describe.sequential('UF-08: 기록 탭 달력과 날짜별 기록', () => {
     localStorage.clear()
     const repo = createLocalStorageServices().workoutRepository
     await seedSession(repo, morningName, `${twiceTrainedDay}T08:00:00.000+09:00`, `${twiceTrainedDay}T09:00:00.000+09:00`)
-    await seedSession(repo, eveningName, `${twiceTrainedDay}T19:00:00.000+09:00`, `${twiceTrainedDay}T20:10:00.000+09:00`)
+    await seedSession(repo, eveningName, `${twiceTrainedDay}T19:00:00.000+09:00`, `${twiceTrainedDay}T20:10:00.000+09:00`, 'topset')
   })
 
   test('하루에 두 번 운동한 날은 두 기록이 모두 리스트에 나온다', async () => {
@@ -107,6 +107,7 @@ describe.sequential('UF-08: 기록 탭 달력과 날짜별 기록', () => {
     await screen.findByRole('heading', { name: eveningName, level: 1 })
     expect(screen.queryByRole('heading', { name: '운동 기록' })).toBeNull()
     expect(screen.getByRole('button', { name: '수정' })).toBeTruthy()
+    expect(screen.getByText('탑세트')).toBeTruthy()
   })
 
   test('상세에서 돌아가면 보고 있던 날짜가 그대로 선택돼 있다', async () => {

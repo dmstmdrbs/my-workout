@@ -7,6 +7,7 @@ import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import { muscleLabel } from '../workout/exerciseLabels'
+import { setTypeLabel } from '../workout/setInput'
 import { invalidateRecordQueries } from './recordQueries'
 import {
   formatWorkoutDuration,
@@ -131,7 +132,7 @@ export function RecordDetail({ sessionId, onBack, onEdit }: {
 }
 
 function CompletedSetRow({ set, weightUnit }: { set: WorkoutSetRecord; weightUnit: string }) {
-  return <div className="completed-set-row"><span>{set.setOrder}</span><strong>{formatWorkoutSet(set, weightUnit)}</strong><span>{set.actualRir === null ? 'RIR 미기록' : `실제 RIR ${formatWorkoutRir(set.actualRir)}`}</span></div>
+  return <div className="completed-set-row"><span>{set.setOrder}</span><span className={`record-set-type set-type-${set.setType}`}>{setTypeLabel(set.setType)}</span><strong>{formatWorkoutSet(set, weightUnit)}</strong><span>{set.actualRir === null ? 'RIR 미기록' : `실제 RIR ${formatWorkoutRir(set.actualRir)}`}</span></div>
 }
 
 function DeleteRecordDialog({ session, isDeleting, isError, onCancel, onConfirm }: {

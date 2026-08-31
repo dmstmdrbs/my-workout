@@ -153,3 +153,13 @@
 @media (max-width: 480px) {
   .record-detail-page { width: min(100% - 32px, 760px); }
 }
+.completed-set-row { grid-template-columns: 25px max-content minmax(0, 1fr) max-content; }
+.record-set-type { padding: 2px 6px; color: var(--text-muted); background: var(--surface-subtle); border-radius: 999px; font-size: .61rem; font-weight: 800; }
+.record-set-type.set-type-topset { color: #c2410c; background: color-mix(in srgb, #f97316 14%, transparent); }
+.record-set-type.set-type-backoff { color: #2563eb; background: color-mix(in srgb, #3b82f6 13%, transparent); }
+.record-set-type.set-type-warmup { color: #047857; background: color-mix(in srgb, #10b981 12%, transparent); }
+.record-set-type.set-type-dropset { color: #9333ea; background: color-mix(in srgb, #a855f7 12%, transparent); }
+@media (max-width: 480px) {
+  .completed-set-row { grid-template-columns: 23px max-content minmax(0, 1fr); }
+  .completed-set-row > span:last-child { grid-column: 3; }
+}

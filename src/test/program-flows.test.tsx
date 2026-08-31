@@ -46,6 +46,7 @@ describe.sequential('UF-25: 고정 7일 프로그램 회차', () => {
     expect(input.days[0]).toMatchObject({ dayNumber: 1, dayType: 'strength', title: '상체 강도' })
     expect(input.days[2]).toMatchObject({ dayNumber: 3, dayType: 'rest', title: '휴식일' })
     expect(input.days[6]).toMatchObject({ dayNumber: 7, dayType: 'rest', title: '휴식일' })
+    expect(input.days[0].routineSnapshot?.exercises[0].sets.map((set) => set.setType)).toEqual(['topset', 'backoff', 'backoff'])
     expect(trainingProgramCatalog).toHaveLength(4)
     expect(trainingProgramCatalog.every((program) => program.build('2026-08-25').days.length === 56)).toBe(true)
   })
