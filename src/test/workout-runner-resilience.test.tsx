@@ -10,7 +10,7 @@ import type { AppServices } from '../services'
 const workoutDraftKey = 'trainlog:workout-draft:v1'
 
 /**
- * Wraps the real mock repository but makes `getLastCompletedSetForExercise`
+ * Wraps the real mock repository but makes `getPreviousCompletedSessionForExercise`
  * reject, so the runner's previous-record lookup genuinely fails at the
  * repository layer (not simulated via component state). Everything else
  * delegates to the real mock so adding an exercise still works normally.
@@ -19,7 +19,7 @@ function createServicesWithFailingLookup(): AppServices {
   const base = createLocalStorageServices()
   const workoutRepository = new Proxy(base.workoutRepository, {
     get(target, prop, receiver) {
-      if (prop === 'getLastCompletedSetForExercise') return () => Promise.reject(new Error('mock lookup failure'))
+      if (prop === 'getPreviousCompletedSessionForExercise') return () => Promise.reject(new Error('mock lookup failure'))
       return Reflect.get(target, prop, receiver)
     },
   })
@@ -68,6 +68,7 @@ describe.sequential('운동 화면: 지난 기록 조회 실패 내성', () => {
     expect(draft.draft.exercises[0].sets[0].weightKg).toBeNull()
     expect(draft.draft.exercises[0].sets[0].reps).toBeNull()
 
-    expect(screen.getByText('기록 없음')).toBeTruthy()
+    expect(screen.getByText('완료 기록 없음')).toBeTruthy()
+    expect(screen.getByText('이전 세션 대응 기록 없음')).toBeTruthy()
   })
 })
