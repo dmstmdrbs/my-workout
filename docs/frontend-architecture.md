@@ -69,3 +69,8 @@ slice 내부에서는 barrel을 거치지 않고 파일을 직접 import해 순�
 
 이 순서는 각 단계가 독립적으로 테스트·리뷰 가능하고, 도중에도 기존 기능을
 온전히 유지하기 위한 것입니다.
+
+현재 `app` 계층은 route 조합, 전역 shell, 인증 session, navigation UI만
+소유합니다. 친구 요청 수와 운동 초안 같은 feature 상태는 각 feature의 공개
+API를 통해 사용하며, route entry 컴포넌트도 feature 내부 파일을 직접 참조하지
+않습니다. 아직 큰 화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다.

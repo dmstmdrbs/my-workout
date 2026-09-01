@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { beforeAll, describe, expect, test } from 'vitest'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
+import { beforeAll, describe, expect, test, vi } from 'vitest'
 import App from '../App'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
 import type { WorkoutRepository } from '../services'
@@ -24,6 +24,39 @@ function renderApp(initialPath: string) {
       <AppServicesProvider services={createLocalStorageServices()}>
         <MemoryRouter initialEntries={[initialPath]}>
           <App />
+        </MemoryRouter>
+      </AppServicesProvider>
+    </QueryClientProvider>,
+  )
+}
+
+function HistoryBackButton() {
+  const navigate = useNavigate()
+  return <button type="button" onClick={() => navigate(-1)}>브라우저 뒤로가기</button>
+}
+
+function HistoryForwardButton() {
+  const navigate = useNavigate()
+  return <button type="button" onClick={() => navigate(1)}>브라우저 앞으로가기</button>
+}
+
+function CurrentPath() {
+  const location = useLocation()
+  return <output data-testid="current-path">{location.pathname}</output>
+}
+
+function renderAppWithHistory(entries: string[], initialIndex: number) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: 0 }, mutations: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AppServicesProvider services={createLocalStorageServices()}>
+        <MemoryRouter initialEntries={entries} initialIndex={initialIndex}>
+          <App />
+          <HistoryBackButton />
+          <HistoryForwardButton />
+          <CurrentPath />
         </MemoryRouter>
       </AppServicesProvider>
     </QueryClientProvider>,
@@ -186,5 +219,61 @@ describe.sequential('UF-26: 완료된 운동 기록 편집', () => {
     await user.click(screen.getByRole('button', { name: '취소' }))
     await screen.findByRole('heading', { name: '편집 대상 D', level: 1 })
     expect(screen.queryByRole('heading', { name: '고친 내용을 버릴까요?' })).toBeNull()
+  })
+
+  test('기록 수정 중 브라우저 뒤로가기를 취소하면 편집 화면과 URL을 유지한다', async () => {
+    const user = userEvent.setup()
+    const repo = createLocalStorageServices().workoutRepository
+    const sessionId = await seedCompletedSession(repo, '편집 대상 POP 취소')
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    renderAppWithHistory(['/records', `/records/${sessionId}`, `/records/${sessionId}/edit`], 2)
+    await screen.findByRole('heading', { name: '기록 수정' })
+    const firstWeight = within(editorSets()).getByLabelText('1세트 중량 (kg)')
+    await user.clear(firstWeight)
+    await user.type(firstWeight, '100')
+
+    await user.click(screen.getByRole('button', { name: '브라우저 뒤로가기' }))
+    expect(screen.getByRole('heading', { name: '기록 수정' })).toBeTruthy()
+    expect(screen.getByTestId('current-path').textContent).toBe(`/records/${sessionId}/edit`)
+    expect(confirm.mock.calls).toHaveLength(1)
+    confirm.mockRestore()
+  })
+
+  test('기록 수정 중 브라우저 뒤로가기를 확인하면 이전 화면으로 이동한다', async () => {
+    const user = userEvent.setup()
+    const repo = createLocalStorageServices().workoutRepository
+    const sessionId = await seedCompletedSession(repo, '편집 대상 POP 확인')
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    renderAppWithHistory(['/records', `/records/${sessionId}`, `/records/${sessionId}/edit`], 2)
+    await screen.findByRole('heading', { name: '기록 수정' })
+    const firstWeight = within(editorSets()).getByLabelText('1세트 중량 (kg)')
+    await user.clear(firstWeight)
+    await user.type(firstWeight, '100')
+
+    await user.click(screen.getByRole('button', { name: '브라우저 뒤로가기' }))
+    await screen.findByRole('heading', { name: '편집 대상 POP 확인', level: 1 })
+    expect(screen.queryByRole('heading', { name: '기록 수정' })).toBeNull()
+    vi.restoreAllMocks()
+  })
+
+  test('기록 수정 중 브라우저 앞으로가기를 취소하면 편집 화면을 유지한다', async () => {
+    const user = userEvent.setup()
+    const repo = createLocalStorageServices().workoutRepository
+    const sessionId = await seedCompletedSession(repo, '편집 대상 POP 앞으로')
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    renderAppWithHistory(['/records', `/records/${sessionId}/edit`, `/records/${sessionId}`], 1)
+    await screen.findByRole('heading', { name: '기록 수정' })
+    const firstWeight = within(editorSets()).getByLabelText('1세트 중량 (kg)')
+    await user.clear(firstWeight)
+    await user.type(firstWeight, '100')
+
+    await user.click(screen.getByRole('button', { name: '브라우저 앞으로가기' }))
+    expect(screen.getByRole('heading', { name: '기록 수정' })).toBeTruthy()
+    expect(screen.getByTestId('current-path').textContent).toBe(`/records/${sessionId}/edit`)
+    expect(confirm.mock.calls).toHaveLength(1)
+    confirm.mockRestore()
   })
 })

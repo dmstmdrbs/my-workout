@@ -19,6 +19,53 @@ export interface StoredWorkoutDraft {
 
 export const workoutDraftStorageKey = 'trainlog:workout-draft:v1'
 
+type DraftListener = () => void
+
+let snapshotRaw: string | null | undefined
+let snapshot: StoredWorkoutDraft | null = null
+let hasSnapshot = false
+const listeners = new Set<DraftListener>()
+
+function getStorageRaw() {
+  try {
+    return globalThis.localStorage?.getItem(workoutDraftStorageKey) ?? null
+  } catch {
+    return null
+  }
+}
+
+function refreshSnapshot() {
+  const raw = getStorageRaw()
+  if (hasSnapshot && raw === snapshotRaw) return false
+  snapshotRaw = raw
+  snapshot = readStoredWorkoutDraft()
+  hasSnapshot = true
+  return true
+}
+
+function notifySnapshot() {
+  if (!refreshSnapshot()) return
+  listeners.forEach((listener) => listener())
+}
+
+function handleStorage(event: StorageEvent) {
+  if (event.key === workoutDraftStorageKey) notifySnapshot()
+}
+
+export function subscribeStoredWorkoutDraft(listener: DraftListener) {
+  listeners.add(listener)
+  if (listeners.size === 1) window.addEventListener('storage', handleStorage)
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0) window.removeEventListener('storage', handleStorage)
+  }
+}
+
+export function getStoredWorkoutDraftSnapshot() {
+  refreshSnapshot()
+  return snapshot
+}
+
 export function readStoredWorkoutDraft(): StoredWorkoutDraft | null {
   try {
     const raw = globalThis.localStorage?.getItem(workoutDraftStorageKey)
@@ -49,6 +96,7 @@ export function writeStoredWorkoutDraft(value: StoredWorkoutDraft) {
   } catch {
     // The current session remains usable if browser storage is unavailable.
   }
+  notifySnapshot()
 }
 
 export function clearStoredWorkoutDraft() {
@@ -57,6 +105,7 @@ export function clearStoredWorkoutDraft() {
   } catch {
     // No-op when browser storage is unavailable.
   }
+  notifySnapshot()
 }
 
 function isValidStartedAt(value: unknown): value is string {
