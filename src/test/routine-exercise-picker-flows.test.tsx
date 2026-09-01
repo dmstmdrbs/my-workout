@@ -53,7 +53,7 @@ describe.sequential('UF-22: 루틴 편집에서 종목 추가', () => {
     // 시트 위에 만들기 대화상자가 겹쳐 뜬다 -- 중첩 레이어가 성립해야 한다.
     await user.click(screen.getByRole('button', { name: '새 운동 만들기' }))
     const dialog = within(await screen.findByRole('dialog', { name: '새 운동 만들기' }))
-    expect(screen.getByRole('dialog', { name: '종목 추가' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: '종목 추가', hidden: true })).toBeTruthy()
 
     await user.type(dialog.getByRole('textbox', { name: '새 운동 이름' }), '케이블 크런치')
     await user.click(dialog.getByRole('button', { name: '만들고 추가' }))
