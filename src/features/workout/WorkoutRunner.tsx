@@ -22,6 +22,7 @@ import { CreateExerciseDialog, ExercisePickerSheet } from './ExercisePicker'
 import { applyInitialWorkingWeights, getInitialWorkingWeightItems } from './initialWorkingWeights'
 import { formatWorkoutVolume } from './lib/formatWorkout'
 import { useCompleteWorkout } from './model/useCompleteWorkout'
+import { useExerciseReplacement } from './model/useExerciseReplacement'
 import { usePreviousExerciseSessionLoader } from './model/usePreviousExerciseSessionLoader'
 import { useWorkoutRuntime } from './model/useWorkoutRuntime'
 import { useWorkoutSetup } from './model/useWorkoutSetup'
@@ -58,6 +59,11 @@ interface WorkoutRunnerProps {
   onSelectProgramDay?: (dayId: string) => void
 }
 
+type ExercisePickerIntent =
+  | { type: 'add' }
+  | { type: 'replace'; workoutExerciseId: string }
+  | null
+
 export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialProgramRunDayId = null, onSelectProgramDay }: WorkoutRunnerProps) {
   const settingsQuery = useSettings()
   const keepScreenAwake = settingsQuery.data?.keepScreenAwake ?? false
@@ -82,7 +88,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     getFinalPausedSeconds,
   } = useWorkoutRuntime({ keepScreenAwake, onDraftStateChange })
   const loadPreviousExerciseSessions = usePreviousExerciseSessionLoader()
-  const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const [pickerIntent, setPickerIntent] = useState<ExercisePickerIntent>(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isReorderOpen, setIsReorderOpen] = useState(false)
   const [isFinishConfirmOpen, setIsFinishConfirmOpen] = useState(false)
@@ -92,6 +98,20 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
   const draggingExerciseIdRef = useRef<string | null>(null)
 
   const setupQuery = useWorkoutSetup(initialProgramRunDayId)
+  const {
+    exerciseCatalog,
+    pendingReplacement,
+    requestReplacement,
+    confirmReplacement,
+    cancelReplacement,
+    registerCreatedExercise,
+  } = useExerciseReplacement({
+    draft,
+    setDraft,
+    exercises: setupQuery.data?.exercises ?? [],
+    defaultRestSeconds: settingsQuery.data?.defaultRestSeconds ?? 90,
+    defaultRir: settingsQuery.data?.defaultRir ?? 2,
+  })
   const finishMutation = useCompleteWorkout({
     onSuccess: (sessionId) => {
       clearDraft()
@@ -176,13 +196,25 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
   }
 
   const selectExercisesFromPicker = (selectedExercises: Exercise[]) => {
-    setIsPickerOpen(false)
+    setPickerIntent(null)
     void addExercises(selectedExercises)
+  }
+
+  const selectReplacementFromPicker = (replacement: Exercise) => {
+    if (pickerIntent?.type !== 'replace') return
+    requestReplacement(pickerIntent.workoutExerciseId, replacement)
+    setPickerIntent(null)
   }
 
   const addCreatedExercise = (exercise: Exercise) => {
     setIsCreateOpen(false)
-    setIsPickerOpen(false)
+    registerCreatedExercise(exercise)
+    if (pickerIntent?.type === 'replace') {
+      requestReplacement(pickerIntent.workoutExerciseId, exercise)
+      setPickerIntent(null)
+      return
+    }
+    setPickerIntent(null)
     void addExercises([exercise])
   }
 
@@ -357,22 +389,24 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
           </div>
         </div>
         <div className="workout-header-actions">
-          <span
-            className={`workout-elapsed-time ${isPaused ? 'is-paused' : ''}`}
-            aria-label={`운동 시간 ${elapsedTime}${isPaused ? ', 일시정지됨' : ''}`}
-          >
-            <Clock3 size={16} aria-hidden="true" /> {elapsedTime}
-            {isPaused && <span className="workout-paused-badge">일시정지</span>}
-          </span>
-          <button
-            className="pause-toggle-button"
-            type="button"
-            onClick={togglePause}
-            aria-label={isPaused ? '운동 재개' : '운동 일시정지'}
-            aria-pressed={isPaused}
-          >
-            {isPaused ? <Play size={16} /> : <Pause size={16} />}
-          </button>
+          <div className="workout-runtime-controls" role="group" aria-label="타이머 제어">
+            <span
+              className={`workout-elapsed-time ${isPaused ? 'is-paused' : ''}`}
+              aria-label={`운동 시간 ${elapsedTime}${isPaused ? ', 일시정지됨' : ''}`}
+            >
+              <Clock3 size={16} aria-hidden="true" /> {elapsedTime}
+              {isPaused && <span className="workout-paused-badge">일시정지</span>}
+            </span>
+            <button
+              className="pause-toggle-button"
+              type="button"
+              onClick={togglePause}
+              aria-label={isPaused ? '운동 재개' : '운동 일시정지'}
+              aria-pressed={isPaused}
+            >
+              {isPaused ? <Play size={16} /> : <Pause size={16} />}
+            </button>
+          </div>
           <button className="runner-text-button" type="button" onClick={cancelWorkout}><X size={17} /> 나가기</button>
           <button className="primary-button" type="button" onClick={() => setIsFinishConfirmOpen(true)} disabled={finishMutation.isPending}>
             <Save size={17} /> {finishMutation.isPending ? '저장 중…' : '운동 종료'}
@@ -387,34 +421,40 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
           <Dumbbell size={27} aria-hidden="true" />
           <h2 id="free-workout-empty-title">첫 운동을 추가해 주세요.</h2>
           <p>종목을 고르면 지난 기록과 기본 휴식 시간, 목표 RIR을 불러와 바로 기록할 수 있어요.</p>
-          <button className="primary-button exercise-picker-trigger" type="button" onClick={() => setIsPickerOpen(true)}><Plus size={17} /> 종목 추가</button>
+          <button className="primary-button exercise-picker-trigger" type="button" onClick={() => setPickerIntent({ type: 'add' })}><Plus size={17} /> 종목 추가</button>
         </section>}
 
         {draft.exercises.map((exercise) => <WorkoutExerciseCard
           key={exercise.id}
           exercise={exercise}
           weightUnit={weightUnit}
-          equipment={exercises.find((item) => item.id === exercise.exerciseId)?.equipment ?? 'other'}
+          equipment={exerciseCatalog.find((item) => item.id === exercise.exerciseId)?.equipment ?? 'other'}
           rirInputEnabled={rirInputEnabled}
           onChangeSet={(setId, changes) => updateSet(exercise.id, setId, changes)}
           onCompleteSet={(set) => toggleSetComplete(exercise.id, set)}
           onAddSet={() => addWorkingSet(exercise.id)}
+          onReplace={() => setPickerIntent({ type: 'replace', workoutExerciseId: exercise.id })}
           onRemove={() => removeExercise(exercise.id)}
         />)}
 
         {/* 목록 끝에 있던 인라인 버튼을 대신한다. 둘을 함께 두면 같은 이름의
             버튼이 화면에 두 개가 되므로 하나만 렌더링한다. */}
-        {draft.exercises.length > 0 && <button className="exercise-add-fab" type="button" onClick={() => setIsPickerOpen(true)}>
+        {draft.exercises.length > 0 && <button className="exercise-add-fab" type="button" onClick={() => setPickerIntent({ type: 'add' })}>
           <Plus size={18} aria-hidden="true" /> 종목 추가
         </button>}
       </div>
 
       <div className="rest-timer-dock"><RestTimer remaining={remainingRest} isRunning={restIsRunning} alertsEnabled={restAlertsEnabled} onAdjust={adjustRest} onToggleAlerts={() => void toggleRestAlerts()} onRestart={() => startRest(restartRestSeconds())} onStop={stopRest} compact /></div>
       <ExercisePickerSheet
-        isOpen={isPickerOpen}
-        exercises={exercises}
-        onClose={() => setIsPickerOpen(false)}
-        selectionMode="multiple"
+        isOpen={pickerIntent !== null}
+        exercises={pickerIntent?.type === 'replace'
+          ? exerciseCatalog.filter((exercise) => exercise.id !== draft.exercises.find((item) => item.id === pickerIntent.workoutExerciseId)?.exerciseId)
+          : exerciseCatalog}
+        onClose={() => setPickerIntent(null)}
+        title={pickerIntent?.type === 'replace' ? '종목 교체' : '종목 추가'}
+        eyebrow={pickerIntent?.type === 'replace' ? 'REPLACE EXERCISE' : 'ADD EXERCISE'}
+        selectionMode={pickerIntent?.type === 'replace' ? 'single' : 'multiple'}
+        onSelect={selectReplacementFromPicker}
         onSelectMany={selectExercisesFromPicker}
         onOpenCreate={() => setIsCreateOpen(true)}
       />
@@ -433,6 +473,31 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
         onPointerUp={endReorderDrag}
         onPointerCancel={cancelReorderDrag}
       />}
+      <Overlay
+        isOpen={pendingReplacement !== null}
+        onClose={cancelReplacement}
+        presentation="dialog"
+        labelledBy="replace-exercise-warning-title"
+        describedBy="replace-exercise-warning-description"
+        className="exercise-replacement-dialog"
+      >
+        <p className="eyebrow">REPLACE EXERCISE</p>
+        <h2 id="replace-exercise-warning-title">입력 형식이 달라요</h2>
+        <p id="replace-exercise-warning-description">
+          {pendingReplacement && <>
+            <strong>{draft.exercises.find((exercise) => exercise.id === pendingReplacement.workoutExerciseId)?.exerciseName ?? '현재 종목'}</strong>에서{' '}
+            <strong>{pendingReplacement.replacement.name}</strong>으로 바꾸면 기존 세트의 입력값과 완료 상태가 모두 초기화됩니다.
+          </>}
+        </p>
+        <div className="exercise-replacement-actions">
+          <button className="secondary-button" type="button" onClick={cancelReplacement} data-overlay-initial-focus>취소</button>
+          <button
+            className="danger-button"
+            type="button"
+            onClick={confirmReplacement}
+          >초기화하고 교체</button>
+        </div>
+      </Overlay>
       <Overlay
         isOpen={isFinishConfirmOpen}
         onClose={() => { if (!finishMutation.isPending) setIsFinishConfirmOpen(false) }}

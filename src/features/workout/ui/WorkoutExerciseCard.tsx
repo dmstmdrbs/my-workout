@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { suggestNextLoad } from '../../../lib/loadSuggestion'
 import type { Equipment, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
 import { muscleLabel } from '../exerciseLabels'
@@ -14,10 +14,11 @@ interface WorkoutExerciseCardProps {
   onChangeSet: (setId: string, changes: Partial<WorkoutSetRecord>) => void
   onCompleteSet: (set: WorkoutSetRecord) => void
   onAddSet: () => void
+  onReplace: () => void
   onRemove: () => void
 }
 
-export function WorkoutExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChangeSet, onCompleteSet, onAddSet, onRemove }: WorkoutExerciseCardProps) {
+export function WorkoutExerciseCard({ exercise, weightUnit, equipment, rirInputEnabled, onChangeSet, onCompleteSet, onAddSet, onReplace, onRemove }: WorkoutExerciseCardProps) {
   const previousSessionQuery = usePreviousExerciseSession(exercise.exerciseId)
   const previousSession = previousSessionQuery.data ?? null
   const previousSet = previousSession?.sets.at(-1) ?? null
@@ -35,7 +36,13 @@ export function WorkoutExerciseCard({ exercise, weightUnit, equipment, rirInputE
         <h2 id={titleId}>{exercise.exerciseName}</h2>
         {exercise.notes && <p className="exercise-note">{exercise.notes}</p>}
       </div>
-      <div className="exercise-workspace-actions"><div className="previous-context"><span>이전 완료 세션</span><strong>{formatPreviousSessionSummary(previousSession)}</strong></div><button className="exercise-remove-button" type="button" onClick={onRemove}><Trash2 size={15} /> 종목 삭제</button></div>
+      <div className="exercise-workspace-actions">
+        <div className="previous-context"><span>이전 완료 세션</span><strong>{formatPreviousSessionSummary(previousSession)}</strong></div>
+        <div className="exercise-workspace-buttons">
+          <button className="exercise-replace-button" type="button" onClick={onReplace}><RefreshCw size={15} /> 종목 교체</button>
+          <button className="exercise-remove-button" type="button" onClick={onRemove}><Trash2 size={15} /> 종목 삭제</button>
+        </div>
+      </div>
     </div>
 
     {rirInputEnabled && <LoadSuggestionBanner

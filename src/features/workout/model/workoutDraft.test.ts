@@ -9,7 +9,10 @@ import {
   createRoutineWorkoutDraft,
   findMostRecentlyCompletedSet,
   getMissingProgramExercises,
+  isExerciseTrackingTypeChange,
   normalizeWorkoutExerciseOrder,
+  replaceWorkoutExercise,
+  resolveWorkoutExerciseTrackingType,
   sortWorkoutExercises,
 } from './workoutDraft'
 
@@ -77,6 +80,86 @@ describe('workout draft model', () => {
     const cardioDraft = createProgramWorkoutDraft(cardioDay, [createExerciseDefinition('running', '러닝', 0, 'cardio')])
     expect(cardioDraft.exercises[0].sets[0]).toMatchObject({ durationSeconds: 1_800, distanceKm: 5, weightKg: null, reps: null })
     expect(countWorkoutSets(cardioDraft)).toBe(1)
+  })
+
+  it('replaces only the exercise identity when both exercises use the same tracking fields', () => {
+    const completedSet = {
+      ...createSet('completed', '2026-08-31T10:00:00.000Z'),
+      weightKg: 82.5,
+      reps: 6,
+      actualRir: 1,
+    }
+    const pendingSet = { ...createSet('pending', null), setOrder: 2, weightKg: 77.5, reps: 8, targetRir: 2 }
+    const current = { ...createExercise('bench', 2), notes: '3초 네거티브', sets: [completedSet, pendingSet] }
+    const replacement = createExerciseDefinition('chest-press', '체스트 프레스', 75, 'machine')
+
+    const result = replaceWorkoutExercise(current, replacement, {
+      resetSets: false,
+      defaultRestSeconds: 120,
+      defaultRir: 2,
+    })
+
+    expect(result).toMatchObject({
+      id: current.id,
+      exerciseId: 'chest-press',
+      exerciseName: '체스트 프레스',
+      primaryMuscle: replacement.primaryMuscle,
+      exerciseOrder: 2,
+      notes: '3초 네거티브',
+    })
+    expect(result.sets).toBe(current.sets)
+    expect(result.sets[0]).toBe(completedSet)
+  })
+
+  it('resets every set value when the replacement changes between strength and cardio', () => {
+    const current = {
+      ...createExercise('bench', 3),
+      sets: [{
+        ...createSet('completed', '2026-08-31T10:00:00.000Z'),
+        weightKg: 90,
+        reps: 5,
+        targetRir: 2,
+        actualRir: 1,
+      }],
+    }
+    const running = createExerciseDefinition('running', '러닝', 0, 'cardio')
+
+    const result = replaceWorkoutExercise(current, running, {
+      resetSets: true,
+      defaultRestSeconds: 120,
+      defaultRir: 2,
+    })
+
+    expect(result).toMatchObject({ id: current.id, exerciseId: 'running', exerciseName: '러닝', exerciseOrder: 3 })
+    expect(result).toMatchObject({ trackingType: 'cardio', notes: null })
+    expect(result.sets).toHaveLength(1)
+    expect(result.sets[0]).toMatchObject({
+      setOrder: 1,
+      setType: 'working',
+      weightKg: null,
+      reps: null,
+      durationSeconds: null,
+      distanceKm: null,
+      targetRir: null,
+      actualRir: null,
+      isCompleted: false,
+      completedAt: null,
+    })
+    expect(result.sets[0].id).not.toBe(current.sets[0].id)
+  })
+
+  it('requires reset confirmation only when cardio tracking changes', () => {
+    expect(isExerciseTrackingTypeChange('barbell', 'machine')).toBe(false)
+    expect(isExerciseTrackingTypeChange('bodyweight', 'cable')).toBe(false)
+    expect(isExerciseTrackingTypeChange('barbell', 'cardio')).toBe(true)
+    expect(isExerciseTrackingTypeChange('cardio', 'dumbbell')).toBe(true)
+    expect(isExerciseTrackingTypeChange('cardio', 'cardio')).toBe(false)
+  })
+
+  it('keeps the draft tracking snapshot when the current exercise is no longer in the catalog', () => {
+    expect(resolveWorkoutExerciseTrackingType({ ...createExercise('running', 1), trackingType: 'cardio' })).toBe('cardio')
+    expect(resolveWorkoutExerciseTrackingType(createExercise('legacy-running', 1), 'cardio')).toBe('cardio')
+    expect(resolveWorkoutExerciseTrackingType(createExercise('legacy-press', 1))).toBe('strength')
   })
 
   it('reports missing program exercises and throws when a program cannot be materialized', () => {

@@ -1,8 +1,21 @@
-import type { WorkoutSession } from '../../types/domain'
+import type { WorkoutExercise, WorkoutSession } from '../../types/domain'
+
+export type ExerciseTrackingType = 'strength' | 'cardio'
+
+export interface WorkoutDraftExercise extends WorkoutExercise {
+  /**
+   * 진행 중 종목이 카탈로그에서 보관되어도 교체 시 입력 형식을 판단할 수
+   * 있도록 초안에만 두는 스냅샷이다. 예전 초안과 호환되도록 optional이다.
+   */
+  trackingType?: ExerciseTrackingType
+}
 
 // `editedAt`은 초안에 없다. 진행 중인 운동은 "완료된 기록을 고친 것"이 될 수
 // 없고, 그 값은 저장소만 정한다.
-export type WorkoutDraft = Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'editedAt'> & { id: string }
+export type WorkoutDraft = Omit<WorkoutSession, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'editedAt' | 'exercises'> & {
+  id: string
+  exercises: WorkoutDraftExercise[]
+}
 
 export interface StoredWorkoutDraft {
   draft: WorkoutDraft

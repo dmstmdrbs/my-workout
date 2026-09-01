@@ -14,6 +14,15 @@ export function useCompleteWorkout({ onSuccess }: UseCompleteWorkoutOptions) {
   return useMutation({
     mutationFn: async (session: WorkoutDraft) => workoutRepository.saveSession({
       ...session,
+      exercises: session.exercises.map(({ id, exerciseId, exerciseName, primaryMuscle, exerciseOrder, notes, sets }) => ({
+        id,
+        exerciseId,
+        exerciseName,
+        primaryMuscle,
+        exerciseOrder,
+        notes,
+        sets,
+      })),
       status: 'completed',
       completedAt: new Date().toISOString(),
     }),
