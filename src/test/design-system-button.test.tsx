@@ -21,6 +21,20 @@ describe('design system buttons', () => {
     expect(button.getAttribute('aria-busy')).toBe('true')
   })
 
+  it('preserves a caller-provided busy state when it is not loading', () => {
+    render(<Button aria-busy="false">저장</Button>)
+
+    const button = screen.getByRole('button', { name: '저장' })
+    expect(button.getAttribute('aria-busy')).toBe('false')
+  })
+
+  it('forces a caller-provided false busy state to true while loading', () => {
+    render(<Button isLoading aria-busy="false">저장 중</Button>)
+
+    const button = screen.getByRole('button', { name: '저장 중' })
+    expect(button.getAttribute('aria-busy')).toBe('true')
+  })
+
   it('requires an accessible name for icon-only controls', () => {
     render(<IconButton aria-label="닫기"><span aria-hidden="true">×</span></IconButton>)
 

@@ -55,11 +55,23 @@
   border: 1px solid var(--color-danger);
 }
 
+.ui-button--danger:hover:not(:disabled),
+.danger-button:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
 .ui-button--ghost,
 .ghost-button {
   color: var(--color-text);
   background: transparent;
   border: 1px solid transparent;
+}
+
+.ui-button--ghost:hover:not(:disabled),
+.ghost-button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border);
 }
 
 .ui-button:disabled,
