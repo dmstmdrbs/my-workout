@@ -7,6 +7,7 @@ import { useSettings } from '../services'
 import { AppRoutes } from './AppRoutes'
 import { getActivePage, pagePaths, type PageId } from './model/navigation'
 import { useAuthSession } from './model/useAuthSession'
+import { useNavigationGuard } from './model/useNavigationGuard'
 import { ActiveWorkoutToast } from './ui/ActiveWorkoutToast'
 import { AuthLoading, SignInGate } from './ui/AuthGate'
 import { BottomNavigation, SideNavigation, TopBar } from './ui/AppNavigation'
@@ -32,29 +33,33 @@ export function AppShell() {
 
   const incomingFriendRequestCount = useIncomingFriendRequestCount(Boolean(auth.session))
 
-  const navigateTo = useCallback((to: string) => {
+  const confirmNavigation = useCallback((to?: string) => {
     if (activePage === 'workout' && to !== pagePaths.workout && activeWorkout.draft) {
       const shouldLeave = window.confirm(
         '진행 중인 운동이 있습니다. 초안은 이 기기에 임시 저장되며, 다시 운동 시작 메뉴에서 이어서 할 수 있습니다. 나갈까요?',
       )
-      if (!shouldLeave) return
+      if (!shouldLeave) return false
     }
     if (hasUnsavedRecordEdit) {
       const shouldLeave = window.confirm(
         '고친 기록을 저장하지 않았습니다. 나가면 수정한 내용이 사라집니다. 나갈까요?',
       )
-      if (!shouldLeave) return
+      if (!shouldLeave) return false
       setHasUnsavedRecordEdit(false)
     }
+    return true
+  }, [activePage, activeWorkout.draft, hasUnsavedRecordEdit])
+
+  useNavigationGuard({
+    when: (activePage === 'workout' && Boolean(activeWorkout.draft)) || hasUnsavedRecordEdit,
+    onConfirm: () => confirmNavigation(),
+  })
+
+  const navigateTo = useCallback((to: string) => {
+    if (!confirmNavigation(to)) return
     navigate(to)
     closeMenus()
-  }, [
-    activePage,
-    activeWorkout.draft,
-    hasUnsavedRecordEdit,
-    navigate,
-    closeMenus,
-  ])
+  }, [closeMenus, confirmNavigation, navigate])
 
   const selectPage = useCallback((page: PageId) => {
     navigateTo(pagePaths[page])

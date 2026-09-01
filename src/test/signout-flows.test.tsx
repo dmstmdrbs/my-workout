@@ -74,5 +74,15 @@ describe.sequential('UF-12: 로그아웃', () => {
     await screen.findByRole('heading', { name: '나의 트레이닝을 이어가세요.' })
     expect(localStorage.getItem('trainlog:workout-draft:v1')).toBeNull()
     expect(vi.mocked(window.confirm).mock.calls.at(-1)?.[0]).toContain('진행 중인 운동')
+
+    // The same App instance remains mounted across sign-out. Signing back in
+    // must not resurrect the previous account's in-memory toast or unload
+    // guard after the local draft was removed.
+    await user.click(screen.getByRole('button', { name: 'Google로 계속하기' }))
+    await screen.findByRole('heading', { name: '설정' })
+    expect(screen.queryByText('진행 중인 운동')).toBeNull()
+    const beforeUnload = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(beforeUnload)
+    expect(beforeUnload.defaultPrevented).toBe(false)
   })
 })

@@ -32,7 +32,31 @@ const OVERLAY_BASE_Z = 60
 const OVERLAY_LAYER_STEP = 10
 
 let nextOverlayLayer = 0
-let openOverlayIds: string[] = []
+
+interface ElementIsolationSnapshot {
+  element: HTMLElement
+  supportsInertProperty: boolean
+  hadOwnInertProperty: boolean
+  inert: boolean
+  hadInertAttribute: boolean
+  inertAttributeValue: string | null
+  hadAriaHiddenAttribute: boolean
+  ariaHiddenValue: string | null
+}
+
+interface OverlayIsolationSnapshot {
+  bodyOverflow: string
+  appRoot: ElementIsolationSnapshot | null
+}
+
+interface OverlayRegistration {
+  id: string
+  backdrop: HTMLElement | null
+  coveredSnapshot: ElementIsolationSnapshot | null
+}
+
+let isolationSnapshot: OverlayIsolationSnapshot | null = null
+let openOverlays: OverlayRegistration[] = []
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -59,6 +83,7 @@ export function Overlay({ isOpen, onClose, presentation, labelledBy, describedBy
   const id = useId()
   const layerRef = useRef<number | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
   // `onClose` is passed as a fresh inline arrow by every caller, and the
   // consuming screen can re-render on its own timers (e.g. WorkoutRunner's
@@ -81,15 +106,17 @@ export function Overlay({ isOpen, onClose, presentation, labelledBy, describedBy
     if (!isOpen) return
 
     previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    openOverlayIds = [...openOverlayIds, id]
+    const unregisterOverlay = registerOverlay(id, backdropRef.current)
 
     const panel = panelRef.current
-    const initialFocusTarget = panel?.querySelector<HTMLElement>('[data-overlay-initial-focus]') ?? panel
+    const initialFocusTarget = panel?.querySelector<HTMLElement>('[data-overlay-initial-focus]')
+      ?? panel?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
+      ?? panel
     initialFocusTarget?.focus()
 
     const handleKeydown = (event: KeyboardEvent) => {
+      if (openOverlays.at(-1)?.id !== id) return
       if (event.key === 'Escape') {
-        if (openOverlayIds.at(-1) !== id) return
         onCloseRef.current()
         return
       }
@@ -99,8 +126,9 @@ export function Overlay({ isOpen, onClose, presentation, labelledBy, describedBy
     document.addEventListener('keydown', handleKeydown)
     return () => {
       document.removeEventListener('keydown', handleKeydown)
-      openOverlayIds = openOverlayIds.filter((entry) => entry !== id)
-      previouslyFocusedRef.current?.focus()
+      const wasTopmost = openOverlays.at(-1)?.id === id
+      unregisterOverlay()
+      if (wasTopmost) previouslyFocusedRef.current?.focus()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onClose is read through onCloseRef intentionally; see comment above.
   }, [isOpen, id])
@@ -114,7 +142,10 @@ export function Overlay({ isOpen, onClose, presentation, labelledBy, describedBy
       className={`overlay-backdrop overlay-backdrop--${presentation}`}
       style={{ zIndex }}
       role="presentation"
-      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
+      ref={backdropRef}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && openOverlays.at(-1)?.id === id) onCloseRef.current()
+      }}
     >
       <div
         className={`overlay-panel overlay-panel--${presentation} ${className ?? ''}`}
@@ -130,6 +161,103 @@ export function Overlay({ isOpen, onClose, presentation, labelledBy, describedBy
     </div>,
     document.body,
   )
+}
+
+function registerOverlay(id: string, backdrop: HTMLElement | null) {
+  if (openOverlays.length === 0) lockBackground()
+  const registration: OverlayRegistration = { id, backdrop, coveredSnapshot: null }
+  openOverlays = [...openOverlays, registration]
+  syncOverlayLayers()
+  let isRegistered = true
+
+  return () => {
+    if (!isRegistered) return
+    isRegistered = false
+    if (registration.coveredSnapshot) restoreElementIsolation(registration.coveredSnapshot)
+    openOverlays = openOverlays.filter((entry) => entry !== registration)
+    if (openOverlays.length === 0) {
+      restoreBackground()
+      return
+    }
+    syncOverlayLayers()
+  }
+}
+
+function lockBackground() {
+  const appRoot = document.getElementById('root')
+  isolationSnapshot = {
+    bodyOverflow: document.body.style.overflow,
+    appRoot: appRoot ? captureElementIsolation(appRoot) : null,
+  }
+
+  document.body.style.overflow = 'hidden'
+  if (appRoot) isolateElement(appRoot)
+}
+
+function restoreBackground() {
+  const snapshot = isolationSnapshot
+  isolationSnapshot = null
+  if (!snapshot) return
+
+  document.body.style.overflow = snapshot.bodyOverflow
+  if (snapshot.appRoot) restoreElementIsolation(snapshot.appRoot)
+}
+
+function syncOverlayLayers() {
+  const topIndex = openOverlays.length - 1
+  openOverlays.forEach((registration, index) => {
+    if (!registration.backdrop) return
+    if (index === topIndex) {
+      if (registration.coveredSnapshot) {
+        restoreElementIsolation(registration.coveredSnapshot)
+        registration.coveredSnapshot = null
+      }
+      return
+    }
+    if (!registration.coveredSnapshot) registration.coveredSnapshot = captureElementIsolation(registration.backdrop)
+    isolateElement(registration.backdrop)
+  })
+}
+
+function captureElementIsolation(element: HTMLElement): ElementIsolationSnapshot {
+  const inertElement = element as (HTMLElement & { inert?: boolean })
+  return {
+    element,
+    supportsInertProperty: 'inert' in element,
+    hadOwnInertProperty: Object.prototype.hasOwnProperty.call(element, 'inert'),
+    inert: inertElement.inert ?? element.hasAttribute('inert'),
+    hadInertAttribute: element.hasAttribute('inert'),
+    inertAttributeValue: element.getAttribute('inert'),
+    hadAriaHiddenAttribute: element.hasAttribute('aria-hidden'),
+    ariaHiddenValue: element.getAttribute('aria-hidden'),
+  }
+}
+
+function isolateElement(element: HTMLElement) {
+  const inertElement = element as (HTMLElement & { inert?: boolean })
+  inertElement.inert = true
+  element.setAttribute('inert', '')
+  element.setAttribute('aria-hidden', 'true')
+}
+
+function restoreElementIsolation(snapshot: ElementIsolationSnapshot) {
+  const { element } = snapshot
+  const inertElement = element as (HTMLElement & { inert?: boolean })
+  if (snapshot.supportsInertProperty || snapshot.hadOwnInertProperty) {
+    inertElement.inert = snapshot.inert
+  } else {
+    Reflect.deleteProperty(inertElement, 'inert')
+  }
+  if (snapshot.hadInertAttribute) {
+    element.setAttribute('inert', snapshot.inertAttributeValue ?? '')
+  } else {
+    element.removeAttribute('inert')
+  }
+  if (snapshot.hadAriaHiddenAttribute) {
+    element.setAttribute('aria-hidden', snapshot.ariaHiddenValue ?? '')
+  } else {
+    element.removeAttribute('aria-hidden')
+  }
 }
 
 function trapTabFocus(event: KeyboardEvent, panel: HTMLElement | null) {

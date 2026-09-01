@@ -36,7 +36,7 @@ export function Button({
       className={classes}
       type={type}
       disabled={disabled || isLoading}
-      aria-busy={isLoading || undefined}
+      aria-busy={isLoading ? 'true' : props['aria-busy']}
     >
       {children}
     </button>

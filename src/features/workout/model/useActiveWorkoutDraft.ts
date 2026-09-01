@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import {
-  readStoredWorkoutDraft,
-  workoutDraftStorageKey,
+  clearStoredWorkoutDraft,
+  getStoredWorkoutDraftSnapshot,
+  subscribeStoredWorkoutDraft,
+  writeStoredWorkoutDraft,
   type StoredWorkoutDraft,
 } from '../activeWorkoutDraft'
 
 export function useActiveWorkoutDraft(shouldTick: boolean) {
-  const [draft, setDraft] = useState<StoredWorkoutDraft | null>(() => readStoredWorkoutDraft())
+  const draft = useSyncExternalStore(
+    subscribeStoredWorkoutDraft,
+    getStoredWorkoutDraftSnapshot,
+    () => null,
+  )
   const [clock, setClock] = useState(Date.now())
 
   useEffect(() => {
@@ -20,16 +26,6 @@ export function useActiveWorkoutDraft(shouldTick: boolean) {
   }, [draft])
 
   useEffect(() => {
-    const restoreExternalDraft = (event: StorageEvent) => {
-      if (event.key !== workoutDraftStorageKey) return
-      setDraft(readStoredWorkoutDraft())
-      setClock(Date.now())
-    }
-    window.addEventListener('storage', restoreExternalDraft)
-    return () => window.removeEventListener('storage', restoreExternalDraft)
-  }, [])
-
-  useEffect(() => {
     if (!draft || !shouldTick) return
     setClock(Date.now())
     const interval = window.setInterval(() => setClock(Date.now()), 1_000)
@@ -37,12 +33,19 @@ export function useActiveWorkoutDraft(shouldTick: boolean) {
   }, [draft, shouldTick])
 
   const updateDraft = useCallback((nextDraft: StoredWorkoutDraft | null) => {
-    setDraft(nextDraft)
+    if (nextDraft) {
+      // WorkoutRunner already persists the value before notifying its shell.
+      // Keeping this callback on the same store boundary also covers callers
+      // that only know about the app-level draft callback.
+      writeStoredWorkoutDraft(nextDraft)
+    } else {
+      clearStoredWorkoutDraft()
+    }
     setClock(Date.now())
   }, [])
 
   const clearDraft = useCallback(() => {
-    setDraft(null)
+    clearStoredWorkoutDraft()
     setClock(Date.now())
   }, [])
 

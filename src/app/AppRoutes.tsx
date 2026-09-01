@@ -20,7 +20,14 @@ import { Settings } from '../features/settings'
 import { Stats } from '../features/stats'
 import { WorkoutRunner, type StoredWorkoutDraft } from '../features/workout'
 import { Button } from '../shared/ui'
-import { pagePaths } from './model/navigation'
+import {
+  buildRecordPath,
+  buildRecordsPath,
+  buildRoutinePath,
+  buildWorkoutCompletePath,
+  buildWorkoutPath,
+  pagePaths,
+} from './model/navigation'
 
 interface AppRoutesProps {
   onNavigate: (to: string) => void
@@ -43,11 +50,11 @@ export function AppRoutes({
         <Dashboard
           onStartWorkout={() => onNavigate('/workout')}
           onViewRecords={() => onNavigate('/records')}
-          onSelectSession={(sessionId) => onNavigate(`/records/${sessionId}`)}
+          onSelectSession={(sessionId) => onNavigate(buildRecordPath(sessionId))}
           onManageRoutines={() => onNavigate('/routines')}
-          onSelectRoutine={(routineId) => onNavigate(`/routines/${routineId}`)}
+          onSelectRoutine={(routineId) => onNavigate(buildRoutinePath(routineId))}
           onOpenPrograms={() => onNavigate('/programs')}
-          onStartProgramDay={(dayId) => onNavigate(`/workout?programDay=${dayId}`)}
+          onStartProgramDay={(dayId) => onNavigate(buildWorkoutPath(dayId))}
         />
       )} />
       <Route path={pagePaths.workout} element={(
@@ -59,49 +66,45 @@ export function AppRoutes({
       <Route
         path={`${pagePaths.workout}/complete/:sessionId`}
         element={<WorkoutCompleteRoute
-          onViewRecord={(sessionId) => navigate(`/records/${sessionId}`)}
+          onViewRecord={(sessionId) => navigate(buildRecordPath(sessionId))}
           onGoHome={() => navigate('/')}
         />}
       />
       <Route
         path={pagePaths.programs}
         element={<Programs
-          onStartDay={(dayId) => navigate(`/workout?programDay=${dayId}`)}
-          onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)}
+          onStartDay={(dayId) => navigate(buildWorkoutPath(dayId))}
+          onSelectSession={(sessionId) => navigate(buildRecordPath(sessionId))}
         />}
       />
       <Route
         path={`${pagePaths.routines}/:routineId?`}
         element={<RoutineRoute
           onRoutineChange={(routineId) => navigate(
-            routineId === 'new'
-              ? '/routines/new'
-              : routineId
-                ? `/routines/${routineId}`
-                : '/routines',
+            buildRoutinePath(routineId),
           )}
-          onStartProgramDay={(dayId) => navigate(`/workout?programDay=${dayId}`)}
+          onStartProgramDay={(dayId) => navigate(buildWorkoutPath(dayId))}
         />}
       />
       <Route
         path={pagePaths.records}
         element={<RecordsRoute
-          onSelectDay={(dateKey) => navigate(`/records?d=${dateKey}`, { replace: true })}
-          onSelectSession={(sessionId) => navigate(`/records/${sessionId}`)}
+          onSelectDay={(dateKey) => navigate(buildRecordsPath(dateKey), { replace: true })}
+          onSelectSession={(sessionId) => navigate(buildRecordPath(sessionId))}
         />}
       />
       <Route
         path={`${pagePaths.records}/:sessionId/edit`}
         element={<RecordEditRoute
-          onDone={(sessionId) => navigate(`/records/${sessionId}`, { replace: true })}
+          onDone={(sessionId) => navigate(buildRecordPath(sessionId), { replace: true })}
           onDirtyChange={onRecordDirtyChange}
         />}
       />
       <Route
         path={`${pagePaths.records}/:sessionId`}
         element={<RecordDetailRoute
-          onBack={(dateKey) => navigate(dateKey ? `/records?d=${dateKey}` : '/records')}
-          onEdit={(sessionId) => navigate(`/records/${sessionId}/edit`)}
+          onBack={(dateKey) => navigate(buildRecordsPath(dateKey))}
+          onEdit={(sessionId) => navigate(buildRecordPath(sessionId, 'edit'))}
         />}
       />
       <Route path={pagePaths.stats} element={<Stats />} />
@@ -131,10 +134,10 @@ function WorkoutRoute({
   return (
     <WorkoutRunner
       initialProgramRunDayId={requestedProgramDayId}
-      onSelectProgramDay={(dayId) => navigate(`${pagePaths.workout}?programDay=${dayId}`)}
+      onSelectProgramDay={(dayId) => navigate(buildWorkoutPath(dayId))}
       onFinish={(sessionId) => {
         onWorkoutEnd()
-        navigate(`${pagePaths.workout}/complete/${sessionId}`)
+        navigate(buildWorkoutCompletePath(sessionId))
       }}
       onCancel={() => {
         onWorkoutEnd()
