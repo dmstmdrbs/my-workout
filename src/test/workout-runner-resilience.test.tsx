@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { beforeAll, describe, expect, test } from 'vitest'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
+import { beforeAll, describe, expect, test, vi } from 'vitest'
 import App from '../App'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
 import type { AppServices } from '../services'
@@ -41,6 +41,31 @@ function renderAppWithServices(services: AppServices, initialPath = '/workout') 
   )
 }
 
+function HistoryBackButton() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  return <>
+    <button type="button" onClick={() => navigate(-1)}>브라우저 뒤로가기</button>
+    <output data-testid="current-path">{location.pathname}</output>
+  </>
+}
+
+function renderAppWithHistory(entries: string[], initialIndex: number) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: 0 }, mutations: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AppServicesProvider services={createLocalStorageServices()}>
+        <MemoryRouter initialEntries={entries} initialIndex={initialIndex}>
+          <App />
+          <HistoryBackButton />
+        </MemoryRouter>
+      </AppServicesProvider>
+    </QueryClientProvider>,
+  )
+}
+
 describe.sequential('운동 화면: 지난 기록 조회 실패 내성', () => {
   beforeAll(() => {
     localStorage.clear()
@@ -70,5 +95,22 @@ describe.sequential('운동 화면: 지난 기록 조회 실패 내성', () => {
 
     expect(screen.getByText('완료 기록 없음')).toBeTruthy()
     expect(screen.getByText('이전 세션 대응 기록 없음')).toBeTruthy()
+  })
+
+  test('진행 중 초안이 있을 때 브라우저 뒤로가기를 취소하면 운동 화면을 유지한다', async () => {
+    localStorage.removeItem(workoutDraftKey)
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    renderAppWithHistory(['/', '/workout'], 1)
+    await screen.findByRole('heading', { name: '오늘 어떤 운동을 할까요?' })
+    await user.click(screen.getByRole('button', { name: '자유 운동으로 시작' }))
+    await screen.findByRole('heading', { name: '자유 운동' })
+
+    await user.click(screen.getByRole('button', { name: '브라우저 뒤로가기' }))
+    expect(screen.getByRole('heading', { name: '자유 운동' })).toBeTruthy()
+    expect(screen.getByTestId('current-path').textContent).toBe('/workout')
+    expect(confirm.mock.calls).toHaveLength(1)
+    confirm.mockRestore()
   })
 })

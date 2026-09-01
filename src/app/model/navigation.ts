@@ -41,6 +41,34 @@ export function getActivePage(pathname: string): PageId | null {
   return null
 }
 
+export function buildWorkoutPath(programDayId?: string | null) {
+  return programDayId
+    ? `${pagePaths.workout}?programDay=${encodeURIComponent(programDayId)}`
+    : pagePaths.workout
+}
+
+export function buildWorkoutCompletePath(sessionId: string) {
+  return `${pagePaths.workout}/complete/${encodeURIComponent(sessionId)}`
+}
+
+export function buildRecordPath(sessionId: string, mode: 'detail' | 'edit' = 'detail') {
+  return mode === 'edit'
+    ? `${pagePaths.records}/${encodeURIComponent(sessionId)}/edit`
+    : `${pagePaths.records}/${encodeURIComponent(sessionId)}`
+}
+
+export function buildRecordsPath(dateKey?: string | null) {
+  return dateKey ? `${pagePaths.records}?d=${encodeURIComponent(dateKey)}` : pagePaths.records
+}
+
+export function buildRoutinePath(routineId?: string | null) {
+  return routineId === 'new'
+    ? `${pagePaths.routines}/new`
+    : routineId
+      ? `${pagePaths.routines}/${encodeURIComponent(routineId)}`
+      : pagePaths.routines
+}
+
 function matchesSegment(prefix: string) {
   return (pathname: string) => pathname === prefix || pathname.startsWith(`${prefix}/`)
 }
