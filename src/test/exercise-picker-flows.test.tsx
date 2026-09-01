@@ -238,7 +238,7 @@ describe.sequential('운동 화면: 종목 추가 시트 위에 뜨는 새 운�
     await screen.findByRole('dialog', { name: '새 운동 만들기' })
 
     // Both layers are simultaneously present and addressable.
-    expect(screen.getAllByRole('dialog')).toHaveLength(2)
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2)
 
     await user.click(screen.getByRole('button', { name: '취소' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '새 운동 만들기' })).toBeNull())
@@ -269,7 +269,7 @@ describe.sequential('운동 화면: 종목 추가 시트 위에 뜨는 새 운�
     await openPickerSheet(user)
     await user.click(screen.getByRole('button', { name: '새 운동 만들기' }))
     await screen.findByRole('dialog', { name: '새 운동 만들기' })
-    expect(screen.getAllByRole('dialog')).toHaveLength(2)
+    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2)
 
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '새 운동 만들기' })).toBeNull())

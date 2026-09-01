@@ -1,5 +1,5 @@
 /**
- * favicon과 PWA 아이콘을 `src/components/brandArt.ts`의 심볼 패스에서 굽는다.
+ * favicon과 PWA 아이콘을 `src/shared/ui/BrandLogo/brandArt.ts`의 심볼 패스에서 굽는다.
  *
  * **수동 실행 전용이다.** `npm run build`에 넣지 않는다 -- 그러면 Vercel 빌드가
  * librsvg에 의존하게 되고, 배포가 로컬에만 있는 도구 때문에 깨질 수 있다.
@@ -19,7 +19,7 @@ import {
   ICON_COLORS,
   STROKE_WIDTH,
   SYMBOL_VIEWBOX,
-} from '../src/components/brandArt.ts'
+} from '../src/shared/ui/BrandLogo/brandArt.ts'
 
 function requireRsvg() {
   try {

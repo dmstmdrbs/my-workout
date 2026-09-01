@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { symbolSvg } from '../../scripts/build-brand-assets.mjs'
 
-// 이 테스트가 지키는 것: 누군가 src/components/brandArt.ts 의 심볼 좌표를 고쳐놓고
+// 이 테스트가 지키는 것: 누군가 shared/ui/BrandLogo/brandArt.ts 의 심볼 좌표를 고쳐놓고
 // scripts/build-brand-assets.mjs 를 다시 돌리는 것을 잊는 상황. 그러면 앱 안의
 // 심볼과 커밋된 favicon.svg 가 조용히 서로 달라지는데, 다른 검사는 전부 초록으로
 // 남는다. symbolSvg()(순수 문자열 생성, rsvg-convert 호출 없음)를 다시 실행해

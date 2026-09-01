@@ -3,7 +3,7 @@ import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import type { WorkoutSession } from '../../types/domain'
 import { muscleLabel } from '../workout/exerciseLabels'
-import { BrandLogo } from '../../components/BrandLogo'
+import { BrandLogo } from '../../shared/ui'
 import { formatWeight, formatWorkoutDuration, formatWorkoutNumber, formatWorkoutRir, formatWorkoutSet } from './workoutShareFormat'
 
 export const WorkoutShareCard = forwardRef<HTMLElement, { session: WorkoutSession; weightUnit: string; includeRir: boolean }>(function WorkoutShareCard({ session, weightUnit, includeRir }, cardRef) {

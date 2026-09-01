@@ -34,6 +34,9 @@
 - PWA (`vite-plugin-pwa`)
 - Vitest + Testing Library
 
+프런트엔드 계층과 디자인 시스템의 의존 규칙은
+[프런트엔드 아키텍처](docs/frontend-architecture.md)에 정리되어 있습니다.
+
 ## 로컬 실행
 
 ```bash
