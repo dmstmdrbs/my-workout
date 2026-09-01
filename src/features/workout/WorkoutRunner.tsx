@@ -72,6 +72,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     clock,
     restAlertsEnabled,
     beginDraft,
+    restoreStoredDraft,
     clearDraft,
     togglePause,
     startRest,
@@ -207,17 +208,20 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
   }
 
   const beginWorkout = () => {
+    if (restoreStoredDraft()) return
     if (!selectedRoutine) return
     const session = createRoutineWorkoutDraft(selectedRoutine, exercises)
     startOrConfirmWeights(session)
   }
 
   const beginFreeWorkout = () => {
+    if (restoreStoredDraft()) return
     const session = createFreeWorkoutDraft()
     beginDraft(session)
   }
 
   const beginProgramWorkout = () => {
+    if (restoreStoredDraft()) return
     if (!programDay) return
     const session = createProgramWorkoutDraft(programDay, exercises)
     startOrConfirmWeights(session)
