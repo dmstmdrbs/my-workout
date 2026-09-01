@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
-import { BrandLogo } from '../components/BrandLogo'
+import { BrandLogo } from '../shared/ui'
 
 describe('BrandLogo', () => {
   test('title을 주면 이름을 가진 이미지로 노출된다', () => {

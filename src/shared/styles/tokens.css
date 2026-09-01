@@ -1,0 +1,118 @@
+:root {
+  color-scheme: light;
+
+  /* Color roles */
+  --color-canvas: #f7f7f6;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f3f4f1;
+  --color-surface-emphasis: #eceeea;
+  --color-text: #18181b;
+  --color-text-muted: #71717a;
+  --color-border: #e4e4e7;
+  --color-brand: #2563eb;
+  --color-on-brand: #ffffff;
+  --color-brand-subtle: #eff6ff;
+  --color-brand-border: #bfdbfe;
+  --color-success: #0f9f6e;
+  --color-success-subtle: #def7ec;
+  --color-danger: #dc2626;
+  --color-on-danger: #ffffff;
+  --color-danger-subtle: #fee2e2;
+
+  /* Fixed inverse colors for controls that stay dark in both themes. */
+  --color-inverse-surface: #202329;
+  --color-inverse-text: #ffffff;
+  --color-inverse-muted: #b4bbc8;
+  --color-inverse-control: rgb(255 255 255 / 0.13);
+  --color-inverse-control-hover: rgb(255 255 255 / 0.22);
+
+  /* Typography */
+  --font-family-body: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-size-caption: 0.68rem;
+  --font-size-control: 0.85rem;
+  --font-size-control-small: 0.75rem;
+  --font-weight-medium: 650;
+  --font-weight-strong: 750;
+
+  /* Shape, spacing, motion, and elevation */
+  --space-2: 8px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --control-radius: 9px;
+  --control-height-sm: 38px;
+  --control-height-md: 42px;
+  --control-padding-inline: 15px;
+  --shadow-card: 0 1px 2px rgb(24 24 27 / 0.04);
+  --shadow-float: 0 10px 32px rgb(24 24 27 / 0.15);
+  --motion-fast: 140ms;
+
+  /* Stable aliases keep feature styles readable during incremental migration. */
+  --bg: var(--color-canvas);
+  --surface: var(--color-surface);
+  --surface-subtle: var(--color-surface-subtle);
+  --surface-emphasis: var(--color-surface-emphasis);
+  --text: var(--color-text);
+  --text-muted: var(--color-text-muted);
+  --border: var(--color-border);
+  --accent: var(--color-brand);
+  --on-accent: var(--color-on-brand);
+  --accent-subtle: var(--color-brand-subtle);
+  --accent-border: var(--color-brand-border);
+  --success: var(--color-success);
+  --success-subtle: var(--color-success-subtle);
+  --danger: var(--color-danger);
+  --on-danger: var(--color-on-danger);
+  --danger-subtle: var(--color-danger-subtle);
+  --contrast-surface: var(--color-inverse-surface);
+  --contrast-text: var(--color-inverse-text);
+  --contrast-muted: var(--color-inverse-muted);
+  --contrast-control: var(--color-inverse-control);
+  --contrast-control-hover: var(--color-inverse-control-hover);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-canvas: #171717;
+    --color-surface: #202020;
+    --color-surface-subtle: #292929;
+    --color-surface-emphasis: #303030;
+    --color-text: #fafafa;
+    --color-text-muted: #a1a1aa;
+    --color-border: #343434;
+    --color-brand: #60a5fa;
+    --color-on-brand: #10213c;
+    --color-brand-subtle: #172554;
+    --color-brand-border: #25446e;
+    --color-success: #34d399;
+    --color-success-subtle: #143c32;
+    --color-danger: #f87171;
+    --color-on-danger: #321010;
+    --color-danger-subtle: #482021;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.18);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #171717;
+  --color-surface: #202020;
+  --color-surface-subtle: #292929;
+  --color-surface-emphasis: #303030;
+  --color-text: #fafafa;
+  --color-text-muted: #a1a1aa;
+  --color-border: #343434;
+  --color-brand: #60a5fa;
+  --color-on-brand: #10213c;
+  --color-brand-subtle: #172554;
+  --color-brand-border: #25446e;
+  --color-success: #34d399;
+  --color-success-subtle: #143c32;
+  --color-danger: #f87171;
+  --color-on-danger: #321010;
+  --color-danger-subtle: #482021;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.18);
+}

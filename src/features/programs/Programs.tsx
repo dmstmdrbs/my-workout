@@ -22,7 +22,7 @@ import {
   Timer,
   X,
 } from 'lucide-react'
-import { Overlay } from '../../components/Overlay'
+import { Overlay } from '../../shared/ui'
 import { addCalendarDays, daysBetween, getDateInTimeZone } from '../../lib/localDate'
 import { useAppServices, useSettings } from '../../services'
 import type { ExerciseOneRepMax, ProgramRun, ProgramRunDay } from '../../types/domain'

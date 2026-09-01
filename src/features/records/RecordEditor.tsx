@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ImageDown, Plus, RefreshCw, Save } from 'lucide-react'
-import { Overlay } from '../../components/Overlay'
+import { Overlay } from '../../shared/ui'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutExercise, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import { SetRow } from '../workout/SetRow'

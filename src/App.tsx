@@ -18,7 +18,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react'
-import { BrandLogo } from './components/BrandLogo'
+import { BrandLogo, Button } from './shared/ui'
 import { BodyMeasurements } from './features/body/BodyMeasurements'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { ExerciseCatalog } from './features/exercises/ExerciseCatalog'
@@ -458,7 +458,7 @@ function SignInGate({ error, onSignIn }: { error: string | null; onSignIn: () =>
       <h1 id="sign-in-title">나의 트레이닝을 이어가세요.</h1>
       <p>Google 계정으로 로그인하면 운동 기록과 RIR 설정을 모든 기기에서 안전하게 관리할 수 있어요.</p>
       {error && <p className="auth-gate-error" role="alert">{error}</p>}
-      <button className="primary-button auth-google-button" type="button" onClick={onSignIn}>Google로 계속하기</button>
+      <Button className="auth-google-button" onClick={onSignIn}>Google로 계속하기</Button>
       <small>개인 운동 기록만 본인 계정에서 볼 수 있습니다.</small>
     </section>
   </main>
@@ -513,7 +513,7 @@ function UnknownPageRoute({ onGoHome }: { onGoHome: () => void }) {
     <p className="eyebrow">NOT FOUND</p>
     <h1 id="not-found-title">이 페이지를 찾을 수 없어요.</h1>
     <p><code>{location.pathname}</code> 주소를 확인해 주세요. 페이지가 이동했거나 존재하지 않을 수 있어요.</p>
-    <button className="secondary-button" type="button" onClick={onGoHome}>홈으로 돌아가기</button>
+    <Button variant="secondary" onClick={onGoHome}>홈으로 돌아가기</Button>
   </main>
 }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ImageDown, Pencil, RefreshCw, Share2, Trash2, X } from 'lucide-react'
-import { Overlay } from '../../components/Overlay'
+import { Overlay } from '../../shared/ui'
 import { toLocalDateKey } from '../../lib/week'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'

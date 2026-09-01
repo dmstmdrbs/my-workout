@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { Overlay } from '../../components/Overlay'
+import { Overlay } from '../../shared/ui'
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { suggestNextLoad } from '../../lib/loadSuggestion'

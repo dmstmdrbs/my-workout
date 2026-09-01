@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Gauge, Save, X } from 'lucide-react'
-import { Overlay } from '../../components/Overlay'
+import { Overlay } from '../../shared/ui'
 import type { Exercise, ExerciseOneRepMax } from '../../types/domain'
 import './OneRepMaxSetup.css'
 

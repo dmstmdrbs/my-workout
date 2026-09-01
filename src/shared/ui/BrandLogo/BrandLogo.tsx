@@ -25,18 +25,18 @@ import './BrandLogo.css'
  * `<use>`는 html-to-image가 외부 문서 참조를 따라가지 못해 빈칸이 된다.
  *
  * 색은 두 값만 본다. 덤벨과 `train`은 `currentColor`, 체크와 `log`는
- * `--brand-accent`(없으면 `--accent`). 항상 어두운 공유 카드처럼 테마를
+ * `--brand-accent`(없으면 `--color-brand`). 항상 어두운 공유 카드처럼 테마를
  * 따르면 안 되는 표면은 이 두 값을 CSS에서 덮어쓴다.
  */
 
-type BrandLogoProps = {
+export type BrandLogoProps = {
   variant?: 'wordmark' | 'symbol'
   className?: string
   /** 주면 로고가 그 이름을 가진 이미지가 된다. 없으면 장식으로 숨는다. */
   title?: string
 }
 
-const ACCENT = 'var(--brand-accent, var(--accent))'
+const ACCENT = 'var(--brand-accent, var(--color-brand))'
 
 export function BrandLogo({ variant = 'wordmark', className, title }: BrandLogoProps) {
   const isSymbol = variant === 'symbol'
