@@ -22,7 +22,7 @@ function renderWorkout() {
   )
 }
 
-describe.sequential('운동 화면: 이전 완료 세션 세트별 비교', () => {
+describe.sequential('운동 화면: 이전 완료 세션 요약', () => {
   beforeAll(async () => {
     localStorage.clear()
     services = createLocalStorageServices()
@@ -43,7 +43,7 @@ describe.sequential('운동 화면: 이전 완료 세션 세트별 비교', () =
     })
   })
 
-  test('같은 세트 순서의 중량·횟수·유형을 표시하고 없는 대응 세트는 명확히 비운다', async () => {
+  test('이전 완료 세션은 종목 단위 세트 수로만 요약하고 입력 행에는 반복하지 않는다', async () => {
     const user = userEvent.setup()
     renderWorkout()
 
@@ -55,17 +55,17 @@ describe.sequential('운동 화면: 이전 완료 세션 세트별 비교', () =
 
     const heading = await screen.findByRole('heading', { name: '체스트 서포티드 시티드 로우' })
     const card = within(heading.closest('section')!)
-    expect(await card.findByText('이전 1세트 · 웜업 · 55kg × 12회')).toBeTruthy()
-    expect(card.getByText('이전 2세트 · 탑세트 · 70kg × 8회')).toBeTruthy()
-    expect(card.getByText('이전 세션 대응 기록 없음')).toBeTruthy()
+    expect(await card.findByText('2세트 기록')).toBeTruthy()
+    expect(card.queryByText(/이전 1세트/)).toBeNull()
+    expect(card.queryByText(/이전 2세트/)).toBeNull()
+    expect(card.queryByText('이전 세션 대응 기록 없음')).toBeNull()
 
     const firstWeight = card.getByRole('spinbutton', { name: '1세트 중량 (kg)' })
     await user.clear(firstWeight)
     await user.type(firstWeight, '99')
 
     await waitFor(() => {
-      expect(card.getByText('이전 1세트 · 웜업 · 55kg × 12회')).toBeTruthy()
-      expect(card.getByText('이전 2세트 · 탑세트 · 70kg × 8회')).toBeTruthy()
+      expect(card.getByText('2세트 기록')).toBeTruthy()
     })
   })
 })

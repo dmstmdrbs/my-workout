@@ -52,8 +52,6 @@ export function WorkoutExerciseCard({ exercise, weightUnit, equipment, rirInputE
       {exercise.sets.map((set) => <SetRow
         key={set.id}
         set={set}
-        previousSet={previousSession?.sets.find((previous) => previous.setOrder === set.setOrder) ?? null}
-        showPreviousSet
         weightUnit={weightUnit}
         weightLabel={weightLabel}
         weightShortLabel={weightShortLabel}

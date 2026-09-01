@@ -94,7 +94,7 @@ describe.sequential('운동 화면: 지난 기록 조회 실패 내성', () => {
     expect(draft.draft.exercises[0].sets[0].reps).toBeNull()
 
     expect(screen.getByText('완료 기록 없음')).toBeTruthy()
-    expect(screen.getByText('이전 세션 대응 기록 없음')).toBeTruthy()
+    expect(screen.queryByText('이전 세션 대응 기록 없음')).toBeNull()
   })
 
   test('진행 중 초안이 있을 때 브라우저 뒤로가기를 취소하면 운동 화면을 유지한다', async () => {
