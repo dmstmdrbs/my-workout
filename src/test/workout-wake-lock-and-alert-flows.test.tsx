@@ -79,6 +79,20 @@ describe.sequential('UF-25: 운동 중 화면 켜 두기와 휴식 알림', () =
     await waitFor(() => expect(wakeLock.request.mock.calls.length).toBeGreaterThan(callsAfterStart))
   })
 
+  test('운동 입력이 바뀌어도 화면 잠금 요청을 다시 시작하지 않는다', async () => {
+    const wakeLock = stubWakeLock()
+    const user = userEvent.setup()
+    await startFreeWorkout(user)
+
+    await waitFor(() => expect(wakeLock.request).toHaveBeenCalledWith('screen'))
+    const callsAfterStart = wakeLock.request.mock.calls.length
+    const weightInput = screen.getAllByRole('spinbutton')[0]
+    await user.clear(weightInput)
+    await user.type(weightInput, '91')
+
+    expect(wakeLock.request).toHaveBeenCalledTimes(callsAfterStart)
+  })
+
   test('휴식이 끝나면 진동으로 알린다', async () => {
     stubWakeLock()
     const vibrate = vi.fn(() => true)

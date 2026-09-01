@@ -22,6 +22,14 @@ const setTypeLabels: Record<SetType, string> = {
   dropset: '드롭',
 }
 
+const setTypeMarkers: Record<SetType, string | null> = {
+  warmup: 'W',
+  working: null,
+  topset: 'T',
+  backoff: 'B',
+  dropset: 'D',
+}
+
 export const rirChoices: Array<{ value: number; label: string }> = [
   { value: 0, label: '0' },
   { value: 1, label: '1' },
@@ -50,3 +58,4 @@ export function decrementValue(value: number | null, step: number, floor = 0) { 
 
 export function formatRir(rir: Rir) { if (rir === null) return '–'; return rir >= 5 ? '5+' : String(rir) }
 export function setTypeLabel(setType: SetType) { return setTypeLabels[setType] ?? '본세트' }
+export function setTypeMarker(setType: SetType, setOrder: number) { return setTypeMarkers[setType] ?? String(setOrder) }

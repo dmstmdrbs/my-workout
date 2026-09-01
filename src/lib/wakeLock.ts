@@ -31,17 +31,28 @@ export function requestScreenWakeLock(): () => void {
 
   let sentinel: WakeLockLike | null = null
   let cancelled = false
+  let requestInFlight = false
 
   const acquire = async () => {
     if (cancelled || document.visibilityState !== 'visible') return
     // 이미 살아 있는 잠금이 있으면 다시 요청하지 않는다. 중복 요청은 앞선
     // 잠금을 놓아주지 않아 해제 시점을 잃는다.
-    if (sentinel && !sentinel.released) return
+    if ((sentinel && !sentinel.released) || requestInFlight) return
+    requestInFlight = true
     try {
-      sentinel = await api.request('screen')
+      const nextSentinel = await api.request('screen')
+      if (cancelled) {
+        // cleanup이 request()의 await 중에 먼저 실행될 수 있다. 이 sentinel은
+        // 이후 재사용할 수 없으므로 도착 즉시 반납해 화면 잠금이 새지 않게 한다.
+        await nextSentinel.release().catch(() => {})
+        return
+      }
+      sentinel = nextSentinel
     } catch {
       // 배터리 절약 모드나 사용자 설정으로 거부될 수 있다. 화면이 꺼질 뿐이다.
       sentinel = null
+    } finally {
+      requestInFlight = false
     }
   }
 

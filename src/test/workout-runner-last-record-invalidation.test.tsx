@@ -48,6 +48,7 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     await user.click(screen.getByRole('button', { name: '바벨 벤치프레스' }))
     await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
+    await screen.findByText('3세트 기록')
 
     // Record a distinctive new value, distinct from the seeded history, and
     // complete the set so the workout has something to save.
@@ -77,11 +78,10 @@ describe('운동 화면: 운동 종료 후 지난 기록 캐시 무효화', () =
     await user.click(screen.getByRole('button', { name: '선택한 1개 추가' }))
     await screen.findByRole('heading', { name: '바벨 벤치프레스' })
 
-    // The workout finished a moment ago must be reflected as "지난 기록"
-    // here -- not the pre-workout seeded value that would otherwise still
-    // sit in the unexpired 30s cache.
+    // The workout finished a moment ago must replace the seeded 3-set summary
+    // with the new 1-set summary, rather than leaving the unexpired cache.
     await waitFor(() => {
-      expect(screen.getByText('이전 1세트 · 본세트 · 123kg × 4회')).toBeTruthy()
+      expect(screen.getByText('1세트 기록')).toBeTruthy()
     })
   })
 })
