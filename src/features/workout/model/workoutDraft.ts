@@ -1,15 +1,16 @@
 import { snapshotExerciseName } from '../exerciseLabels'
-import type { Exercise, ProgramRunDay, Rir, Routine, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
-import type { WorkoutDraft } from '../activeWorkoutDraft'
+import type { Equipment, Exercise, ProgramRunDay, Rir, Routine, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
+import type { ExerciseTrackingType, WorkoutDraft, WorkoutDraftExercise } from '../activeWorkoutDraft'
 
 export function createRoutineWorkoutDraft(routine: Routine, exercises: Exercise[]): WorkoutDraft {
   const startedAt = new Date().toISOString()
   const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
   return {
     id: createWorkoutId(), routineId: routine.id, routineName: routine.name, status: 'in_progress', startedAt, completedAt: null, pausedSeconds: 0, notes: null,
-    exercises: [...routine.exercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder).map((routineExercise): WorkoutExercise => ({
+    exercises: [...routine.exercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder).map((routineExercise): WorkoutDraftExercise => ({
       id: createWorkoutId(), exerciseId: routineExercise.exerciseId, exerciseName: routineExercise.exerciseName,
       primaryMuscle: exerciseById.get(routineExercise.exerciseId)?.primaryMuscle ?? 'full_body', exerciseOrder: routineExercise.exerciseOrder, notes: routineExercise.notes,
+      trackingType: exerciseById.get(routineExercise.exerciseId)?.equipment === 'cardio' ? 'cardio' : 'strength',
       sets: [...routineExercise.sets].sort((a, b) => a.setOrder - b.setOrder).map((prescription): WorkoutSetRecord => ({
         id: createWorkoutId(), setOrder: prescription.setOrder, setType: prescription.setType, weightKg: prescription.targetWeightKg,
         reps: prescription.targetRepsMax ?? prescription.targetRepsMin,
@@ -34,6 +35,7 @@ export function createProgramWorkoutDraft(day: ProgramRunDay, exercises: Exercis
       status: 'in_progress', startedAt, completedAt: null, pausedSeconds: 0, notes: day.instructions,
       exercises: [{
         id: createWorkoutId(), exerciseId: exercise.id, exerciseName: exercise.name, primaryMuscle: exercise.primaryMuscle, exerciseOrder: 1,
+        trackingType: 'cardio',
         notes: target.rpeMin === null ? day.instructions : `목표 RPE ${target.rpeMin}-${target.rpeMax ?? target.rpeMin}`,
         sets: [{
           id: createWorkoutId(), setOrder: 1, setType: 'working', weightKg: null, reps: null,
@@ -49,12 +51,13 @@ export function createProgramWorkoutDraft(day: ProgramRunDay, exercises: Exercis
   return {
     id: createWorkoutId(), routineId: null, routineName: `Day ${day.dayNumber} · ${day.title}`, programRunDayId: day.id,
     status: 'in_progress', startedAt, completedAt: null, pausedSeconds: 0, notes: day.instructions,
-    exercises: day.routineSnapshot.exercises.map((prescription): WorkoutExercise => {
+    exercises: day.routineSnapshot.exercises.map((prescription): WorkoutDraftExercise => {
       const exercise = exerciseByName.get(prescription.exerciseName)
       if (!exercise) throw new Error(`${prescription.exerciseName} 종목을 찾지 못했어요.`)
       return {
         id: createWorkoutId(), exerciseId: exercise.id, exerciseName: exercise.name, primaryMuscle: exercise.primaryMuscle,
         exerciseOrder: prescription.exerciseOrder, notes: prescription.notes,
+        trackingType: exercise.equipment === 'cardio' ? 'cardio' : 'strength',
         sets: prescription.sets.map((set): WorkoutSetRecord => ({
           id: createWorkoutId(), setOrder: set.setOrder, setType: set.setType, weightKg: set.targetWeightKg,
           reps: set.targetRepsMax ?? set.targetRepsMin,
@@ -74,13 +77,50 @@ export function createFreeWorkoutDraft(): WorkoutDraft {
   }
 }
 
-export function createFreeWorkoutExercise({ exercise, exerciseOrder, previousSet, defaultRestSeconds, defaultRir }: { exercise: Exercise; exerciseOrder: number; previousSet: WorkoutSetRecord | null; defaultRestSeconds: number; defaultRir: Rir }): WorkoutExercise {
+export function createFreeWorkoutExercise({ exercise, exerciseOrder, previousSet, defaultRestSeconds, defaultRir }: { exercise: Exercise; exerciseOrder: number; previousSet: WorkoutSetRecord | null; defaultRestSeconds: number; defaultRir: Rir }): WorkoutDraftExercise {
   return {
     id: createWorkoutId(), exerciseId: exercise.id, exerciseName: snapshotExerciseName(exercise), primaryMuscle: exercise.primaryMuscle, exerciseOrder, notes: null,
+    trackingType: exercise.equipment === 'cardio' ? 'cardio' : 'strength',
     sets: [{
       id: createWorkoutId(), setOrder: 1, setType: 'working', weightKg: previousSet?.weightKg ?? null, reps: previousSet?.reps ?? null, durationSeconds: null, distanceKm: null,
-      targetRir: defaultRir, actualRir: null, restSeconds: exercise.defaultRestSeconds || defaultRestSeconds, isCompleted: false, completedAt: null, notes: null,
+      targetRir: exercise.equipment === 'cardio' ? null : defaultRir, actualRir: null, restSeconds: exercise.defaultRestSeconds || defaultRestSeconds, isCompleted: false, completedAt: null, notes: null,
     }],
+  }
+}
+
+export function isExerciseTrackingTypeChange(current: Equipment | ExerciseTrackingType, replacement: Equipment) {
+  return (current === 'cardio') !== (replacement === 'cardio')
+}
+
+export function resolveWorkoutExerciseTrackingType(current: WorkoutDraftExercise, catalogEquipment?: Equipment): ExerciseTrackingType {
+  return current.trackingType ?? (catalogEquipment === 'cardio' ? 'cardio' : 'strength')
+}
+
+export function replaceWorkoutExercise(
+  current: WorkoutDraftExercise,
+  replacement: Exercise,
+  { resetSets, defaultRestSeconds, defaultRir }: { resetSets: boolean; defaultRestSeconds: number; defaultRir: Rir },
+): WorkoutDraftExercise {
+  if (!resetSets) {
+    return {
+      ...current,
+      exerciseId: replacement.id,
+      exerciseName: snapshotExerciseName(replacement),
+      primaryMuscle: replacement.primaryMuscle,
+      trackingType: replacement.equipment === 'cardio' ? 'cardio' : 'strength',
+    }
+  }
+
+  const initialized = createFreeWorkoutExercise({
+    exercise: replacement,
+    exerciseOrder: current.exerciseOrder,
+    previousSet: null,
+    defaultRestSeconds,
+    defaultRir,
+  })
+  return {
+    ...initialized,
+    id: current.id,
   }
 }
 

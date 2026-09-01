@@ -16,6 +16,8 @@ interface ExercisePickerSheetProps {
   isOpen: boolean
   exercises: Exercise[]
   onClose: () => void
+  title?: string
+  eyebrow?: string
   onSelect?: (exercise: Exercise) => void
   onSelectMany?: (exercises: Exercise[]) => void
   selectionMode?: 'single' | 'multiple'
@@ -33,6 +35,8 @@ export function ExercisePickerSheet({
   isOpen,
   exercises,
   onClose,
+  title = '종목 추가',
+  eyebrow = 'ADD EXERCISE',
   onSelect,
   onSelectMany,
   selectionMode = 'single',
@@ -83,11 +87,11 @@ export function ExercisePickerSheet({
 
   return <Overlay isOpen={isOpen} onClose={onClose} presentation="sheet" labelledBy="exercise-picker-title" className="exercise-picker-sheet">
     <header className="exercise-picker-header">
-      <div><p className="eyebrow">ADD EXERCISE</p><h2 id="exercise-picker-title">종목 추가</h2></div>
+      <div><p className="eyebrow">{eyebrow}</p><h2 id="exercise-picker-title">{title}</h2></div>
       <div className="exercise-picker-header-actions">
         <button className="icon-button" type="button" onClick={() => { onClose(); navigate('/exercises') }} aria-label="종목 관리로 이동"><ListChecks size={18} /></button>
         {onOpenCreate && <button className="icon-button" type="button" onClick={onOpenCreate} aria-label="새 운동 만들기"><Plus size={19} /></button>}
-        <button className="icon-button" type="button" onClick={onClose} aria-label="종목 추가 닫기"><X size={19} /></button>
+        <button className="icon-button" type="button" onClick={onClose} aria-label={`${title} 닫기`}><X size={19} /></button>
       </div>
     </header>
 
