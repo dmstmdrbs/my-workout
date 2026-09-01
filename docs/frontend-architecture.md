@@ -73,4 +73,7 @@ slice 내부에서는 barrel을 거치지 않고 파일을 직접 import해 순�
 현재 `app` 계층은 route 조합, 전역 shell, 인증 session, navigation UI만
 소유합니다. 친구 요청 수와 운동 초안 같은 feature 상태는 각 feature의 공개
 API를 통해 사용하며, route entry 컴포넌트도 feature 내부 파일을 직접 참조하지
-않습니다. 아직 큰 화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다.
+않습니다. 운동 러너는 초안 생성·정규화를 `model`의 순수 함수로, 초안 저장과
+타이머·wake lock 효과를 runtime hook으로, 서버 조회를 query hook으로 분리했습니다.
+화면은 운동 카드·초기 설정·휴식 타이머·순서 변경 UI로 나뉩니다. 아직 남은 큰
+화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다.

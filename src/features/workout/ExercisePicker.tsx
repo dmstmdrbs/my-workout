@@ -6,6 +6,7 @@ import { Overlay } from '../../shared/ui'
 import { useAppServices } from '../../services'
 import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
 import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from './exerciseLabels'
+import { workoutSetupQueryKey } from './model/queryKeys'
 import './ExercisePicker.css'
 
 type MuscleFilter = MuscleGroup | 'all'
@@ -195,7 +196,7 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
       isArchived: false,
     }),
     onSuccess: (exercise) => {
-      void queryClient.invalidateQueries({ queryKey: ['workout-runner-setup'] })
+      void queryClient.invalidateQueries({ queryKey: workoutSetupQueryKey.all })
       // RoutineManager caches the same catalog under its own key
       // (`listExercises()` again, independently) -- without this, a routine
       // opened within its 30s staleTime right after creating an exercise
