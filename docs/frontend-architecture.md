@@ -109,6 +109,11 @@ API를 통해 사용하며, route entry 컴포넌트도 feature 내부 파일을
 편집에서 공유하는 세트 입력 행은 `entities/workout/ui/SetRow`가 소유합니다.
 종목을 조회하는 각 화면은 `entities/exercise/model/queryKeys.ts`의
 `exerciseCatalogQueryKey`를 prefix로 삼아 자신의 composite key를 만듭니다.
+Routines는 `model/routineDraft`가 React와 무관한 초안 타입·정규화·입력 파서를
+소유하고, `model/useRoutineManagerController`가 조회·저장·선택·미저장 변경
+상태를 소유합니다. `ui/RoutineListPane`, `ui/RoutineEditor`,
+`ui/RoutineStates`는 각각 목록·편집기·상태 화면을 렌더링하며, route-level
+`RoutineManager`는 라우팅 명령을 주입하고 이 UI를 조합합니다.
 아직 남은 큰 화면 컴포넌트와 feature 간 직접 import는 운동 초안 저장 모델
 (`workout/activeWorkoutDraft`), 1RM 설정 카드
 (`programs/OneRepMaxSettingsCard`), 친구 아바타·쿼리 키(`friends/*`)이며,
