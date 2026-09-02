@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { useAppServices } from '../../../services'
+import { useAppServices, workoutSetupQueryKey } from '../../../services'
 import type { Exercise, ProgramRun, ProgramRunDay, Routine } from '../../../types/domain'
-import { workoutSetupQueryKey } from './queryKeys'
 
 export interface WorkoutSetupData {
   routines: Routine[]

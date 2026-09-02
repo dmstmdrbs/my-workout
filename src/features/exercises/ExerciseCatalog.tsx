@@ -2,9 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, ArchiveRestore, Dumbbell, Pencil, Plus, RefreshCw, Search } from 'lucide-react'
 import { Overlay } from '../../shared/ui'
-import { useAppServices, useSettings } from '../../services'
+import { exerciseCatalogQueryKey, useAppServices, useSettings } from '../../services'
 import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
-import { brandLabel, exerciseCatalogQueryKey, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../../entities/exercise'
+import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../../entities/exercise'
 import './ExerciseCatalog.css'
 
 /**

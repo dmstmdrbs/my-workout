@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Check, Download, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
-import { useAppServices, useSettings } from '../../services'
+import { useAppServices, useSettings, workoutRecordQueryKey } from '../../services'
 import { muscleLabel } from '../../entities/exercise'
 import {
   formatWorkoutDuration,
@@ -27,7 +27,7 @@ export function WorkoutComplete({ sessionId, onViewRecord, onGoHome, onClose, va
   const { workoutRepository } = useAppServices()
   const settingsQuery = useSettings()
   const sessionQuery = useQuery({
-    queryKey: ['workout-record', sessionId],
+    queryKey: workoutRecordQueryKey.byId(sessionId),
     queryFn: () => workoutRepository.getSession(sessionId),
   })
   const [includeRir, setIncludeRir] = useState(true)

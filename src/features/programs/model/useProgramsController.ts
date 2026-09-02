@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { daysBetween, getDateInTimeZone } from '../../../lib/localDate'
-import { useAppServices, useSettings } from '../../../services'
+import { invalidateProgramRunQueries, programPersonalizationQueryKey, programRunsQueryKey, useAppServices, useSettings } from '../../../services'
 import type { Exercise, ExerciseOneRepMax, ProgramRun } from '../../../types/domain'
 import { formatDate, getErrorMessage } from './programView'
 import type { OneRepMaxValue } from './programTypes'
 import { getProgramOneRepMaxRequirements, missingProgramOneRepMaxes, personalizeProgramRun } from '../programPersonalization'
 import { getTrainingProgram, trainingProgramCatalog } from '../programTemplate'
-import { programPersonalizationQueryKey } from './queryKeys'
 
 type ActiveSection = 'mine' | 'explore'
 
@@ -20,7 +19,7 @@ export function useProgramsController() {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
   const settingsQuery = useSettings()
-  const runsQuery = useQuery({ queryKey: ['program-runs'], queryFn: () => workoutRepository.listProgramRuns() })
+  const runsQuery = useQuery({ queryKey: programRunsQueryKey, queryFn: () => workoutRepository.listProgramRuns() })
   const personalizationQuery = useQuery({
     queryKey: programPersonalizationQueryKey,
     queryFn: async (): Promise<ProgramsData> => {
@@ -66,11 +65,7 @@ export function useProgramsController() {
   }, [activeRunDurationWeeks, activeRunId, activeRunStartDate, today])
 
   const refreshProgramQueries = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['program-runs'] }),
-      queryClient.invalidateQueries({ queryKey: ['active-program-run'] }),
-      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] }),
-    ])
+    await invalidateProgramRunQueries(queryClient)
   }
 
   const startMutation = useMutation({
@@ -105,11 +100,7 @@ export function useProgramsController() {
   const endMutation = useMutation({
     mutationFn: ({ run, outcome }: { run: ProgramRun; outcome: 'completed' | 'withdrawn' }) => workoutRepository.endProgramRun(run.id, outcome),
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['program-runs'] }),
-        queryClient.invalidateQueries({ queryKey: ['active-program-run'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] }),
-      ])
+      await invalidateProgramRunQueries(queryClient)
       setStartDate(today)
     },
   })

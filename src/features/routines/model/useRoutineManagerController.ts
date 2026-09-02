@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getDateInTimeZone } from '../../../lib/localDate'
-import { exerciseCatalogQueryKey } from '../../../entities/exercise'
-import { useAppServices, useSettings } from '../../../services'
+import { dashboardOverviewQueryKey, routineManagerQueryKey, useAppServices, useSettings, workoutSetupQueryKey } from '../../../services'
 import type { Exercise, ProgramRun, ProgramRunDay, Routine } from '../../../types/domain'
 import { blankToNull, draftFingerprint, toDraft, type RoutineDraft } from './routineDraft'
 
@@ -54,8 +53,6 @@ export interface RoutineManagerController {
   discardPendingNavigation: () => void
   startProgramDay?: (dayId: string) => void
 }
-
-const routineManagerQueryKey = [...exerciseCatalogQueryKey, 'routine-manager'] as const
 
 export function navigationLabel(navigation: PendingNavigation) {
   return navigation.kind === 'select' ? `“${navigation.routine.name}” 루틴으로` : navigation.kind === 'create' ? '새 루틴으로' : '루틴 목록으로'
@@ -131,8 +128,8 @@ export function useRoutineManagerController({ initialSelectedRoutineId = null, i
       setLastSavedDraft(savedDraft)
       setNotice('루틴을 저장했어요.')
       void queryClient.invalidateQueries({ queryKey: routineManagerQueryKey })
-      void queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
-      void queryClient.invalidateQueries({ queryKey: [...exerciseCatalogQueryKey, 'workout-setup'] })
+      void queryClient.invalidateQueries({ queryKey: dashboardOverviewQueryKey })
+      void queryClient.invalidateQueries({ queryKey: workoutSetupQueryKey.all })
       onRoutineChange?.(saved.id)
     },
   })

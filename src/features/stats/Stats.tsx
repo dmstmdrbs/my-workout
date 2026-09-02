@@ -5,15 +5,13 @@ import { useNavigate } from 'react-router-dom'
 import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { getSessionVolume } from '../../lib/volume'
 import { getMondayIndex, getWeekEnd, getWeekStart } from '../../lib/week'
-import { ExercisePickerSheet, exerciseCatalogQueryKey, muscleLabel } from '../../entities/exercise'
-import { useAppServices, useSettings } from '../../services'
+import { ExercisePickerSheet, muscleLabel } from '../../entities/exercise'
+import { exerciseProgressQueryKey, statsExerciseCatalogQueryKey, useAppServices, useSettings, weeklyStatsQueryKey } from '../../services'
 import type { ExerciseProgressEntry } from '../../services'
 import type { Exercise, MuscleGroup, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import './Stats.css'
 
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
-const statsExerciseCatalogQueryKey = [...exerciseCatalogQueryKey, 'stats'] as const
-
 /**
  * 종목별 진행 추이 조회 기간(일). AGENTS.md 11번 규칙은 세션 목록을
  * 무제한으로 훑는 걸 금지하는데, 세션 전체를 걸어 차트를 그리는 조회는
@@ -73,7 +71,7 @@ export function Stats() {
   const canGoToNextWeek = weekOffset < 0
 
   const statsQuery = useQuery({
-    queryKey: ['weekly-stats', selectedWeekStart.toISOString()],
+    queryKey: weeklyStatsQueryKey(selectedWeekStart.toISOString()),
     queryFn: async (): Promise<WeeklyStatsData> => {
       const [currentSessions, previousSessions] = await Promise.all([
         workoutRepository.listSessions({
@@ -350,7 +348,7 @@ function ExerciseProgressCard({ weightUnit }: { weightUnit: string }) {
   const periodStart = getProgressPeriodStart(new Date())
 
   const progressQuery = useQuery({
-    queryKey: ['exercise-progress', selectedExerciseId, periodStart.toISOString().slice(0, 10)],
+    queryKey: exerciseProgressQueryKey(selectedExerciseId, periodStart.toISOString().slice(0, 10)),
     queryFn: () => workoutRepository.listExerciseProgress(selectedExerciseId!, { completedAfter: periodStart.toISOString() }),
     enabled: selectedExerciseId !== null,
   })

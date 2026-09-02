@@ -4,7 +4,7 @@ import { ArrowLeft, Check, UserRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ProfileAvatar } from '../../entities/profile'
 import { blockedUsersQueryKey, friendOverviewQueryKey, incomingCountQueryKey, socialProfileQueryKey } from '../../entities/social'
-import { useAppServices } from '../../services'
+import { dashboardOverviewQueryKey, useAppServices } from '../../services'
 import './Profile.css'
 
 const MIN_DISPLAY_NAME_LENGTH = 1
@@ -27,7 +27,7 @@ export function Profile() {
       void queryClient.invalidateQueries({ queryKey: ['user-profile'] })
       void queryClient.invalidateQueries({ queryKey: socialProfileQueryKey })
       void queryClient.invalidateQueries({ queryKey: friendOverviewQueryKey })
-      void queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
+      void queryClient.invalidateQueries({ queryKey: dashboardOverviewQueryKey })
       void queryClient.invalidateQueries({ queryKey: blockedUsersQueryKey })
       void queryClient.invalidateQueries({ queryKey: incomingCountQueryKey })
       setValidationError(null)

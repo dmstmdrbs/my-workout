@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Flame, RefreshCw } from 'lucide-react'
 import { STREAK_LOOKBACK_CAP_DAYS, computeStreak } from '../../lib/streak'
 import { getMondayIndex, getMonthEnd, getMonthStart, toLocalDateKey } from '../../lib/week'
-import { useAppServices } from '../../services'
+import { recordsCalendarQueryKey, useAppServices } from '../../services'
 import type { WorkoutSession } from '../../types/domain'
 import './RecordsCalendar.css'
 
@@ -42,7 +42,7 @@ export function RecordsCalendar({ onSelectDay, selectedDateKey }: RecordsCalenda
   const canGoNext = monthOffset < 0
 
   const monthQuery = useQuery({
-    queryKey: ['records-calendar-month', displayedMonthStart.toISOString()],
+    queryKey: recordsCalendarQueryKey.month(displayedMonthStart.toISOString()),
     queryFn: () => workoutRepository.listSessions({
       status: 'completed',
       startedAfter: displayedMonthStart.toISOString(),
@@ -58,7 +58,7 @@ export function RecordsCalendar({ onSelectDay, selectedDateKey }: RecordsCalenda
   // 기간 집계 조회(AGENTS.md 11번 규칙): 커서 없이 `startedAfter`만으로 상한을
   // 두어, 전체 세션이 아니라 최근 `STREAK_LOOKBACK_CAP_DAYS`일만 훑는다.
   const streakQuery = useQuery({
-    queryKey: ['records-calendar-streak', streakWindowStart.toISOString()],
+    queryKey: recordsCalendarQueryKey.streak(streakWindowStart.toISOString()),
     queryFn: () => workoutRepository.listSessions({
       status: 'completed',
       startedAfter: streakWindowStart.toISOString(),
