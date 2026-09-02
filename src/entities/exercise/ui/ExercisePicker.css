@@ -1,3 +1,4 @@
+/* Exercise picker and create-dialog presentation. */
 .exercise-picker-header, .create-exercise-header { display: flex; flex-shrink: 0; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 21px 21px 15px; border-bottom: 1px solid var(--border); }
 .exercise-picker-header h2, .create-exercise-header h2 { margin-top: 5px; font-size: 1.12rem; }
 .exercise-picker-header-actions { display: flex; gap: 4px; }

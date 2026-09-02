@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus, ListX, LoaderCircle, Plus, Save, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { getDateInTimeZone } from '../../lib/localDate'
-import { snapshotExerciseName } from '../../entities/exercise'
+import { CreateExerciseDialog, ExercisePickerSheet, exerciseCatalogQueryKey, snapshotExerciseName } from '../../entities/exercise'
 import { setTypeLabel, setTypeOptions } from '../../entities/workout'
 import { Button, Overlay } from '../../shared/ui'
 import { useAppServices, useSettings } from '../../services'
 import type { Exercise, ProgramRun, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
-import { CreateExerciseDialog, ExercisePickerSheet } from '../workout/ExercisePicker'
 import './RoutineManager.css'
 
 interface RoutineManagerData {
@@ -22,6 +22,8 @@ type PendingNavigation =
   | { kind: 'select'; routine: Routine }
   | { kind: 'create' }
   | { kind: 'mobile-list' }
+
+const routineManagerQueryKey = [...exerciseCatalogQueryKey, 'routine-manager'] as const
 
 const rirOptions: Array<{ value: Rir; label: string }> = [
   { value: null, label: '미설정' },
@@ -53,7 +55,7 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
   }, [isMobileEditorOpen])
 
   const setupQuery = useQuery({
-    queryKey: ['routine-manager-data'],
+    queryKey: routineManagerQueryKey,
     queryFn: async (): Promise<RoutineManagerData> => {
       const [routines, exercises, activeProgramRun] = await Promise.all([
         workoutRepository.listRoutines(),
@@ -110,9 +112,9 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
       setDraft(savedDraft)
       setLastSavedDraft(savedDraft)
       setNotice('루틴을 저장했어요.')
-      void queryClient.invalidateQueries({ queryKey: ['routine-manager-data'] })
+      void queryClient.invalidateQueries({ queryKey: routineManagerQueryKey })
       void queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
-      void queryClient.invalidateQueries({ queryKey: ['workout-runner-setup'] })
+      void queryClient.invalidateQueries({ queryKey: [...exerciseCatalogQueryKey, 'workout-setup'] })
       onRoutineChange?.(saved.id)
     },
   })
@@ -267,6 +269,7 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
   onSave: () => void
   onClearNotice: () => void
 }) {
+  const navigate = useNavigate()
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [applyRir, setApplyRir] = useState<Rir>(2)
@@ -394,6 +397,7 @@ function RoutineEditor({ draft, exercises, defaultRestSeconds, isSaving, saveErr
       isOpen={isPickerOpen}
       exercises={exercises}
       onClose={() => setIsPickerOpen(false)}
+      onOpenManage={() => navigate('/exercises')}
       selectionMode="multiple"
       onSelectMany={selectExercisesFromPicker}
       onOpenCreate={() => setIsCreateOpen(true)}

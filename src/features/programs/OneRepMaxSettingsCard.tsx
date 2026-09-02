@@ -4,13 +4,14 @@ import { Gauge, Save } from 'lucide-react'
 import { useAppServices } from '../../services'
 import { trainingProgramCatalog } from './programTemplate'
 import { getProgramOneRepMaxRequirements } from './programPersonalization'
+import { programPersonalizationQueryKey } from './model/queryKeys'
 import './OneRepMaxSetup.css'
 
 export function OneRepMaxSettingsCard() {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
   const query = useQuery({
-    queryKey: ['program-personalization'],
+    queryKey: programPersonalizationQueryKey,
     queryFn: async () => {
       const [exercises, maxes] = await Promise.all([
         workoutRepository.listExercises(),
@@ -48,7 +49,7 @@ export function OneRepMaxSettingsCard() {
   const mutation = useMutation({
     mutationFn: () => Promise.all(values.map((value) => workoutRepository.saveExerciseOneRepMax(value.exerciseId, value.oneRepMaxKg))),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['program-personalization'] })
+      await queryClient.invalidateQueries({ queryKey: programPersonalizationQueryKey })
     },
   })
 

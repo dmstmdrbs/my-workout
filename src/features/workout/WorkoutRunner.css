@@ -7,19 +7,13 @@
 .program-routine-choice { grid-column: 1 / -1; min-height: 132px; background: radial-gradient(circle at 100% 0%, color-mix(in srgb, #dc5f2b 13%, transparent), transparent 42%), var(--surface); border-color: color-mix(in srgb, #dc5f2b 35%, var(--border)); }.program-routine-choice .routine-choice-marker { background: #dc5f2b; }.program-routine-choice:disabled { cursor: default; opacity: .72; }.program-routine-label { color: #dc5f2b; font-size: .62rem; font-weight: 900; letter-spacing: .08em; }.program-routine-start { display: inline-flex; position: absolute; right: 18px; bottom: 17px; align-items: center; gap: 5px; color: #dc5f2b; font-size: .72rem; font-weight: 850; }
 .workout-cards { display: grid; width: min(100%, 820px); margin: 0 auto; gap: 18px; }.exercise-workspace { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
 .exercise-workspace-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 24px 19px; border-bottom: 1px solid var(--border); }.exercise-workspace-heading h2 { margin-top: 5px; font-size: 1.25rem; }.exercise-note { margin-top: 7px; color: var(--text-muted); font-size: .8rem; }.exercise-workspace-actions { display: grid; justify-items: end; gap: 7px; }.previous-context { display: grid; min-width: 114px; gap: 5px; padding: 8px 10px; background: var(--surface-subtle); border-radius: 9px; }.previous-context span { color: var(--text-muted); font-size: .68rem; font-weight: 700; }.previous-context strong { font-size: .82rem; white-space: nowrap; }.exercise-workspace-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px; }.exercise-replace-button, .exercise-remove-button { display: inline-flex; align-items: center; gap: 5px; min-height: 38px; padding: 0 7px; color: var(--text-muted); background: transparent; border: 0; font-size: .7rem; font-weight: 750; }.exercise-replace-button:hover { color: var(--accent); }.exercise-remove-button { color: var(--danger); }
-.set-table { overflow-x: auto; }.set-row { display: grid; grid-template-columns: 53px 1.35fr 1.1fr .7fr minmax(186px, 1.65fr) 68px; align-items: center; gap: 10px; min-width: 720px; padding: 10px 24px; border-bottom: 1px solid var(--border); }.set-table-head { min-height: 36px; padding-top: 9px; padding-bottom: 4px; color: var(--text-muted); border-bottom: 0; font-size: .66rem; font-weight: 800; letter-spacing: .04em; }.set-row.is-completed { background: color-mix(in srgb, var(--success-subtle) 53%, var(--surface)); }.set-number { display: grid; align-items: baseline; grid-template-columns: auto 1fr; gap: 3px; color: var(--text); font-size: .93rem; font-weight: 800; }.set-number small, .mobile-field-label { display: none; }.set-row label { display: block; }.numeric-stepper { display: flex; align-items: center; gap: 4px; }.numeric-stepper input { width: 100%; min-height: 38px; padding: 0 4px; color: var(--text); background: var(--surface-subtle); border: 1px solid transparent; border-radius: 7px; text-align: center; font-size: .86rem; font-weight: 700; }.numeric-stepper input:focus { border-color: var(--accent); outline: 0; }.stepper-button { display: inline-grid; flex: 0 0 auto; place-items: center; width: 26px; height: 26px; padding: 0; color: var(--text-muted); background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; }.stepper-button:hover { color: var(--text); background: var(--surface-emphasis); }.target-rir { color: var(--text); font-size: .87rem; font-weight: 800; }.rir-choice-row { display: flex; gap: 3px; }.rir-choice-row button { min-width: 25px; height: 28px; padding: 0 5px; color: var(--text-muted); background: var(--surface-subtle); border: 1px solid transparent; border-radius: 6px; font-size: .7rem; font-weight: 800; }.rir-choice-row button:hover { color: var(--text); }.rir-choice-row button.is-selected { color: var(--accent); background: var(--accent-subtle); border-color: var(--accent-border); }.rir-choice-row button.is-empty { margin-left: 2px; }.complete-set-button { display: inline-grid; place-items: center; min-height: 34px; padding: 0 9px; color: var(--accent); background: var(--accent-subtle); border: 1px solid var(--accent-border); border-radius: 7px; font-size: .72rem; font-weight: 800; }.complete-set-button.is-completed { color: var(--success); background: var(--success-subtle); border-color: transparent; }.set-delete-button { display: inline-grid; place-items: center; width: 34px; height: 34px; margin: 0 auto; padding: 0; color: var(--danger); background: transparent; border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border)); border-radius: 7px; }.set-delete-button:hover:not(:disabled) { background: var(--danger-subtle); }.set-delete-button:disabled { opacity: .38; cursor: not-allowed; }.add-set-button { min-height: 38px; display: inline-flex; align-items: center; gap: 6px; margin: 15px 24px 19px; padding: 0; color: var(--text-muted); background: transparent; border: 0; font-size: .79rem; font-weight: 750; }.add-set-button:hover { color: var(--accent); }
 .exercise-adder-trailing { display: flex; justify-content: center; }
 .rest-timer { display: flex; align-items: center; justify-content: space-between; gap: 9px; padding: 15px; color: var(--contrast-text); background: var(--contrast-surface); border: 1px solid rgb(255 255 255 / .08); border-radius: var(--radius-md); }.rest-timer-copy { display: grid; gap: 5px; }.rest-timer-copy span { display: inline-flex; align-items: center; gap: 5px; color: var(--contrast-muted); font-size: .68rem; font-weight: 750; }.rest-timer-copy strong { color: var(--contrast-text); font-variant-numeric: tabular-nums; font-size: 1.52rem; letter-spacing: -.04em; }.rest-timer-actions { display: flex; align-items: center; gap: 5px; }.timer-control, .timer-stop { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 7px; color: var(--contrast-text); background: var(--contrast-control); border: 0; border-radius: 7px; font-size: .65rem; font-weight: 700; }.timer-control:hover, .timer-stop:hover { background: var(--contrast-control-hover); }
 .rest-timer-dock { position: fixed; z-index: 12; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); left: 50%; width: max-content; transform: translateX(-50%); }.rest-timer-dock .rest-timer { box-shadow: var(--shadow-float); padding: 10px 13px; }.rest-timer-dock .rest-timer-copy { display: grid; grid-template-columns: auto auto; align-items: center; gap: 8px; }.rest-timer-dock .rest-timer-copy strong { font-size: 1rem; }.rest-timer-dock .rest-timer-copy span { font-size: .65rem; }.rest-timer-dock .timer-control, .rest-timer-dock .timer-stop { height: 28px; }
 .runner-loading { display: grid; gap: 16px; }.runner-loading div { height: 110px; background: linear-gradient(90deg, var(--surface-emphasis), var(--surface-subtle), var(--surface-emphasis)); background-size: 200% 100%; border-radius: var(--radius-md); animation: workout-pulse 1.4s infinite; }@keyframes workout-pulse { to { background-position: -200% 0; } }
-@media (max-width: 899px) { .workout-page, .routine-picker-page { width: min(100% - 32px, 1320px); padding-top: 14px; padding-bottom: 176px; }.workout-page .workout-header { position: sticky; z-index: 13; top: 0; align-items: center; margin-inline: -16px; margin-bottom: 14px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); }.workout-header .eyebrow { display: none; }.workout-header h1 { margin-top: 0; }.workout-progress-line { gap: 9px; margin-top: 3px; }.routine-picker-heading { margin-bottom: 18px; }.workout-header-actions .runner-text-button { display: none; }.rest-timer-dock { left: 16px; right: 16px; bottom: calc(76px + max(7px, env(safe-area-inset-bottom, 0px))); width: auto; transform: none; }.set-row { min-width: 710px; }.exercise-workspace-heading { padding: 19px 17px 16px; }.set-row { padding-inline: 17px; }.add-set-button { margin-left: 17px; } }
-@media (max-width: 560px) { .workout-page, .routine-picker-page { padding-bottom: 166px; }.workout-header, .routine-picker-heading { flex-wrap: wrap; gap: 12px; }.workout-page .workout-header { gap: 8px; }.workout-header-actions { width: 100%; justify-content: space-between; }.routine-picker-heading > .runner-text-button { display: none; }.workout-header h1 { font-size: 1.16rem; }.routine-picker-heading h1 { font-size: 1.46rem; }.workout-header p:not(.eyebrow), .routine-picker-heading p:not(.eyebrow) { font-size: .8rem; }.workout-header-actions .primary-button { min-height: 38px; padding-inline: 11px; font-size: .78rem; }.routine-choice-grid { grid-template-columns: 1fr; margin-top: 18px; }.routine-choice { min-height: 125px; padding: 17px; }.exercise-workspace-heading { display: block; }.previous-context { display: inline-grid; margin-top: 13px; }.set-table { overflow: visible; }.set-table-head { display: none; }.set-row { grid-template-columns: 40px 1fr 1fr; align-items: end; min-width: 0; gap: 8px; padding: 13px 15px; }.set-number { display: grid; align-self: start; grid-template-columns: 1fr; gap: 2px; }.set-number small, .mobile-field-label { display: block; color: var(--text-muted); font-size: .59rem; font-weight: 750; }.set-number em { grid-column: auto; }.set-row label, .target-rir { display: grid; gap: 5px; }.target-rir { align-self: start; }
-/* Weight and reps get the full row to themselves (no 목표 RIR column
-   competing for width) so their +/- steppers can hit the ≥32px touch-target
-   floor; 목표 RIR moves down to share row 2 with 실제 RIR. See the report
-   for the width arithmetic at 390px and 360px. */
-.numeric-stepper { gap: 3px; }.stepper-button { width: 36px; height: 36px; }
-.actual-rir { grid-column: 2 / -1; display: grid; grid-template-columns: 1fr; gap: 6px; }.rir-choice-row { justify-content: space-between; }.rir-choice-row button { flex: 1; min-width: 0; max-width: 44px; height: 34px; }.complete-set-button { grid-column: 1 / -1; width: 100%; min-height: 38px; margin-top: 2px; }.set-delete-button { grid-column: 1 / -1; justify-self: end; width: 44px; height: 40px; margin: 2px 0 0; }.add-set-button { margin: 14px 15px 18px; }.rest-timer-dock { right: 10px; left: 10px; bottom: calc(72px + max(7px, env(safe-area-inset-bottom, 0px))); } }
+@media (max-width: 899px) { .workout-page, .routine-picker-page { width: min(100% - 32px, 1320px); padding-top: 14px; padding-bottom: 176px; }.workout-page .workout-header { position: sticky; z-index: 13; top: 0; align-items: center; margin-inline: -16px; margin-bottom: 14px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); }.workout-header .eyebrow { display: none; }.workout-header h1 { margin-top: 0; }.workout-progress-line { gap: 9px; margin-top: 3px; }.routine-picker-heading { margin-bottom: 18px; }.workout-header-actions .runner-text-button { display: none; }.rest-timer-dock { left: 16px; right: 16px; bottom: calc(76px + max(7px, env(safe-area-inset-bottom, 0px))); width: auto; transform: none; }.exercise-workspace-heading { padding: 19px 17px 16px; } }
+@media (max-width: 560px) { .workout-page, .routine-picker-page { padding-bottom: 166px; }.workout-header, .routine-picker-heading { flex-wrap: wrap; gap: 12px; }.workout-page .workout-header { gap: 8px; }.workout-header-actions { width: 100%; justify-content: space-between; }.routine-picker-heading > .runner-text-button { display: none; }.workout-header h1 { font-size: 1.16rem; }.routine-picker-heading h1 { font-size: 1.46rem; }.workout-header p:not(.eyebrow), .routine-picker-heading p:not(.eyebrow) { font-size: .8rem; }.workout-header-actions .primary-button { min-height: 38px; padding-inline: 11px; font-size: .78rem; }.routine-choice-grid { grid-template-columns: 1fr; margin-top: 18px; }.routine-choice { min-height: 125px; padding: 17px; }.exercise-workspace-heading { display: block; }.previous-context { display: inline-grid; margin-top: 13px; }
+.rest-timer-dock { right: 10px; left: 10px; bottom: calc(72px + max(7px, env(safe-area-inset-bottom, 0px))); } }
 
 /* Free workout: start without a routine and progressively add exercises. */
 .begin-workout-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
@@ -62,20 +56,6 @@
    파일 끝에 두어야 덮이지 않는다. */
 @media (max-width: 899px) {
   .exercise-add-fab { bottom: calc(150px + max(7px, env(safe-area-inset-bottom, 0px))); }
-}
-
-/* 실제 RIR 입력을 끄면 열 하나가 사라진다. 열 수를 그대로 두면 완료 버튼이
-   한 칸 앞으로 밀려 표가 어긋난다. 560px 이하는 세로로 접힌 전혀 다른 배치라
-   해당하지 않으므로, 클래스 특이도가 모바일 규칙을 덮지 않게 범위를 막는다. */
-@media (min-width: 561px) {
-  .set-row.is-rir-hidden { grid-template-columns: 53px minmax(0, 220px) minmax(0, 200px) minmax(0, 1fr) 68px; min-width: 520px; }
-}
-
-/* 560px 이하에서 세트 삭제 버튼은 자기 줄(grid-column: 1 / -1)을 쓴다. 실제 RIR
-   입력을 끄면 그 자리가 비어 목표 RIR 한 칸만 있는 줄과 버튼만 있는 줄이
-   연달아 생기므로, 그때는 목표 RIR과 같은 줄 오른쪽 끝에 붙인다. */
-@media (max-width: 560px) {
-  .set-row.is-rir-hidden .set-delete-button { grid-column: 3; grid-row: 2; margin-top: 0; }
 }
 
 /* RIR 기반 중량 제안. 종목 헤딩과 세트 표 사이에 끼우되, 배너가 표보다
@@ -160,10 +140,6 @@
   .program-workout-preview .begin-workout-button { width: 100%; justify-content: center; }
 }
 
-.rir-compact-select { display: none; }
-.complete-set-button svg { display: none; }
-.complete-set-button.is-completed svg { display: block; }
-.complete-set-button.is-completed span { display: none; }
 .timer-adjust { display: inline-grid; min-width: 34px; height: 30px; padding: 0 6px; color: var(--contrast-text); background: var(--contrast-control); border: 0; border-radius: 7px; font-size: .65rem; font-weight: 800; place-items: center; }
 .timer-adjust:hover { background: var(--contrast-control-hover); }
 .timer-control.is-enabled { color: #ffd86b; background: rgb(255 216 107 / .16); }
@@ -171,19 +147,6 @@
 .exercise-replacement-dialog { padding: 25px; }.exercise-replacement-dialog h2 { margin-top: 8px; font-size: 1.22rem; }.exercise-replacement-dialog > p:not(.eyebrow) { margin-top: 10px; color: var(--text-muted); font-size: .84rem; line-height: 1.6; }.exercise-replacement-dialog > p strong { color: var(--text); }.exercise-replacement-actions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 8px; margin-top: 23px; }.exercise-replacement-actions button { min-height: 43px; padding-inline: 11px; }
 
 @media (max-width: 560px) {
-  .set-row:not(.set-table-head) { grid-template-columns: 32px minmax(76px, 1fr) minmax(54px, .72fr) 60px 38px; align-items: end; gap: 6px; padding: 9px 10px; }
-  .set-row:not(.set-table-head) .set-number { align-self: center; }
-  .set-row:not(.set-table-head) label { min-width: 0; gap: 3px; }
-  .set-row:not(.set-table-head) .numeric-stepper { display: block; min-width: 0; }
-  .set-row:not(.set-table-head) .numeric-stepper input { min-height: 36px; padding-inline: 3px; font-size: .8rem; }
-  .set-row:not(.set-table-head) .stepper-button { display: none; }
-  .set-row:not(.set-table-head) .target-rir { display: none; }
-  .set-row:not(.set-table-head) .actual-rir { display: grid; grid-column: auto; min-width: 0; gap: 3px; }
-  .set-row:not(.set-table-head) .rir-choice-row { display: none; }
-  .set-row:not(.set-table-head) .rir-compact-select { display: block; width: 100%; min-height: 36px; padding: 0 4px; color: var(--text); background: var(--surface-subtle); border: 1px solid transparent; border-radius: 7px; text-align: center; font: inherit; font-size: .78rem; font-weight: 800; }
-  .set-row:not(.set-table-head) .complete-set-button { grid-column: auto; width: 38px; min-height: 36px; margin: 0; padding: 0; }
-  .set-row:not(.set-table-head) .complete-set-button svg { display: block; }
-  .set-row:not(.set-table-head) .complete-set-button span { display: none; }
   .rest-timer-dock .rest-timer { gap: 7px; padding: 9px 10px; }
   .rest-timer-dock .rest-timer-copy span { display: none; }
   .rest-timer-dock .rest-timer-copy { display: block; }
@@ -192,8 +155,3 @@
   .rest-timer-dock .timer-adjust { height: 28px; }
 }
 .choice-check, .exercise-add-fab { color: var(--on-accent); }
-.set-number-a11y { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.set-number.set-type-topset { color: #c2410c; }
-.set-number.set-type-backoff { color: #2563eb; }
-.set-number.set-type-warmup { color: #047857; }
-.set-number.set-type-dropset { color: #9333ea; }

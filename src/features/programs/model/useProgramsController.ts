@@ -7,6 +7,7 @@ import { formatDate, getErrorMessage } from './programView'
 import type { OneRepMaxValue } from './programTypes'
 import { getProgramOneRepMaxRequirements, missingProgramOneRepMaxes, personalizeProgramRun } from '../programPersonalization'
 import { getTrainingProgram, trainingProgramCatalog } from '../programTemplate'
+import { programPersonalizationQueryKey } from './queryKeys'
 
 type ActiveSection = 'mine' | 'explore'
 
@@ -21,7 +22,7 @@ export function useProgramsController() {
   const settingsQuery = useSettings()
   const runsQuery = useQuery({ queryKey: ['program-runs'], queryFn: () => workoutRepository.listProgramRuns() })
   const personalizationQuery = useQuery({
-    queryKey: ['program-personalization'],
+    queryKey: programPersonalizationQueryKey,
     queryFn: async (): Promise<ProgramsData> => {
       const [exercises, maxes] = await Promise.all([
         workoutRepository.listExercises(),
@@ -97,7 +98,7 @@ export function useProgramsController() {
       return merged
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['program-personalization'] })
+      await queryClient.invalidateQueries({ queryKey: programPersonalizationQueryKey })
     },
   })
 
