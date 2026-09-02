@@ -4,7 +4,7 @@ import { Archive, ArchiveRestore, Dumbbell, Pencil, Plus, RefreshCw, Search } fr
 import { Overlay } from '../../shared/ui'
 import { useAppServices, useSettings } from '../../services'
 import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
-import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../workout/exerciseLabels'
+import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../../entities/exercise'
 import './ExerciseCatalog.css'
 
 /**

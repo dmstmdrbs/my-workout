@@ -4,8 +4,8 @@ import { ArrowLeft, ImageDown, Plus, RefreshCw, Save } from 'lucide-react'
 import { Overlay } from '../../shared/ui'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutExercise, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
+import { muscleLabel } from '../../entities/exercise'
 import { SetRow } from '../workout/SetRow'
-import { muscleLabel } from '../workout/exerciseLabels'
 import { invalidateRecordQueries } from './recordQueries'
 // 로딩·오류·찾을 수 없음 화면과 확인 대화상자는 기록 화면의 클래스를 그대로
 // 쓴다. /records/:id/edit로 바로 들어오면 Records는 마운트되지 않으므로 이

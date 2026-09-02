@@ -1,4 +1,4 @@
-import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
+import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../../types/domain'
 
 export const muscleGroups: MuscleGroup[] = [
   'chest',

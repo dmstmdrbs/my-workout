@@ -30,6 +30,19 @@ slice 내부에서는 barrel을 거치지 않고 파일을 직접 import해 순�
 피합니다. 정적 브랜드 파일을 만드는 Node 스크립트는 브라우저 번들 밖의 도구이므로
 `brandArt.ts`를 직접 읽는 예외입니다.
 
+현재 `entities`에는 여러 feature가 함께 사용하는 순수 운동 도메인 모델이
+들어 있습니다.
+
+```text
+entities/
+  exercise/model/exerciseLabels.ts  운동 부위·장비·브랜드 메타데이터와 라벨
+  workout/model/setInput.ts         세트 입력 단위·파싱·타입 라벨과 마커
+```
+
+이 모델을 사용하는 코드는 `src/entities/exercise` 또는
+`src/entities/workout`의 공개 `index.ts`를 통해서만 import합니다. 해당
+모델은 React, 서비스, 라우터를 참조하지 않는 순수 TypeScript 코드입니다.
+
 ## 디자인 시스템
 
 공통 UI는 `src/shared/ui`에 둡니다. 디자인 토큰은
@@ -65,7 +78,9 @@ slice 내부에서는 barrel을 거치지 않고 파일을 직접 import해 순�
    분리합니다.
 3. 가장 큰 `WorkoutRunner`부터 model hook과 ui section으로 나눕니다.
 4. feature 간 직접 import는 관련 코드를 만질 때 `entities/shared/widgets`로
-   옮깁니다. 경로만 맞추기 위한 대규모 파일 이동은 하지 않습니다.
+   옮깁니다. 운동 메타데이터/라벨과 세트 입력 모델은 `entities`로 이관을
+   시작했으며, 컴포넌트와 화면 조합은 별도 단위로 이동합니다. 경로만
+   맞추기 위한 대규모 파일 이동은 하지 않습니다.
 
 이 순서는 각 단계가 독립적으로 테스트·리뷰 가능하고, 도중에도 기존 기능을
 온전히 유지하기 위한 것입니다.
@@ -76,4 +91,9 @@ API를 통해 사용하며, route entry 컴포넌트도 feature 내부 파일을
 않습니다. 운동 러너는 초안 생성·정규화를 `model`의 순수 함수로, 초안 저장과
 타이머·wake lock 효과를 runtime hook으로, 서버 조회를 query hook으로 분리했습니다.
 화면은 운동 카드·초기 설정·휴식 타이머·순서 변경 UI로 나뉩니다. 아직 남은 큰
-화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다.
+화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다. 현재 남은
+feature 간 참조는 운동 선택/생성 UI(`workout/ExercisePicker`), 세트 행
+컴포넌트(`workout/SetRow`), 운동 초안 저장 모델(`workout/activeWorkoutDraft`),
+1RM 설정 카드(`programs/OneRepMaxSettingsCard`), 친구 아바타·쿼리 키
+(`friends/*`)이며, 공통 도메인 모델을 먼저 `entities`로 내린 뒤 화면 조합
+계층을 정리합니다.

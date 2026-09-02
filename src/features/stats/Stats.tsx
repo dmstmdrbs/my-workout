@@ -4,11 +4,11 @@ import { BarChart3, ChevronDown, ChevronLeft, ChevronRight, Dumbbell, LineChart,
 import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { getSessionVolume } from '../../lib/volume'
 import { getMondayIndex, getWeekEnd, getWeekStart } from '../../lib/week'
+import { muscleLabel } from '../../entities/exercise'
 import { useAppServices, useSettings } from '../../services'
 import type { ExerciseProgressEntry } from '../../services'
 import type { Exercise, MuscleGroup, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import { ExercisePickerSheet } from '../workout/ExercisePicker'
-import { muscleLabel } from '../workout/exerciseLabels'
 import './Stats.css'
 
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']

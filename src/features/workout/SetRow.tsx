@@ -1,5 +1,4 @@
 import { Check, Minus, Plus, Trash2 } from 'lucide-react'
-import type { WorkoutSetRecord } from '../../types/domain'
 import {
   DISTANCE_STEP_KM,
   DURATION_STEP_SECONDS,
@@ -15,7 +14,8 @@ import {
   toNullableInteger,
   toNullableMinutes,
   toNullableNumber,
-} from './setInput'
+} from '../../entities/workout'
+import type { WorkoutSetRecord } from '../../types/domain'
 // 세트 행의 스타일(.set-row, .numeric-stepper, .rir-choice-row …)은
 // WorkoutRunner.css의 미디어쿼리 네 곳에 다른 규칙과 한 줄로 뭉쳐 있다.
 // 떼어내면 반응형이 조용히 깨질 위험이 이득보다 크므로, 컴포넌트가 그 파일을

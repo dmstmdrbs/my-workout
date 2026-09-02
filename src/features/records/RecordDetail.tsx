@@ -6,8 +6,8 @@ import { toLocalDateKey } from '../../lib/week'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
-import { muscleLabel } from '../workout/exerciseLabels'
-import { setTypeLabel } from '../workout/setInput'
+import { muscleLabel } from '../../entities/exercise'
+import { setTypeLabel } from '../../entities/workout'
 import { invalidateRecordQueries } from './recordQueries'
 import {
   formatWorkoutDuration,
