@@ -17,7 +17,7 @@ import { getSessionDurationMinutes } from '../../lib/duration'
 import { getDateInTimeZone } from '../../lib/localDate'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { getMondayIndex, getWeekStart } from '../../lib/week'
-import { useAppServices, useSettings } from '../../services'
+import { dashboardOverviewQueryKey, useAppServices, useSettings } from '../../services'
 import type { ProgramRun, Routine, WorkoutSession } from '../../types/domain'
 import './Dashboard.css'
 
@@ -45,7 +45,7 @@ export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onMa
   const { workoutRepository } = useAppServices()
   const settingsQuery = useSettings()
   const dashboardQuery = useQuery({
-    queryKey: ['dashboard-overview'],
+    queryKey: dashboardOverviewQueryKey,
     queryFn: async (): Promise<DashboardData> => {
       const [profile, routines, weekSessions, recentSessions, activeProgramRun] = await Promise.all([
         workoutRepository.getProfile(),

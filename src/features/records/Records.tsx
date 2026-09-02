@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, ImageDown, RefreshCw } from 'lucide-react'
 import { fromLocalDateKey, getDayEnd, toLocalDateKey } from '../../lib/week'
 import { completedSetCount } from '../../lib/volume'
-import { useAppServices } from '../../services'
+import { recordsQueryKey, useAppServices } from '../../services'
 import type { WorkoutSession } from '../../types/domain'
 import { RecordsCalendar } from './RecordsCalendar'
 import { formatWorkoutDuration } from './workoutShareFormat'
@@ -31,7 +31,7 @@ export function Records({ selectedDateKey, onSelectDay, onSelectSession }: {
   // 목록으로 시작한다. 세션 목록 전체를 받지 않도록 한 건만 요청한다
   // (AGENTS.md 11번 규칙).
   const latestQuery = useQuery({
-    queryKey: ['records-latest-session'],
+    queryKey: recordsQueryKey.latestSession,
     queryFn: () => workoutRepository.listSessions({ status: 'completed', limit: 1 }),
     enabled: selectedDateKey === null,
   })
@@ -42,7 +42,7 @@ export function Records({ selectedDateKey, onSelectDay, onSelectSession }: {
   const activeDateKey = selectedDateKey ?? latestDateKey
 
   const dayQuery = useQuery({
-    queryKey: ['records-day', activeDateKey],
+    queryKey: recordsQueryKey.day(activeDateKey),
     queryFn: () => {
       const dayStart = fromLocalDateKey(activeDateKey as string)
       return workoutRepository.listSessions({

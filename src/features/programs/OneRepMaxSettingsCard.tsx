@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Gauge, Save } from 'lucide-react'
-import { useAppServices } from '../../services'
+import { programPersonalizationQueryKey, useAppServices } from '../../services'
 import { trainingProgramCatalog } from './programTemplate'
 import { getProgramOneRepMaxRequirements } from './programPersonalization'
-import { programPersonalizationQueryKey } from './model/queryKeys'
 import './OneRepMaxSetup.css'
 
 export function OneRepMaxSettingsCard() {

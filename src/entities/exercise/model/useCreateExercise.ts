@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAppServices } from '../../../services'
+import { exerciseCatalogQueryKey, useAppServices } from '../../../services'
 import type { Exercise } from '../../../types/domain'
-import { exerciseCatalogQueryKey } from './queryKeys'
 
 export type CreateExerciseInput = Omit<Exercise, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 

@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useAppServices, type PreviousExerciseSession } from '../../../services'
+import { previousExerciseSessionQueryKey, useAppServices, type PreviousExerciseSession } from '../../../services'
 import type { Exercise } from '../../../types/domain'
-import { previousExerciseSessionQueryKey } from './queryKeys'
 
 export function usePreviousExerciseSessionLoader() {
   const { workoutRepository } = useAppServices()

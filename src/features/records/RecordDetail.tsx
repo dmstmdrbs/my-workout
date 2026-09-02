@@ -4,11 +4,10 @@ import { ArrowLeft, ImageDown, Pencil, RefreshCw, Share2, Trash2, X } from 'luci
 import { Overlay } from '../../shared/ui'
 import { toLocalDateKey } from '../../lib/week'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
-import { useAppServices, useSettings } from '../../services'
+import { invalidateWorkoutSessionQueries, useAppServices, useSettings, workoutRecordQueryKey } from '../../services'
 import type { WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import { muscleLabel } from '../../entities/exercise'
 import { setTypeLabel } from '../../entities/workout'
-import { invalidateRecordQueries } from './recordQueries'
 import {
   formatWorkoutDuration,
   formatWorkoutNumber,
@@ -38,7 +37,7 @@ export function RecordDetail({ sessionId, onBack, onEdit }: {
   const [isDeletePending, setIsDeletePending] = useState(false)
 
   const sessionQuery = useQuery({
-    queryKey: ['workout-record', sessionId],
+    queryKey: workoutRecordQueryKey.byId(sessionId),
     queryFn: () => workoutRepository.getSession(sessionId),
   })
 
@@ -49,10 +48,10 @@ export function RecordDetail({ sessionId, onBack, onEdit }: {
     mutationFn: () => workoutRepository.deleteSession(sessionId),
     onSuccess: () => {
       setIsDeletePending(false)
-      queryClient.removeQueries({ queryKey: ['workout-record', sessionId] })
+      queryClient.removeQueries({ queryKey: workoutRecordQueryKey.byId(sessionId) })
       // 의존 쿼리가 모두 다시 불릴 때까지 기다리지 않는다. 그 사이
       // `getSession`은 null을 돌려주므로 "찾을 수 없음"이 잠깐 스쳐 보인다.
-      void invalidateRecordQueries(queryClient)
+      void invalidateWorkoutSessionQueries(queryClient)
       onBack(dateKey)
     },
   })

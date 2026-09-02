@@ -1,8 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useAppServices } from '../../../services'
+import { routineLastPerformedQueryKey, useAppServices } from '../../../services'
 import type { Id, IsoDateTime } from '../../../types/domain'
-import { routineLastPerformedQueryKey } from './queryKeys'
 
 /**
  * 마지막 수행일을 채우기 위해 훑는 완료 세션 수. 전부 조회하면 이 화면

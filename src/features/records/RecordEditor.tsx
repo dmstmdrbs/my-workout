@@ -2,18 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ImageDown, Plus, RefreshCw, Save } from 'lucide-react'
 import { Overlay } from '../../shared/ui'
-import { useAppServices, useSettings } from '../../services'
+import { invalidateWorkoutSessionQueries, recordEditExerciseQueryKey, useAppServices, useSettings, workoutRecordQueryKey } from '../../services'
 import type { WorkoutExercise, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
-import { exerciseCatalogQueryKey, muscleLabel } from '../../entities/exercise'
+import { muscleLabel } from '../../entities/exercise'
 import { SetRow } from '../../entities/workout'
-import { invalidateRecordQueries } from './recordQueries'
 // 로딩·오류·찾을 수 없음 화면과 확인 대화상자는 기록 화면의 클래스를 그대로
 // 쓴다. /records/:id/edit로 바로 들어오면 Records는 마운트되지 않으므로 이
 // 화면이 직접 import해야 스타일이 붙는다.
 import './Records.css'
 import './RecordEditor.css'
-
-const recordEditExerciseQueryKey = [...exerciseCatalogQueryKey, 'record-edit'] as const
 
 /**
  * 완료된 운동 기록을 고치는 화면.
@@ -42,7 +39,7 @@ export function RecordEditor({ sessionId, onDone, onDirtyChange }: {
   const settingsQuery = useSettings()
 
   const sessionQuery = useQuery({
-    queryKey: ['workout-record', sessionId],
+    queryKey: workoutRecordQueryKey.byId(sessionId),
     queryFn: () => workoutRepository.getSession(sessionId),
   })
 
@@ -109,10 +106,10 @@ export function RecordEditor({ sessionId, onDone, onDirtyChange }: {
     },
     onSuccess: () => {
       onDirtyChange?.(false)
-      queryClient.removeQueries({ queryKey: ['workout-record', sessionId] })
+      queryClient.removeQueries({ queryKey: workoutRecordQueryKey.byId(sessionId) })
       // 기록 삭제와 같은 이유로 기다리지 않는다. 의존 쿼리가 모두 다시 불릴
       // 때까지 편집 화면에 머무르면 저장이 끝났는데도 멈춰 있는 것처럼 보인다.
-      void invalidateRecordQueries(queryClient)
+      void invalidateWorkoutSessionQueries(queryClient)
       onDone()
     },
   })

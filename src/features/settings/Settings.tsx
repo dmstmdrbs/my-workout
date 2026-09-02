@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
-import { useAppServices, useSettings, userSettingsQueryKey } from '../../services'
+import { dashboardOverviewQueryKey, useAppServices, useSettings, userSettingsQueryKey } from '../../services'
 import { applyTheme } from '../../lib/theme'
 import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../../entities/workout'
 import type { Theme, UserProfile, UserSettings } from '../../types/domain'
@@ -249,7 +249,7 @@ function ProfileSection({ profile, onError }: { profile: UserProfile | undefined
     onMutate: () => onError(null),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['user-profile'] })
-      void queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
+      void queryClient.invalidateQueries({ queryKey: dashboardOverviewQueryKey })
     },
     onError: () => onError('이름을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.'),
   })
