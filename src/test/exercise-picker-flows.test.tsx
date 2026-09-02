@@ -61,6 +61,24 @@ describe.sequential('운동 화면: 종목 추가 시트 검색·필터·즉석 
     expect(sheet.queryByRole('button', { name: '와이드 그립 랫 풀다운' })).toBeNull()
   })
 
+  test('기본 시트 액션은 접근 가능한 이름과 안전한 버튼 타입을 유지한다', async () => {
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByRole('heading', { name: '오늘 어떤 운동을 할까요?' })
+    await user.click(screen.getByRole('button', { name: '자유 운동으로 시작' }))
+    await screen.findByRole('heading', { name: '첫 운동을 추가해 주세요.' })
+
+    const sheet = await openPickerSheet(user)
+    for (const name of ['종목 관리로 이동', '새 운동 만들기', '종목 추가 닫기']) {
+      expect(sheet.getByRole('button', { name })).toBeTruthy()
+    }
+
+    const confirmButton = sheet.getByRole('button', { name: '운동을 선택해 주세요' }) as HTMLButtonElement
+    expect(confirmButton.disabled).toBe(true)
+    expect(confirmButton.getAttribute('type')).toBe('button')
+  })
+
   test('부위 필터는 목록을 좁힌다', async () => {
     const user = userEvent.setup()
     renderApp()
@@ -157,6 +175,10 @@ describe.sequential('운동 화면: 종목 추가 시트 검색·필터·즉석 
     await openPickerSheet(user)
     await user.click(screen.getByRole('button', { name: '새 운동 만들기' }))
     const createDialog = within(await screen.findByRole('dialog', { name: '새 운동 만들기' }))
+
+    const submitButton = createDialog.getByRole('button', { name: '만들고 추가' }) as HTMLButtonElement
+    expect(submitButton.getAttribute('type')).toBe('submit')
+    expect(createDialog.getByRole('button', { name: '취소' })).toBeTruthy()
 
     await user.type(createDialog.getByRole('textbox', { name: '새 운동 이름' }), '인클라인 스미스 프레스')
     await user.selectOptions(createDialog.getByRole('combobox', { name: '새 운동 주요 부위' }), 'chest')

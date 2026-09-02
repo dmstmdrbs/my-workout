@@ -52,6 +52,8 @@ entities/
 - 간격, 높이, radius, motion도 토큰을 우선합니다.
 - 버튼은 `Button`과 `IconButton`을 사용합니다. 아이콘 전용 버튼에는
   `aria-label`이 필수입니다.
+- 운동 선택 시트의 기본 액션도 이 공통 버튼 계약을 사용하며, 필터·목록처럼
+  고유한 상태 표현이 필요한 버튼은 feature 스타일을 유지합니다.
 - 떠 있는 UI는 focus trap, Escape, focus 복원을 제공하는 `Overlay`를
   사용합니다.
 - 브랜드 표시는 `BrandLogo`를 사용하고 SVG 경로를 별도로 복제하지 않습니다.
