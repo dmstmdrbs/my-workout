@@ -91,7 +91,10 @@ API를 통해 사용하며, route entry 컴포넌트도 feature 내부 파일을
 않습니다. 운동 러너는 초안 생성·정규화를 `model`의 순수 함수로, 초안 저장과
 타이머·wake lock 효과를 runtime hook으로, 서버 조회를 query hook으로 분리했습니다.
 화면은 운동 카드·초기 설정·휴식 타이머·순서 변경 UI로 나뉩니다. 아직 남은 큰
-화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다. 현재 남은
+화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다. Programs는
+`model/useProgramsController`가 조회·mutation·화면 전환 command를 소유하고,
+`ui/ProgramLibrary`, `ui/ActiveProgram`, `ui/ProgramStates`가 렌더 책임을 나눕니다.
+현재 남은
 feature 간 참조는 운동 선택/생성 UI(`workout/ExercisePicker`), 세트 행
 컴포넌트(`workout/SetRow`), 운동 초안 저장 모델(`workout/activeWorkoutDraft`),
 1RM 설정 카드(`programs/OneRepMaxSettingsCard`), 친구 아바타·쿼리 키
