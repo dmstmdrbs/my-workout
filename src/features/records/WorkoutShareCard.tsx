@@ -2,7 +2,7 @@ import { forwardRef, type CSSProperties } from 'react'
 import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import type { WorkoutSession } from '../../types/domain'
-import { muscleLabel } from '../workout/exerciseLabels'
+import { muscleLabel } from '../../entities/exercise'
 import { BrandLogo } from '../../shared/ui'
 import { formatWeight, formatWorkoutDuration, formatWorkoutNumber, formatWorkoutRir, formatWorkoutSet } from './workoutShareFormat'
 

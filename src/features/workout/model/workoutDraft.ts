@@ -1,4 +1,4 @@
-import { snapshotExerciseName } from '../exerciseLabels'
+import { snapshotExerciseName } from '../../../entities/exercise'
 import type { Equipment, Exercise, ProgramRunDay, Rir, Routine, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
 import type { ExerciseTrackingType, WorkoutDraft, WorkoutDraftExercise } from '../activeWorkoutDraft'
 

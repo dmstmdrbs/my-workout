@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Check, Download, RefreshCw, Share2, SlidersHorizontal } from 'lucide-react'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useAppServices, useSettings } from '../../services'
-import { muscleLabel } from '../workout/exerciseLabels'
+import { muscleLabel } from '../../entities/exercise'
 import {
   formatWorkoutDuration,
   formatWorkoutNumber,

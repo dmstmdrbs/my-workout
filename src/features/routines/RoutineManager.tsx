@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus, ListX, LoaderCircle, Plus, Save, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { getDateInTimeZone } from '../../lib/localDate'
+import { snapshotExerciseName } from '../../entities/exercise'
+import { setTypeLabel, setTypeOptions } from '../../entities/workout'
 import { useAppServices, useSettings } from '../../services'
 import type { Exercise, ProgramRun, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
 import { CreateExerciseDialog, ExercisePickerSheet } from '../workout/ExercisePicker'
-import { snapshotExerciseName } from '../workout/exerciseLabels'
-import { setTypeLabel, setTypeOptions } from '../workout/setInput'
 import './RoutineManager.css'
 
 interface RoutineManagerData {

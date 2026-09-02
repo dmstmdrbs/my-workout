@@ -1,7 +1,7 @@
 import { Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { muscleLabel } from '../../../entities/exercise'
 import { suggestNextLoad } from '../../../lib/loadSuggestion'
 import type { Equipment, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
-import { muscleLabel } from '../exerciseLabels'
 import { formatPreviousSessionSummary, formatSuggestionWeight } from '../lib/formatWorkout'
 import { usePreviousExerciseSession } from '../model/usePreviousExerciseSession'
 import { SetRow } from '../SetRow'

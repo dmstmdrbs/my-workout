@@ -5,7 +5,7 @@
  * 같은 입력 칸을 그대로 써야 해서 꺼냈다. 두 화면이 각자 스테퍼 단위를 들고
  * 있으면 한쪽만 2.5kg이고 한쪽은 5kg이 되는 식으로 조용히 갈라진다.
  */
-import type { Rir, SetType } from '../../types/domain'
+import type { Rir, SetType } from '../../../types/domain'
 
 export const WEIGHT_STEP = 2.5
 export const REPS_STEP = 1
