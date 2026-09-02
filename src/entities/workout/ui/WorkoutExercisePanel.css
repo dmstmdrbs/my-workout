@@ -1,0 +1,14 @@
+/* The exercise panel owns its card and responsive heading layout so all
+   set-editing screens render consistently without importing a feature style. */
+.exercise-workspace { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-card); overflow: hidden; }
+.exercise-workspace-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 24px 19px; border-bottom: 1px solid var(--border); }
+.exercise-workspace-heading h2 { margin-top: 5px; font-size: 1.25rem; }
+.exercise-note { margin-top: 7px; color: var(--text-muted); font-size: .8rem; }
+
+@media (max-width: 899px) {
+  .exercise-workspace-heading { padding: 19px 17px 16px; }
+}
+
+@media (max-width: 560px) {
+  .exercise-workspace-heading { display: block; }
+}

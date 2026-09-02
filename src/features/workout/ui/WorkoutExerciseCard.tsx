@@ -4,7 +4,7 @@ import { suggestNextLoad } from '../../../lib/loadSuggestion'
 import type { Equipment, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
 import { formatPreviousSessionSummary, formatSuggestionWeight } from '../lib/formatWorkout'
 import { usePreviousExerciseSession } from '../model/usePreviousExerciseSession'
-import { SetRow } from '../../../entities/workout'
+import { SetRow, WorkoutExercisePanel } from '../../../entities/workout'
 
 interface WorkoutExerciseCardProps {
   exercise: WorkoutExercise
@@ -29,21 +29,19 @@ export function WorkoutExerciseCard({ exercise, weightUnit, equipment, rirInputE
   const weightShortLabel = isBodyweight ? '추가 중량' : '중량'
   const weightLabel = `${weightShortLabel} (${weightUnit})`
 
-  return <section className="exercise-workspace" aria-labelledby={titleId}>
-    <div className="exercise-workspace-heading">
-      <div>
-        <p className="eyebrow">{muscleLabel(exercise.primaryMuscle)}</p>
-        <h2 id={titleId}>{exercise.exerciseName}</h2>
-        {exercise.notes && <p className="exercise-note">{exercise.notes}</p>}
-      </div>
-      <div className="exercise-workspace-actions">
+  return <WorkoutExercisePanel
+    titleId={titleId}
+    exerciseName={exercise.exerciseName}
+    primaryMuscleLabel={muscleLabel(exercise.primaryMuscle)}
+    notes={exercise.notes}
+    actions={<div className="exercise-workspace-actions">
         <div className="previous-context"><span>이전 완료 세션</span><strong>{formatPreviousSessionSummary(previousSession)}</strong></div>
         <div className="exercise-workspace-buttons">
           <button className="exercise-replace-button" type="button" onClick={onReplace}><RefreshCw size={15} /> 종목 교체</button>
           <button className="exercise-remove-button" type="button" onClick={onRemove}><Trash2 size={15} /> 종목 삭제</button>
         </div>
-      </div>
-    </div>
+      </div>}
+  >
 
     {rirInputEnabled && <LoadSuggestionBanner
       previousSet={previousSet}
@@ -70,7 +68,7 @@ export function WorkoutExerciseCard({ exercise, weightUnit, equipment, rirInputE
       />)}
     </div>
     <button className="add-set-button" type="button" onClick={onAddSet}><Plus size={17} /> 본세트 추가</button>
-  </section>
+  </WorkoutExercisePanel>
 }
 
 /** 지난 세트의 목표/실제 RIR 차이로 다음 중량을 제안한다. */
