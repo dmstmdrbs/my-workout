@@ -17,6 +17,8 @@ export {
 } from './model/setInput'
 export { SetRow } from './ui/SetRow'
 export type { SetRowProps } from './ui/SetRow'
+export { WorkoutExercisePanel } from './ui/WorkoutExercisePanel'
+export type { WorkoutExercisePanelProps } from './ui/WorkoutExercisePanel'
 export {
   clearStoredWorkoutDraft,
   getStoredWorkoutDraftSnapshot,

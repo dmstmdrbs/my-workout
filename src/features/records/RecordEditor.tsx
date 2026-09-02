@@ -5,7 +5,7 @@ import { Overlay } from '../../shared/ui'
 import { invalidateWorkoutSessionQueries, recordEditExerciseQueryKey, useAppServices, useSettings, workoutRecordQueryKey } from '../../services'
 import type { WorkoutExercise, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
 import { muscleLabel } from '../../entities/exercise'
-import { SetRow } from '../../entities/workout'
+import { SetRow, WorkoutExercisePanel } from '../../entities/workout'
 // 로딩·오류·찾을 수 없음 화면과 확인 대화상자는 기록 화면의 클래스를 그대로
 // 쓴다. /records/:id/edit로 바로 들어오면 Records는 마운트되지 않으므로 이
 // 화면이 직접 import해야 스타일이 붙는다.
@@ -196,14 +196,13 @@ export function RecordEditor({ sessionId, onDone, onDirtyChange }: {
           const titleId = `record-editor-exercise-${exercise.id}`
 
           return (
-            <section className="exercise-workspace" key={exercise.id} aria-labelledby={titleId}>
-              <div className="exercise-workspace-heading">
-                <div>
-                  <p className="eyebrow">{muscleLabel(exercise.primaryMuscle)}</p>
-                  <h2 id={titleId}>{exercise.exerciseName}</h2>
-                  {exercise.notes && <p className="exercise-note">{exercise.notes}</p>}
-                </div>
-              </div>
+            <WorkoutExercisePanel
+              key={exercise.id}
+              titleId={titleId}
+              exerciseName={exercise.exerciseName}
+              primaryMuscleLabel={muscleLabel(exercise.primaryMuscle)}
+              notes={exercise.notes}
+            >
 
               <div className="set-table" role="region" aria-label={`${exercise.exerciseName} 세트 기록`} tabIndex={0}>
                 <div className={`set-row set-table-head ${rirInputEnabled ? '' : 'is-rir-hidden'}`} aria-hidden="true">
@@ -233,7 +232,7 @@ export function RecordEditor({ sessionId, onDone, onDirtyChange }: {
               <button className="add-set-button" type="button" aria-label={`${exercise.exerciseName} 세트 추가`} onClick={() => addSet(exercise.id)}>
                 <Plus size={17} aria-hidden="true" /> 세트 추가
               </button>
-            </section>
+            </WorkoutExercisePanel>
           )
         })}
 
