@@ -2,12 +2,10 @@ import { useEffect, useState } from 'react'
 import { Gauge, Save, X } from 'lucide-react'
 import { Overlay } from '../../shared/ui'
 import type { Exercise, ExerciseOneRepMax } from '../../types/domain'
+import type { OneRepMaxValue } from './model/programTypes'
 import './OneRepMaxSetup.css'
 
-export interface OneRepMaxValue {
-  exerciseId: string
-  oneRepMaxKg: number
-}
+export type { OneRepMaxValue }
 
 export function OneRepMaxSetupSheet({ isOpen, exercises, maxes, isSaving, error, onClose, onSave }: {
   isOpen: boolean
