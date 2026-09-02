@@ -9,13 +9,18 @@ interface ProfileAvatarProps {
 }
 
 export function ProfileAvatar({ displayName, avatarUrl, size = 'medium' }: ProfileAvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false)
-  const showImage = Boolean(avatarUrl) && !imageFailed
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null)
+  const showImage = Boolean(avatarUrl) && avatarUrl !== failedAvatarUrl
+
+  const handleImageError = () => {
+    if (!avatarUrl) return
+    setFailedAvatarUrl(avatarUrl)
+  }
 
   return (
     <span className={`friend-avatar friend-avatar-${size}`} aria-hidden="true">
       {showImage ? (
-        <img src={avatarUrl ?? undefined} alt="" onError={() => setImageFailed(true)} />
+        <img key={avatarUrl} src={avatarUrl ?? undefined} alt="" onError={handleImageError} />
       ) : (
         getProfileInitials(displayName)
       )}
