@@ -4,14 +4,16 @@ import { ArrowLeft, ImageDown, Plus, RefreshCw, Save } from 'lucide-react'
 import { Overlay } from '../../shared/ui'
 import { useAppServices, useSettings } from '../../services'
 import type { WorkoutExercise, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
-import { muscleLabel } from '../../entities/exercise'
-import { SetRow } from '../workout/SetRow'
+import { exerciseCatalogQueryKey, muscleLabel } from '../../entities/exercise'
+import { SetRow } from '../../entities/workout'
 import { invalidateRecordQueries } from './recordQueries'
 // 로딩·오류·찾을 수 없음 화면과 확인 대화상자는 기록 화면의 클래스를 그대로
 // 쓴다. /records/:id/edit로 바로 들어오면 Records는 마운트되지 않으므로 이
 // 화면이 직접 import해야 스타일이 붙는다.
 import './Records.css'
 import './RecordEditor.css'
+
+const recordEditExerciseQueryKey = [...exerciseCatalogQueryKey, 'record-edit'] as const
 
 /**
  * 완료된 운동 기록을 고치는 화면.
@@ -48,7 +50,7 @@ export function RecordEditor({ sessionId, onDone, onDirtyChange }: {
   // 여기서 필요한 것은 장비 종류뿐이다 -- 유산소는 중량·횟수 대신 시간·거리를
   // 받고, 맨몸은 중량 칸의 이름이 "추가 중량"이 된다.
   const exercisesQuery = useQuery({
-    queryKey: ['record-edit-exercises'],
+    queryKey: recordEditExerciseQueryKey,
     queryFn: () => workoutRepository.listExercises({ includeArchived: true }),
   })
 

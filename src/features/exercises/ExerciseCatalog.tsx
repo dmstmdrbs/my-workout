@@ -4,7 +4,7 @@ import { Archive, ArchiveRestore, Dumbbell, Pencil, Plus, RefreshCw, Search } fr
 import { Overlay } from '../../shared/ui'
 import { useAppServices, useSettings } from '../../services'
 import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
-import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../../entities/exercise'
+import { brandLabel, exerciseCatalogQueryKey, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../../entities/exercise'
 import './ExerciseCatalog.css'
 
 /**
@@ -12,11 +12,11 @@ import './ExerciseCatalog.css'
  * 부르므로 보관한 종목이 자연스럽게 빠진다. 캐시 키를 따로 쓰는 이유가 이것이다
  * -- 같은 키를 공유하면 보관함까지 담긴 목록이 종목 추가 시트에도 흘러간다.
  */
-const exerciseCatalogQueryKey = ['exercise-catalog'] as const
-
 type MuscleFilter = MuscleGroup | 'all'
 type EquipmentFilter = Equipment | 'all'
 type BrandFilter = ExerciseBrand | 'all' | 'none'
+
+const exerciseManagementQueryKey = [...exerciseCatalogQueryKey, 'management'] as const
 
 export function ExerciseCatalog() {
   const { workoutRepository } = useAppServices()
@@ -30,7 +30,7 @@ export function ExerciseCatalog() {
   const [isCreating, setIsCreating] = useState(false)
 
   const exercisesQuery = useQuery({
-    queryKey: exerciseCatalogQueryKey,
+    queryKey: exerciseManagementQueryKey,
     queryFn: () => workoutRepository.listExercises({ includeArchived: true }),
   })
 
@@ -278,6 +278,4 @@ function ExerciseFormDialog({ exercise, isOpen, defaultRestSeconds, onClose }: {
 /** 카탈로그를 캐싱하는 세 화면이 서로 다른 키를 쓴다. 한 곳에서 모두 갱신한다. */
 function invalidateExerciseCaches(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: exerciseCatalogQueryKey })
-  void queryClient.invalidateQueries({ queryKey: ['workout-runner-setup'] })
-  void queryClient.invalidateQueries({ queryKey: ['routine-manager-data'] })
 }

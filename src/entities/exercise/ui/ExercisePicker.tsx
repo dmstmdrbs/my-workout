@@ -1,12 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ListChecks, Plus, Search, X } from 'lucide-react'
-import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../../entities/exercise'
-import { Button, IconButton, Overlay } from '../../shared/ui'
-import { useAppServices } from '../../services'
-import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
-import { workoutSetupQueryKey } from './model/queryKeys'
+import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../model/exerciseLabels'
+import { useCreateExercise } from '../model/useCreateExercise'
+import { Button, IconButton, Overlay } from '../../../shared/ui'
+import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../../types/domain'
 import './ExercisePicker.css'
 
 type MuscleFilter = MuscleGroup | 'all'
@@ -16,6 +13,7 @@ interface ExercisePickerSheetProps {
   isOpen: boolean
   exercises: Exercise[]
   onClose: () => void
+  onOpenManage: () => void
   title?: string
   eyebrow?: string
   onSelect?: (exercise: Exercise) => void
@@ -35,6 +33,7 @@ export function ExercisePickerSheet({
   isOpen,
   exercises,
   onClose,
+  onOpenManage,
   title = '종목 추가',
   eyebrow = 'ADD EXERCISE',
   onSelect,
@@ -42,9 +41,6 @@ export function ExercisePickerSheet({
   selectionMode = 'single',
   onOpenCreate,
 }: ExercisePickerSheetProps) {
-  // 시트에서 바로 종목 관리로 갈 수 있어야, 운동 중에 브랜드를 잘못 고른 종목을
-  // 그 자리에서 고칠 수 있다. 진행 중인 초안은 저장돼 있어 나갔다 와도 이어진다.
-  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [muscleFilter, setMuscleFilter] = useState<MuscleFilter>('all')
   const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilter>('all')
@@ -89,7 +85,7 @@ export function ExercisePickerSheet({
     <header className="exercise-picker-header">
       <div><p className="eyebrow">{eyebrow}</p><h2 id="exercise-picker-title">{title}</h2></div>
       <div className="exercise-picker-header-actions">
-        <IconButton size="small" onClick={() => { onClose(); navigate('/exercises') }} aria-label="종목 관리로 이동"><ListChecks size={18} /></IconButton>
+        <IconButton size="small" onClick={() => { onClose(); onOpenManage() }} aria-label="종목 관리로 이동"><ListChecks size={18} /></IconButton>
         {onOpenCreate && <IconButton size="small" onClick={onOpenCreate} aria-label="새 운동 만들기"><Plus size={19} /></IconButton>}
         <IconButton size="small" onClick={onClose} aria-label={`${title} 닫기`}><X size={19} /></IconButton>
       </div>
@@ -181,35 +177,13 @@ interface CreateExerciseDialogProps {
 }
 
 export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCreated }: CreateExerciseDialogProps) {
-  const { workoutRepository } = useAppServices()
-  const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [primaryMuscle, setPrimaryMuscle] = useState<MuscleGroup>('chest')
   const [equipment, setEquipment] = useState<Equipment>('barbell')
   const [brand, setBrand] = useState<ExerciseBrand | null>(null)
   const [restSeconds, setRestSeconds] = useState(defaultRestSeconds)
 
-  const createMutation = useMutation({
-    mutationFn: () => workoutRepository.saveExercise({
-      name: name.trim(),
-      primaryMuscle,
-      secondaryMuscles: [],
-      equipment,
-      brand,
-      defaultRestSeconds: restSeconds,
-      isArchived: false,
-    }),
-    onSuccess: (exercise) => {
-      void queryClient.invalidateQueries({ queryKey: workoutSetupQueryKey.all })
-      // RoutineManager caches the same catalog under its own key
-      // (`listExercises()` again, independently) -- without this, a routine
-      // opened within its 30s staleTime right after creating an exercise
-      // here would show an editor missing the exercise just created.
-      void queryClient.invalidateQueries({ queryKey: ['routine-manager-data'] })
-      onCreated(exercise)
-    },
-  })
-  const resetMutation = createMutation.reset
+  const { create, isPending, isError, reset } = useCreateExercise({ onCreated })
 
   useEffect(() => {
     if (!isOpen) return
@@ -220,16 +194,24 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
     setRestSeconds(defaultRestSeconds)
     // Without this, a save that failed on a previous open leaves its error
     // banner showing on the next, otherwise-blank form.
-    resetMutation()
-  }, [isOpen, defaultRestSeconds, resetMutation])
+    reset()
+  }, [isOpen, defaultRestSeconds, reset])
 
   const trimmedName = name.trim()
-  const canSave = trimmedName.length > 0 && !createMutation.isPending
+  const canSave = trimmedName.length > 0 && !isPending
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     if (!canSave) return
-    createMutation.mutate()
+    create({
+      name: trimmedName,
+      primaryMuscle,
+      secondaryMuscles: [],
+      equipment,
+      brand,
+      defaultRestSeconds: restSeconds,
+      isArchived: false,
+    })
   }
 
   return <Overlay isOpen={isOpen} onClose={onClose} presentation="dialog" labelledBy="create-exercise-title" className="create-exercise-dialog">
@@ -266,10 +248,10 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
         <span>기본 휴식 시간 (초)</span>
         <input aria-label="새 운동 기본 휴식 시간(초)" type="number" inputMode="numeric" min="0" step="5" value={restSeconds} onChange={(event) => setRestSeconds(Math.max(0, Number(event.target.value) || 0))} />
       </label>
-      {createMutation.isError && <p className="create-exercise-error" role="alert">운동을 저장하지 못했어요. 다시 시도해 주세요.</p>}
+      {isError && <p className="create-exercise-error" role="alert">운동을 저장하지 못했어요. 다시 시도해 주세요.</p>}
       <footer className="create-exercise-actions">
         <Button variant="secondary" onClick={onClose}>취소</Button>
-        <Button variant="primary" type="submit" disabled={!canSave} isLoading={createMutation.isPending}>{createMutation.isPending ? '저장 중…' : '만들고 추가'}</Button>
+        <Button variant="primary" type="submit" disabled={!canSave} isLoading={isPending}>{isPending ? '저장 중…' : '만들고 추가'}</Button>
       </footer>
     </form>
   </Overlay>

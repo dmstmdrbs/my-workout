@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, ChevronDown, ChevronLeft, ChevronRight, Dumbbell, LineChart, Minus, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { bestEstimatedOneRepMax } from '../../lib/oneRepMax'
 import { getSessionVolume } from '../../lib/volume'
 import { getMondayIndex, getWeekEnd, getWeekStart } from '../../lib/week'
-import { muscleLabel } from '../../entities/exercise'
+import { ExercisePickerSheet, exerciseCatalogQueryKey, muscleLabel } from '../../entities/exercise'
 import { useAppServices, useSettings } from '../../services'
 import type { ExerciseProgressEntry } from '../../services'
 import type { Exercise, MuscleGroup, WorkoutSession, WorkoutSetRecord } from '../../types/domain'
-import { ExercisePickerSheet } from '../workout/ExercisePicker'
 import './Stats.css'
 
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
+const statsExerciseCatalogQueryKey = [...exerciseCatalogQueryKey, 'stats'] as const
 
 /**
  * 종목별 진행 추이 조회 기간(일). AGENTS.md 11번 규칙은 세션 목록을
@@ -334,11 +335,12 @@ interface CardioProgressPoint {
  */
 function ExerciseProgressCard({ weightUnit }: { weightUnit: string }) {
   const { workoutRepository } = useAppServices()
+  const navigate = useNavigate()
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
 
   const exercisesQuery = useQuery({
-    queryKey: ['stats-exercise-catalog'],
+    queryKey: statsExerciseCatalogQueryKey,
     queryFn: () => workoutRepository.listExercises(),
   })
 
@@ -412,6 +414,7 @@ function ExerciseProgressCard({ weightUnit }: { weightUnit: string }) {
         isOpen={isPickerOpen}
         exercises={exercises}
         onClose={() => setIsPickerOpen(false)}
+        onOpenManage={() => navigate('/exercises')}
         onSelect={(exercise) => { setSelectedExerciseId(exercise.id); setIsPickerOpen(false) }}
       />
     </article>

@@ -4,7 +4,7 @@ import { suggestNextLoad } from '../../../lib/loadSuggestion'
 import type { Equipment, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
 import { formatPreviousSessionSummary, formatSuggestionWeight } from '../lib/formatWorkout'
 import { usePreviousExerciseSession } from '../model/usePreviousExerciseSession'
-import { SetRow } from '../SetRow'
+import { SetRow } from '../../../entities/workout'
 
 interface WorkoutExerciseCardProps {
   exercise: WorkoutExercise

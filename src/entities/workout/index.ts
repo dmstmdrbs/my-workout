@@ -15,3 +15,5 @@ export {
   toNullableMinutes,
   toNullableNumber,
 } from './model/setInput'
+export { SetRow } from './ui/SetRow'
+export type { SetRowProps } from './ui/SetRow'

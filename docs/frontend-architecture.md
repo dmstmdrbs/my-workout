@@ -30,18 +30,24 @@ slice 내부에서는 barrel을 거치지 않고 파일을 직접 import해 순�
 피합니다. 정적 브랜드 파일을 만드는 Node 스크립트는 브라우저 번들 밖의 도구이므로
 `brandArt.ts`를 직접 읽는 예외입니다.
 
-현재 `entities`에는 여러 feature가 함께 사용하는 순수 운동 도메인 모델이
-들어 있습니다.
+현재 `entities`에는 여러 feature가 함께 사용하는 운동 도메인 모델과 재사용 UI가
+들어 있습니다. 라벨·query key는 순수 모델이고, 저장이 필요한 model hook과 UI는
+각자의 서비스·표현 경계를 캡슐화합니다.
 
 ```text
 entities/
   exercise/model/exerciseLabels.ts  운동 부위·장비·브랜드 메타데이터와 라벨
+  exercise/model/queryKeys.ts       종목 카탈로그 캐시 root 키 계약
+  exercise/model/useCreateExercise.ts 종목 생성 mutation과 카탈로그 갱신
+  exercise/ui/ExercisePicker.tsx    종목 선택 시트와 새 종목 생성 다이얼로그
   workout/model/setInput.ts         세트 입력 단위·파싱·타입 라벨과 마커
+  workout/ui/SetRow.tsx             운동 진행·기록 편집에서 공유하는 세트 입력 행
 ```
 
-이 모델을 사용하는 코드는 `src/entities/exercise` 또는
-`src/entities/workout`의 공개 `index.ts`를 통해서만 import합니다. 해당
-모델은 React, 서비스, 라우터를 참조하지 않는 순수 TypeScript 코드입니다.
+이 모델과 UI를 사용하는 코드는 `src/entities/exercise` 또는
+`src/entities/workout`의 공개 `index.ts`를 통해서만 import합니다. 순수 도메인
+모델은 React, 서비스, 라우터를 참조하지 않으며, `useCreateExercise` 같은
+서비스 연동 hook과 UI의 의존성은 해당 slice 안에 머뭅니다.
 
 ## 디자인 시스템
 
@@ -97,9 +103,13 @@ API를 통해 사용하며, route entry 컴포넌트도 feature 내부 파일을
 화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다. Programs는
 `model/useProgramsController`가 조회·mutation·화면 전환 command를 소유하고,
 `ui/ProgramLibrary`, `ui/ActiveProgram`, `ui/ProgramStates`가 렌더 책임을 나눕니다.
-현재 남은
-feature 간 참조는 운동 선택/생성 UI(`workout/ExercisePicker`), 세트 행
-컴포넌트(`workout/SetRow`), 운동 초안 저장 모델(`workout/activeWorkoutDraft`),
-1RM 설정 카드(`programs/OneRepMaxSettingsCard`), 친구 아바타·쿼리 키
-(`friends/*`)이며, 공통 도메인 모델을 먼저 `entities`로 내린 뒤 화면 조합
-계층을 정리합니다.
+운동 선택/생성 UI는 `entities/exercise/ui/ExercisePicker`가 소유합니다.
+라우팅 명령은 화면 feature가 주입하고, 생성 저장과 카탈로그 root 무효화는
+`entities/exercise/model/useCreateExercise`가 담당합니다. 운동 진행·기록
+편집에서 공유하는 세트 입력 행은 `entities/workout/ui/SetRow`가 소유합니다.
+종목을 조회하는 각 화면은 `entities/exercise/model/queryKeys.ts`의
+`exerciseCatalogQueryKey`를 prefix로 삼아 자신의 composite key를 만듭니다.
+아직 남은 큰 화면 컴포넌트와 feature 간 직접 import는 운동 초안 저장 모델
+(`workout/activeWorkoutDraft`), 1RM 설정 카드
+(`programs/OneRepMaxSettingsCard`), 친구 아바타·쿼리 키(`friends/*`)이며,
+공통 도메인 모델을 먼저 `entities`로 내린 뒤 화면 조합 계층을 정리합니다.

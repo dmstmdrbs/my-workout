@@ -9,6 +9,8 @@ import {
   Save,
   X,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { CreateExerciseDialog, ExercisePickerSheet } from '../../entities/exercise'
 import { Overlay } from '../../shared/ui'
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
@@ -18,7 +20,6 @@ import {
   type StoredWorkoutDraft,
   type WorkoutDraft,
 } from './activeWorkoutDraft'
-import { CreateExerciseDialog, ExercisePickerSheet } from './ExercisePicker'
 import { applyInitialWorkingWeights, getInitialWorkingWeightItems } from './initialWorkingWeights'
 import { formatWorkoutVolume } from './lib/formatWorkout'
 import { useCompleteWorkout } from './model/useCompleteWorkout'
@@ -65,6 +66,7 @@ type ExercisePickerIntent =
   | null
 
 export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialProgramRunDayId = null, onSelectProgramDay }: WorkoutRunnerProps) {
+  const navigate = useNavigate()
   const settingsQuery = useSettings()
   const keepScreenAwake = settingsQuery.data?.keepScreenAwake ?? false
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null)
@@ -451,6 +453,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
           ? exerciseCatalog.filter((exercise) => exercise.id !== draft.exercises.find((item) => item.id === pickerIntent.workoutExerciseId)?.exerciseId)
           : exerciseCatalog}
         onClose={() => setPickerIntent(null)}
+        onOpenManage={() => navigate('/exercises')}
         title={pickerIntent?.type === 'replace' ? '종목 교체' : '종목 추가'}
         eyebrow={pickerIntent?.type === 'replace' ? 'REPLACE EXERCISE' : 'ADD EXERCISE'}
         selectionMode={pickerIntent?.type === 'replace' ? 'single' : 'multiple'}

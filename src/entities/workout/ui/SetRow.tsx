@@ -14,14 +14,9 @@ import {
   toNullableInteger,
   toNullableMinutes,
   toNullableNumber,
-} from '../../entities/workout'
-import type { WorkoutSetRecord } from '../../types/domain'
-// 세트 행의 스타일(.set-row, .numeric-stepper, .rir-choice-row …)은
-// WorkoutRunner.css의 미디어쿼리 네 곳에 다른 규칙과 한 줄로 뭉쳐 있다.
-// 떼어내면 반응형이 조용히 깨질 위험이 이득보다 크므로, 컴포넌트가 그 파일을
-// 직접 import해 스타일이 컴포넌트와 함께 따라가게만 했다. CSS 분리는 별도
-// 작업으로 남긴다.
-import './WorkoutRunner.css'
+} from '../model/setInput'
+import type { WorkoutSetRecord } from '../../../types/domain'
+import './SetRow.css'
 
 /**
  * 세트 한 줄. 운동 진행 화면(`WorkoutRunner`)과 완료된 기록 편집 화면
