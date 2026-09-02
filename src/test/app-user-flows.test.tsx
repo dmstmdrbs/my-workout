@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
@@ -295,12 +295,35 @@ describe.sequential('Trainlog 핵심 사용자 플로우', () => {
     await user.click(otherRoutineButton!)
 
     const dialog = await screen.findByRole('dialog', { name: '저장하지 않은 변경사항이 있어요.' })
-    await user.click(within(dialog).getByRole('button', { name: '취소' }))
+    const cancelButton = within(dialog).getByRole('button', { name: '취소' })
+    expect(document.activeElement).toBe(cancelButton)
+    expect(document.body.style.overflow).toBe('hidden')
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '저장하지 않은 변경사항이 있어요.' })).toBeNull())
     expect((screen.getByRole('textbox', { name: '루틴 이름' }) as HTMLInputElement).value).toBe('저장 전 변경 루틴')
+    expect(document.body.style.overflow).toBe('')
+    expect(document.activeElement).toBe(otherRoutineButton)
 
     await user.click(otherRoutineButton!)
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '저장하지 않고 나가기' }))
+    const backdropDialog = await screen.findByRole('dialog', { name: '저장하지 않은 변경사항이 있어요.' })
+    fireEvent.mouseDown(backdropDialog.parentElement!)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '저장하지 않은 변경사항이 있어요.' })).toBeNull())
+    expect((screen.getByRole('textbox', { name: '루틴 이름' }) as HTMLInputElement).value).toBe('저장 전 변경 루틴')
+    expect(document.body.style.overflow).toBe('')
+    expect(document.activeElement).toBe(otherRoutineButton)
+
+    await user.click(otherRoutineButton!)
+    await user.click(within(await screen.findByRole('dialog', { name: '저장하지 않은 변경사항이 있어요.' })).getByRole('button', { name: '저장하지 않고 나가기' }))
     await waitFor(() => expect((screen.getByRole('textbox', { name: '루틴 이름' }) as HTMLInputElement).value).toBe(otherRoutineName))
+    expect(document.body.style.overflow).toBe('')
+
+    const selectedNameInput = screen.getByRole('textbox', { name: '루틴 이름' })
+    await user.clear(selectedNameInput)
+    await user.type(selectedNameInput, '모바일 목록 복귀 전 변경')
+    await user.click(screen.getByRole('button', { name: '루틴 목록으로 돌아가기' }))
+    await user.click(within(await screen.findByRole('dialog', { name: '저장하지 않은 변경사항이 있어요.' })).getByRole('button', { name: '저장하지 않고 나가기' }))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('complementary', { name: '루틴 목록' })))
   })
 
   test('UF-06: 새 루틴의 세트 처방과 목표 RIR을 저장하고 운동 시작에서 다시 조회한다', async () => {

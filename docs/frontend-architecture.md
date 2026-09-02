@@ -56,6 +56,7 @@ entities/
   고유한 상태 표현이 필요한 버튼은 feature 스타일을 유지합니다.
 - 떠 있는 UI는 focus trap, Escape, focus 복원을 제공하는 `Overlay`를
   사용합니다.
+- 루틴의 미저장 변경 확인도 `Overlay`와 공통 `Button`을 사용해 동일한 닫기·포커스 동작을 공유합니다.
 - 브랜드 표시는 `BrandLogo`를 사용하고 SVG 경로를 별도로 복제하지 않습니다.
 
 기존 feature CSS가 사용하던 `--accent`, `--surface` 같은 이름은 점진적

@@ -4,6 +4,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Dumbbell, ListPlus,
 import { getDateInTimeZone } from '../../lib/localDate'
 import { snapshotExerciseName } from '../../entities/exercise'
 import { setTypeLabel, setTypeOptions } from '../../entities/workout'
+import { Button, Overlay } from '../../shared/ui'
 import { useAppServices, useSettings } from '../../services'
 import type { Exercise, ProgramRun, Rir, Routine, RoutineExercise, RoutineSetPrescription, SetType } from '../../types/domain'
 import { CreateExerciseDialog, ExercisePickerSheet } from '../workout/ExercisePicker'
@@ -42,6 +43,14 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
   const [notice, setNotice] = useState<string | null>(null)
   const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation | null>(null)
   const appliedRouteSelection = useRef<string | null>(null)
+  const routineListPaneRef = useRef<HTMLElement>(null)
+  const shouldRestoreRoutineListFocus = useRef(false)
+
+  useEffect(() => {
+    if (isMobileEditorOpen || !shouldRestoreRoutineListFocus.current) return
+    shouldRestoreRoutineListFocus.current = false
+    routineListPaneRef.current?.focus()
+  }, [isMobileEditorOpen])
 
   const setupQuery = useQuery({
     queryKey: ['routine-manager-data'],
@@ -129,6 +138,7 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
       onRoutineChange?.('new')
       return
     }
+    shouldRestoreRoutineListFocus.current = true
     setIsMobileEditorOpen(false)
   }
 
@@ -182,7 +192,7 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
       </header>
 
       <div className={`routine-manager-layout ${isMobileEditorOpen ? 'is-editor-open' : ''}`}>
-        <aside className="routine-list-pane" aria-label="루틴 목록">
+        <aside className="routine-list-pane" aria-label="루틴 목록" ref={routineListPaneRef} tabIndex={-1}>
           <div className="routine-list-heading"><span>내 루틴</span><strong>{routineCount}</strong></div>
           {routines.length === 0 && !programDay ? (
             <div className="routine-list-empty"><Dumbbell size={20} aria-hidden="true" /><p>아직 만든 루틴이 없어요.</p></div>
@@ -456,17 +466,22 @@ function EmptyRoutineEditor({ onCreate }: { onCreate: () => void }) {
 }
 
 function DiscardChangesDialog({ destination, onCancel, onDiscard }: { destination: string; onCancel: () => void; onDiscard: () => void }) {
-  return <div className="routine-discard-backdrop">
-    <section className="routine-discard-dialog" role="dialog" aria-modal="true" aria-labelledby="discard-dialog-title" aria-describedby="discard-dialog-description">
+  return <Overlay
+    isOpen
+    onClose={onCancel}
+    presentation="dialog"
+    labelledBy="discard-dialog-title"
+    describedBy="discard-dialog-description"
+    className="routine-discard-dialog"
+  >
       <p className="eyebrow">UNSAVED CHANGES</p>
       <h2 id="discard-dialog-title">저장하지 않은 변경사항이 있어요.</h2>
       <p id="discard-dialog-description">저장하지 않고 {destination} 이동하면 현재 편집 내용은 사라집니다.</p>
       <div className="routine-discard-actions">
-        <button className="secondary-button" type="button" onClick={onCancel}>취소</button>
-        <button className="danger-button" type="button" onClick={onDiscard}>저장하지 않고 나가기</button>
+        <Button variant="secondary" onClick={onCancel} data-overlay-initial-focus>취소</Button>
+        <Button variant="danger" onClick={onDiscard}>저장하지 않고 나가기</Button>
       </div>
-    </section>
-  </div>
+  </Overlay>
 }
 
 function RoutineManagerLoading() { return <main className="routine-manager-page" aria-label="루틴을 불러오는 중"><div className="routine-loading-heading" /><div className="routine-loading-layout"><div /><div /></div></main> }
