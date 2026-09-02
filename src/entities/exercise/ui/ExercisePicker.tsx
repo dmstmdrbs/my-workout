@@ -85,7 +85,7 @@ export function ExercisePickerSheet({
     <header className="exercise-picker-header">
       <div><p className="eyebrow">{eyebrow}</p><h2 id="exercise-picker-title">{title}</h2></div>
       <div className="exercise-picker-header-actions">
-        <IconButton size="small" onClick={() => { onClose(); onOpenManage() }} aria-label="종목 관리로 이동"><ListChecks size={18} /></IconButton>
+        <IconButton size="small" onClick={onOpenManage} aria-label="종목 관리로 이동"><ListChecks size={18} /></IconButton>
         {onOpenCreate && <IconButton size="small" onClick={onOpenCreate} aria-label="새 운동 만들기"><Plus size={19} /></IconButton>}
         <IconButton size="small" onClick={onClose} aria-label={`${title} 닫기`}><X size={19} /></IconButton>
       </div>

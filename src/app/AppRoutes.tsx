@@ -34,6 +34,9 @@ interface AppRoutesProps {
   onWorkoutDraftChange: (draft: StoredWorkoutDraft | null) => void
   onWorkoutEnd: () => void
   onRecordDirtyChange: (isDirty: boolean) => void
+  onRoutineDirtyChange: (isDirty: boolean) => void
+  onOpenExerciseManagement: () => void
+  hasActiveWorkoutDraft: boolean
 }
 
 export function AppRoutes({
@@ -41,6 +44,9 @@ export function AppRoutes({
   onWorkoutDraftChange,
   onWorkoutEnd,
   onRecordDirtyChange,
+  onRoutineDirtyChange,
+  onOpenExerciseManagement,
+  hasActiveWorkoutDraft,
 }: AppRoutesProps) {
   const navigate = useNavigate()
 
@@ -55,12 +61,14 @@ export function AppRoutes({
           onSelectRoutine={(routineId) => onNavigate(buildRoutinePath(routineId))}
           onOpenPrograms={() => onNavigate('/programs')}
           onStartProgramDay={(dayId) => onNavigate(buildWorkoutPath(dayId))}
+          hasActiveWorkoutDraft={hasActiveWorkoutDraft}
         />
       )} />
       <Route path={pagePaths.workout} element={(
         <WorkoutRoute
           onWorkoutDraftChange={onWorkoutDraftChange}
           onWorkoutEnd={onWorkoutEnd}
+          onOpenExerciseManagement={onOpenExerciseManagement}
         />
       )} />
       <Route
@@ -83,7 +91,9 @@ export function AppRoutes({
           onRoutineChange={(routineId) => navigate(
             buildRoutinePath(routineId),
           )}
-          onStartProgramDay={(dayId) => navigate(buildWorkoutPath(dayId))}
+          onStartProgramDay={(dayId) => onNavigate(buildWorkoutPath(dayId))}
+          onDirtyChange={onRoutineDirtyChange}
+          onOpenExerciseManagement={onOpenExerciseManagement}
         />}
       />
       <Route
@@ -123,9 +133,11 @@ export function AppRoutes({
 function WorkoutRoute({
   onWorkoutDraftChange,
   onWorkoutEnd,
+  onOpenExerciseManagement,
 }: {
   onWorkoutDraftChange: (draft: StoredWorkoutDraft | null) => void
   onWorkoutEnd: () => void
+  onOpenExerciseManagement: () => void
 }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -144,6 +156,7 @@ function WorkoutRoute({
         navigate(requestedProgramDayId ? pagePaths.programs : pagePaths.dashboard)
       }}
       onDraftStateChange={onWorkoutDraftChange}
+      onOpenExerciseManagement={onOpenExerciseManagement}
     />
   )
 }
@@ -221,9 +234,13 @@ function WorkoutCompleteRoute({
 function RoutineRoute({
   onRoutineChange,
   onStartProgramDay,
+  onDirtyChange,
+  onOpenExerciseManagement,
 }: {
   onRoutineChange: (routineId: string | 'new' | null) => void
   onStartProgramDay: (dayId: string) => void
+  onDirtyChange: (isDirty: boolean) => void
+  onOpenExerciseManagement: () => void
 }) {
   const { routineId } = useParams()
   return (
@@ -232,6 +249,8 @@ function RoutineRoute({
       initialCreate={routineId === 'new'}
       onRoutineChange={onRoutineChange}
       onStartProgramDay={onStartProgramDay}
+      onDirtyChange={onDirtyChange}
+      onOpenExerciseManagement={onOpenExerciseManagement}
     />
   )
 }

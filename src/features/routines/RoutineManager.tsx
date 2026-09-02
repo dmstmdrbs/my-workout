@@ -1,17 +1,21 @@
 import { useEffect, useRef } from 'react'
 import { Plus } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { DiscardChangesDialog, EmptyRoutineEditor, RoutineManagerError, RoutineManagerLoading, RoutineNotFound } from './ui/RoutineStates'
 import { RoutineEditor } from './ui/RoutineEditor'
 import { RoutineListPane } from './ui/RoutineListPane'
 import { navigationLabel, useRoutineManagerController } from './model/useRoutineManagerController'
 import './RoutineManager.css'
 
-export function RoutineManager({ initialSelectedRoutineId = null, initialCreate = false, onRoutineChange, onStartProgramDay }: { initialSelectedRoutineId?: string | null; initialCreate?: boolean; onRoutineChange?: (routineId: string | 'new' | null) => void; onStartProgramDay?: (dayId: string) => void }) {
-  const navigate = useNavigate()
+export function RoutineManager({ initialSelectedRoutineId = null, initialCreate = false, onRoutineChange, onStartProgramDay, onDirtyChange, onOpenExerciseManagement }: { initialSelectedRoutineId?: string | null; initialCreate?: boolean; onRoutineChange?: (routineId: string | 'new' | null) => void; onStartProgramDay?: (dayId: string) => void; onDirtyChange?: (isDirty: boolean) => void; onOpenExerciseManagement: () => void }) {
   const controller = useRoutineManagerController({ initialSelectedRoutineId, initialCreate, onRoutineChange, onStartProgramDay })
   const routineListPaneRef = useRef<HTMLElement>(null)
   const shouldRestoreRoutineListFocus = useRef(false)
+
+  useEffect(() => {
+    onDirtyChange?.(controller.isDirty)
+  }, [controller.isDirty, onDirtyChange])
+
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
 
   useEffect(() => {
     if (controller.isMobileEditorOpen || !shouldRestoreRoutineListFocus.current) return
@@ -66,7 +70,7 @@ export function RoutineManager({ initialSelectedRoutineId = null, initialCreate 
               onChange={controller.updateDraft}
               onSave={controller.save}
               onClearNotice={controller.clearNotice}
-              onOpenExerciseManagement={() => navigate('/exercises')}
+              onOpenExerciseManagement={onOpenExerciseManagement}
             />
           ) : (
             <EmptyRoutineEditor onCreate={controller.createRoutine} />

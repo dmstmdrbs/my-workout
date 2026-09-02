@@ -22,6 +22,7 @@ export function AppShell() {
   const { closeMenus } = navigationMenu
   const activeWorkout = useActiveWorkoutDraft(location.pathname !== pagePaths.workout)
   const [hasUnsavedRecordEdit, setHasUnsavedRecordEdit] = useState(false)
+  const [hasUnsavedRoutineEdit, setHasUnsavedRoutineEdit] = useState(false)
 
   const activePage = getActivePage(location.pathname)
   // The database remains the theme source of truth. The local mirror is only
@@ -47,11 +48,18 @@ export function AppShell() {
       if (!shouldLeave) return false
       setHasUnsavedRecordEdit(false)
     }
+    if (hasUnsavedRoutineEdit) {
+      const shouldLeave = window.confirm(
+        '저장하지 않은 루틴 변경이 있습니다. 나가면 수정한 내용이 사라집니다. 나갈까요?',
+      )
+      if (!shouldLeave) return false
+      setHasUnsavedRoutineEdit(false)
+    }
     return true
-  }, [activePage, activeWorkout.draft, hasUnsavedRecordEdit])
+  }, [activePage, activeWorkout.draft, hasUnsavedRecordEdit, hasUnsavedRoutineEdit])
 
   useNavigationGuard({
-    when: (activePage === 'workout' && Boolean(activeWorkout.draft)) || hasUnsavedRecordEdit,
+    when: (activePage === 'workout' && Boolean(activeWorkout.draft)) || hasUnsavedRecordEdit || hasUnsavedRoutineEdit,
     onConfirm: () => confirmNavigation(),
   })
 
@@ -97,10 +105,13 @@ export function AppShell() {
           onWorkoutDraftChange={activeWorkout.updateDraft}
           onWorkoutEnd={activeWorkout.clearDraft}
           onRecordDirtyChange={setHasUnsavedRecordEdit}
+          onRoutineDirtyChange={setHasUnsavedRoutineEdit}
+          onOpenExerciseManagement={() => navigateTo('/exercises')}
+          hasActiveWorkoutDraft={Boolean(activeWorkout.draft)}
         />
       </div>
 
-      {activeWorkout.draft && location.pathname !== '/workout' && (
+      {activeWorkout.draft && location.pathname !== '/workout' && !isRecordEditorRoute(location.pathname) && (
         <ActiveWorkoutToast
           draft={activeWorkout.draft}
           clock={activeWorkout.clock}
@@ -116,4 +127,8 @@ export function AppShell() {
       />
     </div>
   )
+}
+
+function isRecordEditorRoute(pathname: string) {
+  return /^\/records\/[^/]+\/edit\/?$/.test(pathname)
 }
