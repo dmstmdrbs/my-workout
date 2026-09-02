@@ -1,6 +1,6 @@
+import type { ExerciseTrackingType, WorkoutDraft, WorkoutDraftExercise } from '../../../entities/workout'
 import { snapshotExerciseName } from '../../../entities/exercise'
 import type { Equipment, Exercise, ProgramRunDay, Rir, Routine, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
-import type { ExerciseTrackingType, WorkoutDraft, WorkoutDraftExercise } from '../activeWorkoutDraft'
 
 export function createRoutineWorkoutDraft(routine: Routine, exercises: Exercise[]): WorkoutDraft {
   const startedAt = new Date().toISOString()

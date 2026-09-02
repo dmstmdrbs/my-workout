@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import App from '../App'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
-import { workoutDraftStorageKey } from '../features/workout/activeWorkoutDraft'
+import { workoutDraftStorageKey } from '../entities/workout'
 
 /**
  * 시드 세션은 2026-08-14 / 08-12 / 08-11로 고정돼 있다. "마지막 수행" 문구는

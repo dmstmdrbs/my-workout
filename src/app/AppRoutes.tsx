@@ -13,7 +13,7 @@ import { Dashboard } from '../features/dashboard'
 import { ExerciseCatalog } from '../features/exercises'
 import { FriendDetail, Friends, InviteLanding } from '../features/friends'
 import { Profile } from '../features/profile'
-import { Programs } from '../features/programs'
+import { OneRepMaxSettingsCard, Programs } from '../features/programs'
 import { RecordDetail, RecordEditor, Records, WorkoutComplete } from '../features/records'
 import { RoutineManager } from '../features/routines'
 import { Settings } from '../features/settings'
@@ -114,7 +114,7 @@ export function AppRoutes({
       <Route path={`${pagePaths.friends}/:friendshipId`} element={<FriendDetail />} />
       <Route path={pagePaths.friends} element={<Friends />} />
       <Route path={pagePaths.profile} element={<Profile />} />
-      <Route path={pagePaths.settings} element={<Settings />} />
+      <Route path={pagePaths.settings} element={<Settings additionalSections={<OneRepMaxSettingsCard />} />} />
       <Route path="*" element={<UnknownPageRoute onGoHome={() => onNavigate('/')} />} />
     </Routes>
   )

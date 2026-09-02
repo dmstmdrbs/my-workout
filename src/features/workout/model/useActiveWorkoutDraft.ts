@@ -5,7 +5,7 @@ import {
   subscribeStoredWorkoutDraft,
   writeStoredWorkoutDraft,
   type StoredWorkoutDraft,
-} from '../activeWorkoutDraft'
+} from '../../../entities/workout'
 
 export function useActiveWorkoutDraft(shouldTick: boolean) {
   const draft = useSyncExternalStore(

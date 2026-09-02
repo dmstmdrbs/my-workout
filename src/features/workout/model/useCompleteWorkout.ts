@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { WorkoutDraft } from '../../../entities/workout'
 import { useAppServices } from '../../../services'
-import type { WorkoutDraft } from '../activeWorkoutDraft'
 import { routineLastPerformedQueryKey, workoutSetupQueryKey } from './queryKeys'
 
 interface UseCompleteWorkoutOptions {

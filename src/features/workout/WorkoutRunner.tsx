@@ -16,10 +16,7 @@ import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useSettings } from '../../services'
 import type { Exercise, WorkoutSetRecord } from '../../types/domain'
-import {
-  type StoredWorkoutDraft,
-  type WorkoutDraft,
-} from './activeWorkoutDraft'
+import type { StoredWorkoutDraft, WorkoutDraft } from '../../entities/workout'
 import { applyInitialWorkingWeights, getInitialWorkingWeightItems } from './initialWorkingWeights'
 import { formatWorkoutVolume } from './lib/formatWorkout'
 import { useCompleteWorkout } from './model/useCompleteWorkout'
@@ -302,7 +299,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     if (!draft) return
     // The stacked layout has no notion of a "selected" exercise, but
     // `activeExerciseId` still round-trips through the persisted draft for
-    // backward compatibility (see activeWorkoutDraft.ts). Keep it pointing at
+    // backward compatibility for persisted drafts. Keep it pointing at
     // an exercise that still exists so a draft saved by this build restores
     // cleanly if an older build ever reads it back.
     if (activeExerciseId === exerciseId) {

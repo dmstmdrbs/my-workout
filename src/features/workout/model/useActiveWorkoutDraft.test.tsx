@@ -5,7 +5,7 @@ import {
   type StoredWorkoutDraft,
   workoutDraftStorageKey,
   writeStoredWorkoutDraft,
-} from '../activeWorkoutDraft'
+} from '../../../entities/workout'
 import { useActiveWorkoutDraft } from './useActiveWorkoutDraft'
 
 function Probe() {

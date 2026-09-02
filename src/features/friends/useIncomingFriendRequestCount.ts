@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import { incomingCountQueryKey } from '../../entities/social'
 import { useAppServices } from '../../services'
-import { incomingCountQueryKey } from './friendQueryKeys'
 
 export function useIncomingFriendRequestCount(enabled: boolean) {
   const { socialRepository } = useAppServices()

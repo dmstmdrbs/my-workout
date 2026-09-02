@@ -1,0 +1,3 @@
+.friend-avatar { display: grid; place-items: center; flex: none; overflow: hidden; color: var(--accent); background: var(--accent-subtle); border: 1px solid var(--accent-border); border-radius: 50%; font-size: .78rem; font-weight: 800; }
+.friend-avatar-small { width: 32px; height: 32px; font-size: .68rem; }.friend-avatar-medium { width: 38px; height: 38px; }.friend-avatar-large { width: 72px; height: 72px; font-size: 1.25rem; }
+.friend-avatar img { width: 100%; height: 100%; object-fit: cover; }

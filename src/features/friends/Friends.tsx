@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Clipboard, Link2, LoaderCircle, UserPlus, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { ProfileAvatar } from '../../entities/profile'
+import { blockedUsersQueryKey, friendOverviewQueryKey, incomingCountQueryKey, socialProfileQueryKey } from '../../entities/social'
 import { useAppServices } from '../../services'
 import type { FriendInvite, FriendRequest, FriendSummary } from '../../types/domain'
-import { FriendAvatar } from './FriendAvatar'
-import { blockedUsersQueryKey, friendOverviewQueryKey, incomingCountQueryKey, socialProfileQueryKey } from './friendQueryKeys'
 import { getFriendInviteUrl, shareFriendInvite } from './shareFriendInvite'
 import './Friends.css'
 
@@ -78,7 +78,7 @@ export function Friends() {
           <p>친구와 연결하고 운동을 꾸준히 이어가 보세요.</p>
         </div>
         <button type="button" className="friends-profile-link" onClick={() => navigate('/profile')}>
-          <FriendAvatar profile={profileQuery.data} size="medium" />
+          <ProfileAvatar displayName={profileQuery.data.displayName} avatarUrl={profileQuery.data.avatarUrl} size="medium" />
           <span className="friends-profile-label">내 프로필</span>
         </button>
       </header>
@@ -114,18 +114,18 @@ export function Friends() {
 
       {blockedQuery.data && blockedQuery.data.length > 0 && <section className="friends-card blocked-card" aria-labelledby="blocked-title">
         <div className="friends-section-heading"><div><p className="card-kicker">PRIVACY</p><h2 id="blocked-title">차단한 사용자</h2></div></div>
-        <ul className="friend-list">{blockedQuery.data.map((blocked) => <li className="friend-row" key={blocked.profile.userId}><FriendAvatar profile={blocked.profile} /><span className="friend-row-copy"><strong>{blocked.profile.displayName}</strong><small>차단됨</small></span><button type="button" className="small-secondary-button" disabled={actionMutation.isPending} onClick={() => actionMutation.mutate({ action: 'unblock', userId: blocked.profile.userId })}>해제</button></li>)}</ul>
+        <ul className="friend-list">{blockedQuery.data.map((blocked) => <li className="friend-row" key={blocked.profile.userId}><ProfileAvatar displayName={blocked.profile.displayName} avatarUrl={blocked.profile.avatarUrl} /><span className="friend-row-copy"><strong>{blocked.profile.displayName}</strong><small>차단됨</small></span><button type="button" className="small-secondary-button" disabled={actionMutation.isPending} onClick={() => actionMutation.mutate({ action: 'unblock', userId: blocked.profile.userId })}>해제</button></li>)}</ul>
       </section>}
     </main>
   )
 }
 
 function FriendRow({ friend, onOpen }: { friend: FriendSummary; onOpen: () => void }) {
-  return <li><button type="button" className="friend-row friend-row-button" onClick={onOpen}><FriendAvatar profile={friend.profile} /><span className="friend-row-copy"><strong>{friend.profile.displayName}</strong><small>친구가 된 날 · {formatDate(friend.friendsSince)}</small></span><span className="friend-row-arrow" aria-hidden="true">›</span></button></li>
+  return <li><button type="button" className="friend-row friend-row-button" onClick={onOpen}><ProfileAvatar displayName={friend.profile.displayName} avatarUrl={friend.profile.avatarUrl} /><span className="friend-row-copy"><strong>{friend.profile.displayName}</strong><small>친구가 된 날 · {formatDate(friend.friendsSince)}</small></span><span className="friend-row-arrow" aria-hidden="true">›</span></button></li>
 }
 
 function RequestSection({ id, title, requests, actionLabel, secondaryLabel, disabled, onAction, onSecondary }: { id: string; title: string; requests: FriendRequest[]; actionLabel: string; secondaryLabel?: string; disabled: boolean; onAction: (id: string) => void; onSecondary?: (id: string) => void }) {
-  return <section className="friends-card request-card" aria-labelledby={id}><div className="friends-section-heading"><h2 id={id}>{title} {requests.length > 0 && <span>{requests.length}</span>}</h2></div>{requests.length ? <ul className="request-list">{requests.map((request) => <li className="request-row" key={request.friendshipId}><FriendAvatar profile={request.profile} size="small" /><span className="friend-row-copy"><strong>{request.profile.displayName}</strong><small>{formatDate(request.requestedAt)}</small></span><span className="request-actions"><button type="button" className="small-primary-button" disabled={disabled} onClick={() => onAction(request.friendshipId)}>{actionLabel}</button>{secondaryLabel && onSecondary && <button type="button" className="small-secondary-button" disabled={disabled} onClick={() => onSecondary(request.friendshipId)}>{secondaryLabel}</button>}</span></li>)}</ul> : <p className="request-empty">새로운 요청이 없습니다.</p>}</section>
+  return <section className="friends-card request-card" aria-labelledby={id}><div className="friends-section-heading"><h2 id={id}>{title} {requests.length > 0 && <span>{requests.length}</span>}</h2></div>{requests.length ? <ul className="request-list">{requests.map((request) => <li className="request-row" key={request.friendshipId}><ProfileAvatar displayName={request.profile.displayName} avatarUrl={request.profile.avatarUrl} size="small" /><span className="friend-row-copy"><strong>{request.profile.displayName}</strong><small>{formatDate(request.requestedAt)}</small></span><span className="request-actions"><button type="button" className="small-primary-button" disabled={disabled} onClick={() => onAction(request.friendshipId)}>{actionLabel}</button>{secondaryLabel && onSecondary && <button type="button" className="small-secondary-button" disabled={disabled} onClick={() => onSecondary(request.friendshipId)}>{secondaryLabel}</button>}</span></li>)}</ul> : <p className="request-empty">새로운 요청이 없습니다.</p>}</section>
 }
 
 function FriendsEmpty({ text }: { text: string }) { return <div className="friends-empty"><Users size={21} aria-hidden="true" /><p>{text}</p></div> }
