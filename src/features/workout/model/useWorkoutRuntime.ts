@@ -9,7 +9,7 @@ import {
   type StoredWorkoutDraft,
   type WorkoutDraft,
   writeStoredWorkoutDraft,
-} from '../activeWorkoutDraft'
+} from '../../../entities/workout'
 
 interface UseWorkoutRuntimeOptions {
   keepScreenAwake: boolean

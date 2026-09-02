@@ -17,9 +17,9 @@ shared    도메인을 모르는 UI, 유틸, 인프라 계약
 
 목표 의존성은 위에서 아래로만 흐릅니다. `shared`는 다른 계층을 import하지 않고,
 `entities`는 `features`를 import하지 않으며, feature끼리 직접 import하지
-않습니다. 현재는 `records/settings/stats/routines` 등이 `workout/programs`를
-직접 참조하는 예외가 남아 있으며, 아래 이관 순서에 따라 제거합니다. 다른
-feature의 UI나 모델이 필요하다면 아래 중 하나를 선택합니다.
+않습니다. 기존 예외도 관련 코드를 만지는 이관 단위에서 제거해 현재
+production feature 사이에는 직접 참조가 없습니다. 다른 feature의 UI나 모델이
+필요하다면 아래 중 하나를 선택합니다.
 
 - 도메인 지식이면 `entities`로 내린다.
 - 도메인을 모르는 표현/동작이면 `shared`로 내린다.
@@ -99,8 +99,7 @@ entities/
 API를 통해 사용하며, route entry 컴포넌트도 feature 내부 파일을 직접 참조하지
 않습니다. 운동 러너는 초안 생성·정규화를 `model`의 순수 함수로, 초안 저장과
 타이머·wake lock 효과를 runtime hook으로, 서버 조회를 query hook으로 분리했습니다.
-화면은 운동 카드·초기 설정·휴식 타이머·순서 변경 UI로 나뉩니다. 아직 남은 큰
-화면 컴포넌트와 feature 간 직접 import는 다음 이관 대상입니다. Programs는
+화면은 운동 카드·초기 설정·휴식 타이머·순서 변경 UI로 나뉩니다. Programs는
 `model/useProgramsController`가 조회·mutation·화면 전환 command를 소유하고,
 `ui/ProgramLibrary`, `ui/ActiveProgram`, `ui/ProgramStates`가 렌더 책임을 나눕니다.
 운동 선택/생성 UI는 `entities/exercise/ui/ExercisePicker`가 소유합니다.
@@ -114,7 +113,9 @@ Routines는 `model/routineDraft`가 React와 무관한 초안 타입·정규화�
 상태를 소유합니다. `ui/RoutineListPane`, `ui/RoutineEditor`,
 `ui/RoutineStates`는 각각 목록·편집기·상태 화면을 렌더링하며, route-level
 `RoutineManager`는 라우팅 명령을 주입하고 이 UI를 조합합니다.
-아직 남은 큰 화면 컴포넌트와 feature 간 직접 import는 운동 초안 저장 모델
-(`workout/activeWorkoutDraft`), 1RM 설정 카드
-(`programs/OneRepMaxSettingsCard`), 친구 아바타·쿼리 키(`friends/*`)이며,
-공통 도메인 모델을 먼저 `entities`로 내린 뒤 화면 조합 계층을 정리합니다.
+운동 초안 저장 모델은 `entities/workout/model/activeWorkoutDraft`와 공개 API로
+내렸고, 친구 프로필 아바타·초기명과 소셜 query key도 각각
+`entities/profile`, `entities/social`이 소유합니다. Settings는
+`additionalSections` 슬롯을 제공하며, 1RM 설정 카드처럼 다른 feature UI가
+필요한 경우 `app/AppRoutes`에서 feature를 조합합니다. 따라서 production
+`src/features` 내부에는 다른 feature를 직접 import하는 코드가 없습니다.

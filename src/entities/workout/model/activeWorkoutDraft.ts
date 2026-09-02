@@ -1,4 +1,4 @@
-import type { WorkoutExercise, WorkoutSession } from '../../types/domain'
+import type { WorkoutExercise, WorkoutSession } from '../../../types/domain'
 
 export type ExerciseTrackingType = 'strength' | 'cardio'
 

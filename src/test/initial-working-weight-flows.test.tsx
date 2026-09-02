@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test } from 'vitest'
 import App from '../App'
-import { workoutDraftStorageKey } from '../features/workout/activeWorkoutDraft'
+import { workoutDraftStorageKey } from '../entities/workout'
 import { AppServicesProvider, createLocalStorageServices, type AppServices } from '../services'
 
 function renderWorkout(services: AppServices = createLocalStorageServices()) {

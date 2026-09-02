@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import App from '../App'
-import { readStoredWorkoutDraft, workoutDraftStorageKey } from '../features/workout/activeWorkoutDraft'
+import { readStoredWorkoutDraft, workoutDraftStorageKey } from '../entities/workout'
 import { toLocalDateKey } from '../lib/week'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
 

@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react'
 import { useLayoutEffect } from 'react'
 import { afterEach, describe, expect, test } from 'vitest'
-import { readStoredWorkoutDraft, writeStoredWorkoutDraft, type StoredWorkoutDraft } from '../activeWorkoutDraft'
+import { readStoredWorkoutDraft, writeStoredWorkoutDraft, type StoredWorkoutDraft } from '../../../entities/workout'
 import { useWorkoutRuntime } from './useWorkoutRuntime'
 
 const externalDraft: StoredWorkoutDraft = {

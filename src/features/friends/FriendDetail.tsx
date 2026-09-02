@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Ban, UserMinus } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ProfileAvatar } from '../../entities/profile'
+import { blockedUsersQueryKey, friendOverviewQueryKey, incomingCountQueryKey, socialProfileQueryKey } from '../../entities/social'
 import { useAppServices } from '../../services'
-import { FriendAvatar } from './FriendAvatar'
-import { blockedUsersQueryKey, friendOverviewQueryKey, incomingCountQueryKey, socialProfileQueryKey } from './friendQueryKeys'
 import './FriendDetail.css'
 
 export function FriendDetail() {
@@ -32,7 +32,7 @@ export function FriendDetail() {
   return <main className="friend-detail-page" aria-labelledby="friend-detail-title">
     <button type="button" className="friend-back-button" onClick={() => navigate('/friends')}><ArrowLeft size={17} aria-hidden="true" /> 친구 목록</button>
     <section className="friend-detail-card">
-      <FriendAvatar profile={friend.profile} size="large" />
+      <ProfileAvatar displayName={friend.profile.displayName} avatarUrl={friend.profile.avatarUrl} size="large" />
       <p className="eyebrow">FRIEND PROFILE</p>
       <h1 id="friend-detail-title">{friend.profile.displayName}</h1>
       <p className="friend-detail-date">{formatDate(friend.friendsSince)}부터 친구</p>
@@ -47,4 +47,3 @@ export function FriendDetail() {
 
 function FriendNotFound({ onBack }: { onBack: () => void }) { return <main className="friend-detail-page friend-detail-message"><h1>친구 정보를 찾을 수 없어요.</h1><p role="alert">친구 관계가 삭제되었거나 접근할 수 없습니다.</p><button type="button" className="primary-button" onClick={onBack}>친구 목록으로</button></main> }
 function formatDate(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? '날짜 미상' : new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(date) }
-

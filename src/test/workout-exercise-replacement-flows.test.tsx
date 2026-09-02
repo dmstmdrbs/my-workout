@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test } from 'vitest'
 import App from '../App'
 import { AppServicesProvider, createLocalStorageServices } from '../services'
-import type { WorkoutDraft } from '../features/workout/activeWorkoutDraft'
+import type { WorkoutDraft } from '../entities/workout'
 
 const workoutDraftKey = 'trainlog:workout-draft:v1'
 

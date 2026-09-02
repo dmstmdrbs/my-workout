@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Exercise, ProgramRunDay, Routine, WorkoutExercise, WorkoutSetRecord } from '../../../types/domain'
-import type { WorkoutDraft } from '../activeWorkoutDraft'
+import type { WorkoutDraft } from '../../../entities/workout'
 import {
   countWorkoutSets,
   createFreeWorkoutExercise,

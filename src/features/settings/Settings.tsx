@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
 import { useAppServices, useSettings, userSettingsQueryKey } from '../../services'
 import { applyTheme } from '../../lib/theme'
-import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../workout/activeWorkoutDraft'
-import { OneRepMaxSettingsCard } from '../programs/OneRepMaxSettingsCard'
+import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../../entities/workout'
 import type { Theme, UserProfile, UserSettings } from '../../types/domain'
 import './Settings.css'
 
@@ -24,7 +23,7 @@ const rirChoices = [
   { value: '5', label: '5+' },
 ]
 
-export function Settings() {
+export function Settings({ additionalSections }: { additionalSections?: ReactNode }) {
   const { workoutRepository } = useAppServices()
   const queryClient = useQueryClient()
   const settingsQuery = useSettings()
@@ -71,7 +70,7 @@ export function Settings() {
 
       <ProfileSection profile={profileQuery.data} onError={setError} />
 
-      <OneRepMaxSettingsCard />
+      {additionalSections}
 
       <section className="settings-card" aria-labelledby="settings-theme-title">
         <div className="settings-card-heading">

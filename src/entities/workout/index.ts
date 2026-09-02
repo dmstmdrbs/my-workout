@@ -17,3 +17,17 @@ export {
 } from './model/setInput'
 export { SetRow } from './ui/SetRow'
 export type { SetRowProps } from './ui/SetRow'
+export {
+  clearStoredWorkoutDraft,
+  getStoredWorkoutDraftSnapshot,
+  readStoredWorkoutDraft,
+  subscribeStoredWorkoutDraft,
+  workoutDraftStorageKey,
+  writeStoredWorkoutDraft,
+} from './model/activeWorkoutDraft'
+export type {
+  ExerciseTrackingType,
+  StoredWorkoutDraft,
+  WorkoutDraft,
+  WorkoutDraftExercise,
+} from './model/activeWorkoutDraft'

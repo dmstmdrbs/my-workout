@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Check, UserRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { ProfileAvatar } from '../../entities/profile'
+import { blockedUsersQueryKey, friendOverviewQueryKey, incomingCountQueryKey, socialProfileQueryKey } from '../../entities/social'
 import { useAppServices } from '../../services'
-import { FriendAvatar } from '../friends/FriendAvatar'
-import { blockedUsersQueryKey, friendOverviewQueryKey, incomingCountQueryKey, socialProfileQueryKey } from '../friends/friendQueryKeys'
 import './Profile.css'
 
 const MIN_DISPLAY_NAME_LENGTH = 1
@@ -56,7 +56,7 @@ export function Profile() {
       <p className="eyebrow">YOUR PROFILE</p>
       <h1 id="profile-title">프로필</h1>
       <p className="profile-intro">친구에게 표시되는 정보를 관리합니다.</p>
-      <FriendAvatar profile={profile} size="large" />
+      <ProfileAvatar displayName={profile.displayName} avatarUrl={profile.avatarUrl} size="large" />
       <div className="profile-form">
         <label className="profile-field"><span>표시 이름</span><input aria-label="표시 이름" type="text" maxLength={MAX_DISPLAY_NAME_LENGTH} value={draft} disabled={saveMutation.isPending} onChange={(event) => { setDraft(event.target.value); if (validationError) setValidationError(null) }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commit() } }} /><small>{draft.trim().length}/{MAX_DISPLAY_NAME_LENGTH}</small></label>
         {validationError && <p className="profile-error" role="alert">{validationError}</p>}

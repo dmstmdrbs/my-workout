@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
+import type { WorkoutDraft } from '../../../entities/workout'
 import type { Exercise, Rir } from '../../../types/domain'
-import type { WorkoutDraft } from '../activeWorkoutDraft'
 import { isExerciseTrackingTypeChange, replaceWorkoutExercise, resolveWorkoutExerciseTrackingType } from './workoutDraft'
 
 export interface PendingExerciseReplacement {

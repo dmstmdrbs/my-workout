@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Clock3, Link2, UserPlus, Users, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ProfileAvatar } from '../../entities/profile'
+import { friendOverviewQueryKey, incomingCountQueryKey } from '../../entities/social'
 import { useAppServices } from '../../services'
 import type { InviteResolution } from '../../types/domain'
-import { FriendAvatar } from './FriendAvatar'
-import { friendOverviewQueryKey, incomingCountQueryKey } from './friendQueryKeys'
 import './InviteLanding.css'
 
 export function InviteLanding() {
@@ -60,7 +60,7 @@ function InviteContent({ resolution, error, isPending, onSend, onAccept, onOpenF
     <main className="invite-page" aria-labelledby="invite-title">
       <section className="invite-card">
         <div className={`invite-state-icon invite-state-${resolution.state}`} aria-hidden="true"><StateIcon state={resolution.state} /></div>
-        {profile && <FriendAvatar profile={profile} size="large" />}
+        {profile && <ProfileAvatar displayName={profile.displayName} avatarUrl={profile.avatarUrl} size="large" />}
         <p className="eyebrow">TRAINLOG FRIENDS</p>
         <h1 id="invite-title">{title}</h1>
         <p className="invite-description">{description}</p>
