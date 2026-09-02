@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ListChecks, Plus, Search, X } from 'lucide-react'
 import { brandLabel, equipmentLabel, equipmentTypes, exerciseBrands, muscleGroups, muscleLabel } from '../../entities/exercise'
-import { Overlay } from '../../shared/ui'
+import { Button, IconButton, Overlay } from '../../shared/ui'
 import { useAppServices } from '../../services'
 import type { Equipment, Exercise, ExerciseBrand, MuscleGroup } from '../../types/domain'
 import { workoutSetupQueryKey } from './model/queryKeys'
@@ -89,9 +89,9 @@ export function ExercisePickerSheet({
     <header className="exercise-picker-header">
       <div><p className="eyebrow">{eyebrow}</p><h2 id="exercise-picker-title">{title}</h2></div>
       <div className="exercise-picker-header-actions">
-        <button className="icon-button" type="button" onClick={() => { onClose(); navigate('/exercises') }} aria-label="종목 관리로 이동"><ListChecks size={18} /></button>
-        {onOpenCreate && <button className="icon-button" type="button" onClick={onOpenCreate} aria-label="새 운동 만들기"><Plus size={19} /></button>}
-        <button className="icon-button" type="button" onClick={onClose} aria-label={`${title} 닫기`}><X size={19} /></button>
+        <IconButton size="small" onClick={() => { onClose(); navigate('/exercises') }} aria-label="종목 관리로 이동"><ListChecks size={18} /></IconButton>
+        {onOpenCreate && <IconButton size="small" onClick={onOpenCreate} aria-label="새 운동 만들기"><Plus size={19} /></IconButton>}
+        <IconButton size="small" onClick={onClose} aria-label={`${title} 닫기`}><X size={19} /></IconButton>
       </div>
     </header>
 
@@ -166,9 +166,9 @@ export function ExercisePickerSheet({
           </button>
         </li>)}
       </ol>}
-      <button className="primary-button exercise-picker-confirm" type="button" disabled={selectedExercises.length === 0} onClick={confirmSelection}>
+      <Button variant="primary" className="exercise-picker-confirm" disabled={selectedExercises.length === 0} onClick={confirmSelection}>
         {selectedExercises.length > 0 ? `선택한 ${selectedExercises.length}개 추가` : '운동을 선택해 주세요'}
-      </button>
+      </Button>
     </footer>}
   </Overlay>
 }
@@ -235,7 +235,7 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
   return <Overlay isOpen={isOpen} onClose={onClose} presentation="dialog" labelledBy="create-exercise-title" className="create-exercise-dialog">
     <header className="create-exercise-header">
       <div><p className="eyebrow">NEW EXERCISE</p><h2 id="create-exercise-title">새 운동 만들기</h2></div>
-      <button className="icon-button" type="button" onClick={onClose} aria-label="새 운동 만들기 닫기"><X size={18} /></button>
+      <IconButton size="small" onClick={onClose} aria-label="새 운동 만들기 닫기"><X size={18} /></IconButton>
     </header>
     <form className="create-exercise-form" onSubmit={handleSubmit}>
       <label>
@@ -268,8 +268,8 @@ export function CreateExerciseDialog({ isOpen, defaultRestSeconds, onClose, onCr
       </label>
       {createMutation.isError && <p className="create-exercise-error" role="alert">운동을 저장하지 못했어요. 다시 시도해 주세요.</p>}
       <footer className="create-exercise-actions">
-        <button className="secondary-button" type="button" onClick={onClose}>취소</button>
-        <button className="primary-button" type="submit" disabled={!canSave}>{createMutation.isPending ? '저장 중…' : '만들고 추가'}</button>
+        <Button variant="secondary" onClick={onClose}>취소</Button>
+        <Button variant="primary" type="submit" disabled={!canSave} isLoading={createMutation.isPending}>{createMutation.isPending ? '저장 중…' : '만들고 추가'}</Button>
       </footer>
     </form>
   </Overlay>
