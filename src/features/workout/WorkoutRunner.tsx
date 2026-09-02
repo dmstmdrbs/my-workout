@@ -9,7 +9,6 @@ import {
   Save,
   X,
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { CreateExerciseDialog, ExercisePickerSheet } from '../../entities/exercise'
 import { Overlay } from '../../shared/ui'
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
@@ -55,6 +54,7 @@ interface WorkoutRunnerProps {
   onDraftStateChange?: (draft: StoredWorkoutDraft | null) => void
   initialProgramRunDayId?: string | null
   onSelectProgramDay?: (dayId: string) => void
+  onOpenExerciseManagement: () => void
 }
 
 type ExercisePickerIntent =
@@ -62,8 +62,7 @@ type ExercisePickerIntent =
   | { type: 'replace'; workoutExerciseId: string }
   | null
 
-export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialProgramRunDayId = null, onSelectProgramDay }: WorkoutRunnerProps) {
-  const navigate = useNavigate()
+export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialProgramRunDayId = null, onSelectProgramDay, onOpenExerciseManagement }: WorkoutRunnerProps) {
   const settingsQuery = useSettings()
   const keepScreenAwake = settingsQuery.data?.keepScreenAwake ?? false
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null)
@@ -450,7 +449,7 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
           ? exerciseCatalog.filter((exercise) => exercise.id !== draft.exercises.find((item) => item.id === pickerIntent.workoutExerciseId)?.exerciseId)
           : exerciseCatalog}
         onClose={() => setPickerIntent(null)}
-        onOpenManage={() => navigate('/exercises')}
+        onOpenManage={onOpenExerciseManagement}
         title={pickerIntent?.type === 'replace' ? '종목 교체' : '종목 추가'}
         eyebrow={pickerIntent?.type === 'replace' ? 'REPLACE EXERCISE' : 'ADD EXERCISE'}
         selectionMode={pickerIntent?.type === 'replace' ? 'single' : 'multiple'}

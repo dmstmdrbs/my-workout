@@ -29,6 +29,7 @@ interface DashboardProps {
   onSelectRoutine: (routineId: string) => void
   onOpenPrograms: () => void
   onStartProgramDay: (dayId: string) => void
+  hasActiveWorkoutDraft?: boolean
 }
 
 interface DashboardData {
@@ -41,7 +42,7 @@ interface DashboardData {
 
 const dayLabels = ['월', '화', '수', '목', '금', '토', '일']
 
-export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine, onOpenPrograms, onStartProgramDay }: DashboardProps) {
+export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine, onOpenPrograms, onStartProgramDay, hasActiveWorkoutDraft = false }: DashboardProps) {
   const { workoutRepository } = useAppServices()
   const settingsQuery = useSettings()
   const dashboardQuery = useQuery({
@@ -64,10 +65,10 @@ export function Dashboard({ onStartWorkout, onViewRecords, onSelectSession, onMa
   }
 
   const { profile, routines, weekSessions, recentSessions, activeProgramRun } = dashboardQuery.data
-  return <DashboardContent profile={profile} routines={routines} weekSessions={weekSessions} recentSessions={recentSessions} activeProgramRun={activeProgramRun} weightUnit={settingsQuery.data.weightUnit} timezone={settingsQuery.data.timezone} onStartWorkout={onStartWorkout} onViewRecords={onViewRecords} onSelectSession={onSelectSession} onManageRoutines={onManageRoutines} onSelectRoutine={onSelectRoutine} onOpenPrograms={onOpenPrograms} onStartProgramDay={onStartProgramDay} />
+  return <DashboardContent profile={profile} routines={routines} weekSessions={weekSessions} recentSessions={recentSessions} activeProgramRun={activeProgramRun} weightUnit={settingsQuery.data.weightUnit} timezone={settingsQuery.data.timezone} onStartWorkout={onStartWorkout} onViewRecords={onViewRecords} onSelectSession={onSelectSession} onManageRoutines={onManageRoutines} onSelectRoutine={onSelectRoutine} onOpenPrograms={onOpenPrograms} onStartProgramDay={onStartProgramDay} hasActiveWorkoutDraft={hasActiveWorkoutDraft} />
 }
 
-function DashboardContent({ profile, routines, weekSessions, recentSessions, activeProgramRun, weightUnit, timezone, onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine, onOpenPrograms, onStartProgramDay }: DashboardData & DashboardProps & { weightUnit: string; timezone: string }) {
+function DashboardContent({ profile, routines, weekSessions, recentSessions, activeProgramRun, weightUnit, timezone, onStartWorkout, onViewRecords, onSelectSession, onManageRoutines, onSelectRoutine, onOpenPrograms, onStartProgramDay, hasActiveWorkoutDraft = false }: DashboardData & DashboardProps & { weightUnit: string; timezone: string }) {
   const overview = useMemo(() => getOverview(weekSessions), [weekSessions])
   const nextRoutine = routines[0]
   const today = getDateInTimeZone(timezone)
@@ -133,7 +134,7 @@ function DashboardContent({ profile, routines, weekSessions, recentSessions, act
         </article>
       </section>
 
-      <button className="mobile-start-fab" type="button" onClick={onStartWorkout} aria-label="운동 시작"><Play size={19} fill="currentColor" aria-hidden="true" /><span>운동 시작</span></button>
+      {!hasActiveWorkoutDraft && <button className="mobile-start-fab" type="button" onClick={onStartWorkout} aria-label="운동 시작"><Play size={19} fill="currentColor" aria-hidden="true" /><span>운동 시작</span></button>}
     </main>
   )
 }
