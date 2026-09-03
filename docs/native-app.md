@@ -16,6 +16,10 @@ Trainlog는 기존 React/Vite PWA를 유지하면서 Capacitor로 iOS와 Android
 친구 운동 시작과 미운동 리마인더처럼 서버에서 보내는 원격 푸시는 후속
 범위다.
 
+네이티브 WebView의 `navigator.onLine` 값은 실제 연결 상태와 다를 수 있다.
+앱에서는 `@capacitor/network` 결과를 TanStack Query의 온라인 상태로 사용하며,
+브라우저 빌드는 기존 `online`/`offline` 이벤트를 유지한다.
+
 ## 개발 환경
 
 Capacitor 8은 Node.js 22 이상, Xcode 26 이상, Android Studio 2025.2.1 이상을
@@ -60,6 +64,13 @@ trainlog://auth/callback
 Google Cloud Console의 OAuth 콜백은 기존 Supabase Auth 콜백
 `https://<project-ref>.supabase.co/auth/v1/callback`을 그대로 유지한다. Google이 앱
 커스텀 스킴으로 직접 돌아오는 구조가 아니다.
+
+## iOS 안전 영역
+
+앱 셸은 `viewport-fit=cover`와 CSS safe area inset을 함께 사용한다. 상단 브랜드는
+Dynamic Island와 상태 표시줄 아래에 배치하고, 하단 탭의 콘텐츠 높이는 유지한 채
+홈 인디케이터 영역만 탭바 높이에 더한다. 탭바 위의 토스트와 팝오버도 같은 계산값을
+기준으로 배치한다.
 
 ## 휴식 종료 알림
 

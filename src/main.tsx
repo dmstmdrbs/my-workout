@@ -8,7 +8,10 @@ import App from './App.tsx'
 import { AppServicesProvider } from './services'
 import { applyTheme, readMirroredTheme } from './lib/theme'
 import { scrubAnalyticsEvent } from './lib/analytics'
+import { configureNativeOnlineManager } from './lib/nativeOnlineManager'
 import GuardedHistoryRouter from './app/GuardedHistoryRouter'
+
+configureNativeOnlineManager()
 
 const queryClient = new QueryClient({
   defaultOptions: {
