@@ -1,4 +1,5 @@
 import type { WorkoutExercise, WorkoutSession } from '../../../types/domain'
+import { readPersistentValue, removePersistentValue, writePersistentValue } from '../../../lib/persistentStorage'
 
 export type ExerciseTrackingType = 'strength' | 'cardio'
 
@@ -40,11 +41,7 @@ let hasSnapshot = false
 const listeners = new Set<DraftListener>()
 
 function getStorageRaw() {
-  try {
-    return globalThis.localStorage?.getItem(workoutDraftStorageKey) ?? null
-  } catch {
-    return null
-  }
+  return readPersistentValue(workoutDraftStorageKey)
 }
 
 function refreshSnapshot() {
@@ -81,7 +78,7 @@ export function getStoredWorkoutDraftSnapshot() {
 
 export function readStoredWorkoutDraft(): StoredWorkoutDraft | null {
   try {
-    const raw = globalThis.localStorage?.getItem(workoutDraftStorageKey)
+    const raw = readPersistentValue(workoutDraftStorageKey)
     if (!raw) return null
     const value = JSON.parse(raw) as Partial<StoredWorkoutDraft>
     if (!value.draft || value.draft.status !== 'in_progress' || !Array.isArray(value.draft.exercises) || !isValidStartedAt(value.draft.startedAt)) return null
@@ -104,20 +101,12 @@ export function readStoredWorkoutDraft(): StoredWorkoutDraft | null {
 }
 
 export function writeStoredWorkoutDraft(value: StoredWorkoutDraft) {
-  try {
-    globalThis.localStorage?.setItem(workoutDraftStorageKey, JSON.stringify(value))
-  } catch {
-    // The current session remains usable if browser storage is unavailable.
-  }
+  writePersistentValue(workoutDraftStorageKey, JSON.stringify(value))
   notifySnapshot()
 }
 
 export function clearStoredWorkoutDraft() {
-  try {
-    globalThis.localStorage?.removeItem(workoutDraftStorageKey)
-  } catch {
-    // No-op when browser storage is unavailable.
-  }
+  removePersistentValue(workoutDraftStorageKey)
   notifySnapshot()
 }
 

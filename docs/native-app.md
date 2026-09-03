@@ -79,6 +79,13 @@ Dynamic Island와 상태 표시줄 아래에 배치하고, 하단 탭의 콘텐�
 - 웹: 기존 Notification API와 포그라운드 소리를 유지한다.
 - iOS/Android: 휴식 종료 시각을 OS에 예약한다.
 - Android 상태 표시줄에는 `ic_stat_trainlog` 단색 심볼을 사용한다.
+- 시간 조정, 타이머 중단, 운동 종료 시 같은 ID의 예약을 취소한다.
+- 알림을 누르면 `/workout`으로 이동한다.
+- Android 12 이상은 정확한 시각 알림을 위해 `알람 및 리마인더` 설정을
+  요구할 수 있다.
+
+권한 거부나 OS 플러그인 오류가 운동 기록 자체를 막지 않도록 알림 호출은
+best-effort로 처리한다.
 
 ## 친구 초대 링크
 
@@ -88,13 +95,14 @@ Dynamic Island와 상태 표시줄 아래에 배치하고, 하단 탭의 콘텐�
   초대 링크를 `/friends/invite/:token` 화면으로 연결한다.
 - iOS Universal Link 자동 연결과 Android App Link 검증에는 출시 Team ID와
   릴리스 인증서 SHA-256 지문을 사용한 도메인 association 파일이 추가로 필요하다.
-- 시간 조정, 타이머 중단, 운동 종료 시 같은 ID의 예약을 취소한다.
-- 알림을 누르면 `/workout`으로 이동한다.
-- Android 12 이상은 정확한 시각 알림을 위해 `알람 및 리마인더` 설정을
-  요구할 수 있다.
 
-권한 거부나 OS 플러그인 오류가 운동 기록 자체를 막지 않도록 알림 호출은
-best-effort로 처리한다.
+## 네이티브 영속 저장
+
+- 운동 초안, 테마 미러, 휴식 알림 설정은 웹에서는 `localStorage`, 네이티브에서는
+  Capacitor Preferences와 localStorage 미러에 함께 저장한다.
+- 앱 시작 시 Preferences를 먼저 복원하며, 기존 앱에서 처음 업그레이드한 경우에는
+  남아 있는 localStorage 값을 Preferences로 이관한다.
+- iOS의 `PrivacyInfo.xcprivacy`에는 UserDefaults 사용 사유 `CA92.1`을 선언한다.
 
 ## 브랜드 자산 갱신
 

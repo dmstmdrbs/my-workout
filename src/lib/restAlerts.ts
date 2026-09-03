@@ -1,16 +1,20 @@
+import { readPersistentValue, removePersistentValue, writePersistentValue } from './persistentStorage'
+
 const restAlertsKey = 'trainlog:rest-alerts-enabled:v1'
+
+export { restAlertsKey }
 
 export function readRestAlertsEnabled() {
   if (typeof window === 'undefined') return false
-  return window.localStorage.getItem(restAlertsKey) === 'true'
+  return readPersistentValue(restAlertsKey) === 'true'
 }
 
 export function disableRestAlerts() {
-  window.localStorage.removeItem(restAlertsKey)
+  removePersistentValue(restAlertsKey)
 }
 
 export function enableRestAlerts() {
-  window.localStorage.setItem(restAlertsKey, 'true')
+  writePersistentValue(restAlertsKey, 'true')
 }
 
 export async function requestRestAlerts() {

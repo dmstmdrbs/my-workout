@@ -1,4 +1,5 @@
 import type { Theme } from '../types/domain'
+import { readPersistentValue, writePersistentValue } from './persistentStorage'
 
 /**
  * Theme lives in the database, but that value arrives after the first paint.
@@ -14,13 +15,8 @@ function isTheme(value: unknown): value is Theme {
 }
 
 export function readMirroredTheme(): Theme {
-  try {
-    const stored = globalThis.localStorage?.getItem(themeStorageKey)
-    return isTheme(stored) ? stored : 'system'
-  } catch {
-    // localStorage can be disabled; the system default stays usable.
-    return 'system'
-  }
+  const stored = readPersistentValue(themeStorageKey)
+  return isTheme(stored) ? stored : 'system'
 }
 
 export function applyTheme(theme: Theme): void {
@@ -32,9 +28,5 @@ export function applyTheme(theme: Theme): void {
     root.setAttribute('data-theme', theme)
     root.style.colorScheme = theme
   }
-  try {
-    globalThis.localStorage?.setItem(themeStorageKey, theme)
-  } catch {
-    // A missing mirror only costs a first-paint flash.
-  }
+  writePersistentValue(themeStorageKey, theme)
 }
