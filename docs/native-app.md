@@ -118,6 +118,14 @@ best-effort로 처리한다.
 - 공유 시트가 닫히면 임시 파일을 정리하며, iOS privacy manifest에는 파일 timestamp
   사용 사유 `C617.1`을 선언한다.
 
+## 운동 중 화면과 햅틱
+
+- 웹에서는 Screen Wake Lock API를 유지하고, 네이티브에서는 Keep Awake 플러그인으로
+  운동 초안이 있는 동안 화면이 꺼지지 않게 한다.
+- 운동을 끝내거나 설정을 끄면 획득 중이던 네이티브 화면 잠금까지 해제한다.
+- 네이티브 세트 완료에는 가벼운 impact, 휴식 종료에는 success notification 햅틱을
+  사용한다. 웹 휴식 종료는 기존 Vibration API와 소리를 유지한다.
+
 ## 브랜드 자산 갱신
 
 ```bash

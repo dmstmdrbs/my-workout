@@ -1,15 +1,14 @@
+import { signalRestFinished } from './haptics'
+
 /**
  * 휴식이 끝났을 때의 알림.
  *
- * **화면이 켜져 있을 때만 동작한다.** 웹에는 "90초 뒤에 알림을 띄워 달라"고
- * 예약할 수 있는 신뢰할 만한 API가 없다(Notification Triggers는 실험으로
- * 끝났고, 서버 푸시는 백엔드가 필요하다). 그래서 이 앱은 반대로 접근한다 --
- * 운동 중에는 화면을 켜 두게 만들고(`wakeLock.ts`), 알림은 앞에 떠 있는
- * 화면에서만 울린다.
+ * **화면이 켜져 있을 때의 보조 신호다.** 네이티브 백그라운드 종료 알림은
+ * Local Notifications가 담당하고, 웹은 예약 API가 없어 이 포그라운드 신호와
+ * Screen Wake Lock을 함께 사용한다.
  *
- * 소리와 진동을 함께 쓴다. 진동은 안드로이드에만 있고(iOS Safari는 Vibration
- * API 자체가 없다), 소리는 iOS 무음 스위치에 막힌다. 둘 중 하나는 대개
- * 통과한다.
+ * 소리와 햅틱을 함께 쓴다. 네이티브 앱은 Capacitor Haptics, 웹은 지원되는
+ * 브라우저의 Vibration API를 사용한다. 소리는 iOS 무음 스위치에 막힐 수 있다.
  */
 
 /** 삑 소리의 길이·음정. 헬스장 소음 위로 들리되 거슬리지 않을 정도. */
@@ -46,18 +45,8 @@ export function primeRestAlert(): void {
 
 /** 휴식 종료를 알린다. 지원하지 않는 기능은 조용히 건너뛴다. */
 export function playRestFinishedAlert(): void {
-  vibrate()
+  signalRestFinished()
   beep()
-}
-
-function vibrate() {
-  // iOS Safari에는 이 API가 없다. 있는 기기에서만 울린다.
-  if (typeof navigator.vibrate !== 'function') return
-  try {
-    navigator.vibrate([180, 90, 180])
-  } catch {
-    // 사용자 설정이나 정책으로 막힐 수 있다. 소리 쪽이 남아 있다.
-  }
 }
 
 function beep() {

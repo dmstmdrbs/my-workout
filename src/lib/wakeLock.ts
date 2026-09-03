@@ -1,3 +1,6 @@
+import { KeepAwake } from '@capacitor-community/keep-awake'
+import { Capacitor } from '@capacitor/core'
+
 /**
  * 운동 중 화면이 꺼지지 않게 붙잡는다.
  *
@@ -16,7 +19,7 @@ type WakeLockLike = { released: boolean; release: () => Promise<void>; addEventL
 type WakeLockNavigator = Navigator & { wakeLock?: { request: (type: 'screen') => Promise<WakeLockLike> } }
 
 export function isWakeLockSupported(): boolean {
-  return typeof navigator !== 'undefined' && 'wakeLock' in navigator
+  return Capacitor.isNativePlatform() || (typeof navigator !== 'undefined' && 'wakeLock' in navigator)
 }
 
 /**
@@ -25,6 +28,8 @@ export function isWakeLockSupported(): boolean {
  * 해제 함수를 돌려준다.
  */
 export function requestScreenWakeLock(): () => void {
+  if (Capacitor.isNativePlatform()) return requestNativeScreenWakeLock(KeepAwake)
+
   const wakeLockNavigator = navigator as WakeLockNavigator
   const api = wakeLockNavigator.wakeLock
   if (!api) return () => {}
@@ -66,5 +71,28 @@ export function requestScreenWakeLock(): () => void {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
     void sentinel?.release().catch(() => {})
     sentinel = null
+  }
+}
+
+interface NativeKeepAwakeAdapter {
+  keepAwake(): Promise<void>
+  allowSleep(): Promise<void>
+}
+
+export function requestNativeScreenWakeLock(keepAwake: NativeKeepAwakeAdapter): () => void {
+  let acquired = false
+  let released = false
+
+  void keepAwake.keepAwake()
+    .then(() => {
+      acquired = true
+      if (released) void keepAwake.allowSleep().catch(() => undefined)
+    })
+    .catch(() => undefined)
+
+  return () => {
+    if (released) return
+    released = true
+    if (acquired) void keepAwake.allowSleep().catch(() => undefined)
   }
 }

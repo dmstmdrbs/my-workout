@@ -12,6 +12,7 @@ import {
 import { CreateExerciseDialog, ExercisePickerSheet } from '../../entities/exercise'
 import { Overlay } from '../../shared/ui'
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
+import { signalSetCompleted } from '../../lib/haptics'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useSettings } from '../../services'
 import type { Exercise, WorkoutSetRecord } from '../../types/domain'
@@ -148,7 +149,10 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
   const toggleSetComplete = (exerciseId: string, set: WorkoutSetRecord) => {
     const nextCompleted = !set.isCompleted
     updateSet(exerciseId, set.id, { isCompleted: nextCompleted, completedAt: nextCompleted ? new Date().toISOString() : null })
-    if (nextCompleted) startRest(set.restSeconds ?? defaultRestSeconds)
+    if (nextCompleted) {
+      signalSetCompleted()
+      startRest(set.restSeconds ?? defaultRestSeconds)
+    }
   }
 
   const addWorkingSet = (exerciseId: string) => {
