@@ -104,6 +104,12 @@ best-effort로 처리한다.
   남아 있는 localStorage 값을 Preferences로 이관한다.
 - iOS의 `PrivacyInfo.xcprivacy`에는 UserDefaults 사용 사유 `CA92.1`을 선언한다.
 
+## 앱 복귀와 데이터 갱신
+
+- 네이티브 앱에서는 Capacitor App의 `appStateChange`를 TanStack Query의 focus 상태와
+  연결한다. 백그라운드에서 돌아오면 stale 상태인 활성 쿼리를 다시 요청한다.
+- 웹에서는 기존 정책대로 브라우저 탭 포커스만으로 자동 재요청하지 않는다.
+
 ## 브랜드 자산 갱신
 
 ```bash
