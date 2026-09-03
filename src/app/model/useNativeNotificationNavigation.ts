@@ -30,5 +30,5 @@ export function useNativeNotificationNavigation(onNavigate: NavigateCommand) {
 
 export function getNotificationPath(action: { notification: { extra?: { path?: unknown } } }) {
   const path = action.notification.extra?.path
-  return path === '/workout' ? path : null
+  return path === '/workout' || path === '/' ? path : null
 }

@@ -6,6 +6,10 @@ describe('네이티브 알림 이동', () => {
     expect(getNotificationPath({ notification: { extra: { path: '/workout' } } })).toBe('/workout')
   })
 
+  test('운동 공백 리마인더는 홈으로 이동한다', () => {
+    expect(getNotificationPath({ notification: { extra: { path: '/' } } })).toBe('/')
+  })
+
   test('허용하지 않은 경로는 무시한다', () => {
     expect(getNotificationPath({ notification: { extra: { path: 'https://example.com' } } })).toBeNull()
   })

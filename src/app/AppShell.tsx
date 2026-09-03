@@ -8,6 +8,7 @@ import { AppRoutes } from './AppRoutes'
 import { getActivePage, pagePaths, type PageId } from './model/navigation'
 import { useAuthSession } from './model/useAuthSession'
 import { useNativeAppLinks } from './model/useNativeAppLinks'
+import { useInactivityReminder } from './model/useInactivityReminder'
 import { useNativeKeyboardState } from './model/useNativeKeyboardState'
 import { useNavigationGuard } from './model/useNavigationGuard'
 import { useNativeNotificationNavigation } from './model/useNativeNotificationNavigation'
@@ -37,6 +38,7 @@ export function AppShell() {
   }, [settingsQuery.data])
 
   const incomingFriendRequestCount = useIncomingFriendRequestCount(Boolean(auth.session))
+  useInactivityReminder(Boolean(auth.session))
 
   useEffect(() => {
     if (isNativeKeyboardOpen) closeMenus()

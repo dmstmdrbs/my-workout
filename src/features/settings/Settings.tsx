@@ -1,10 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
+import { BellRing, LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
 import { dashboardOverviewQueryKey, useAppServices, useSettings, userSettingsQueryKey } from '../../services'
 import { applyTheme } from '../../lib/theme'
 import { confirmAction } from '../../lib/dialog'
+import {
+  requestInactivityReminderPermission,
+  updateInactivityReminderSettings,
+  useInactivityReminderSettings,
+} from '../../lib/inactivityReminder'
 import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../../entities/workout'
 import type { Theme, UserProfile, UserSettings } from '../../types/domain'
 import './Settings.css'
@@ -71,6 +76,8 @@ export function Settings({ additionalSections }: { additionalSections?: ReactNod
       {error && <p className="settings-error" role="alert">{error}</p>}
 
       <ProfileSection profile={profileQuery.data} onError={setError} />
+
+      {Capacitor.isNativePlatform() && <InactivityReminderSection onError={setError} />}
 
       {additionalSections}
 
@@ -144,6 +151,56 @@ export function Settings({ additionalSections }: { additionalSections?: ReactNod
 
       <SignOutSection />
     </main>
+  )
+}
+
+function InactivityReminderSection({ onError }: { onError: (message: string | null) => void }) {
+  const settings = useInactivityReminderSettings()
+  const [isRequesting, setIsRequesting] = useState(false)
+
+  const toggle = async (enabled: boolean) => {
+    onError(null)
+    if (!enabled) {
+      updateInactivityReminderSettings({ enabled: false })
+      return
+    }
+
+    setIsRequesting(true)
+    const granted = await requestInactivityReminderPermission()
+    setIsRequesting(false)
+    if (!granted) {
+      onError('운동 리마인더를 켜려면 기기 설정에서 알림 권한을 허용해 주세요.')
+      return
+    }
+    updateInactivityReminderSettings({ enabled: true })
+  }
+
+  return (
+    <section className="settings-card" aria-labelledby="settings-reminder-title">
+      <div className="settings-card-heading">
+        <span className="settings-icon"><BellRing size={18} aria-hidden="true" /></span>
+        <div><h2 id="settings-reminder-title">운동 리마인더</h2><p>이 기기에만 저장되는 네이티브 알림 설정입니다.</p></div>
+      </div>
+      <SettingToggle
+        label="운동 공백 알림"
+        description={`마지막 운동 후 ${settings.days}일이 지나면 다시 시작하도록 알려드려요.`}
+        checked={settings.enabled}
+        onChange={(enabled) => { if (!isRequesting) void toggle(enabled) }}
+      />
+      <label className="settings-field">
+        <span>알림을 보낼 운동 공백</span>
+        <select
+          aria-label="운동 공백 알림 주기"
+          value={settings.days}
+          disabled={!settings.enabled || isRequesting}
+          onChange={(event) => updateInactivityReminderSettings({ days: Number(event.target.value) as 3 | 5 | 7 })}
+        >
+          <option value="3">3일</option>
+          <option value="5">5일</option>
+          <option value="7">7일</option>
+        </select>
+      </label>
+    </section>
   )
 }
 

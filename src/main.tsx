@@ -14,6 +14,7 @@ import { configureNativeFocusManager } from './lib/nativeFocusManager'
 import { hydratePersistentStorage } from './lib/persistentStorage'
 import { restAlertsKey } from './lib/restAlerts'
 import { workoutDraftStorageKey } from './entities/workout'
+import { inactivityReminderKey } from './lib/inactivityReminder'
 import GuardedHistoryRouter from './app/GuardedHistoryRouter'
 
 const queryClient = new QueryClient({
@@ -27,7 +28,7 @@ const queryClient = new QueryClient({
 })
 
 async function bootstrap() {
-  await hydratePersistentStorage([workoutDraftStorageKey, themeStorageKey, restAlertsKey])
+  await hydratePersistentStorage([workoutDraftStorageKey, themeStorageKey, restAlertsKey, inactivityReminderKey])
   configureNativeOnlineManager()
   configureNativeFocusManager()
 
