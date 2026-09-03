@@ -8,6 +8,7 @@ import { AppRoutes } from './AppRoutes'
 import { getActivePage, pagePaths, type PageId } from './model/navigation'
 import { useAuthSession } from './model/useAuthSession'
 import { useNavigationGuard } from './model/useNavigationGuard'
+import { useNativeNotificationNavigation } from './model/useNativeNotificationNavigation'
 import { ActiveWorkoutToast } from './ui/ActiveWorkoutToast'
 import { AuthLoading, SignInGate } from './ui/AuthGate'
 import { BottomNavigation, SideNavigation, TopBar } from './ui/AppNavigation'
@@ -72,6 +73,8 @@ export function AppShell() {
   const selectPage = useCallback((page: PageId) => {
     navigateTo(pagePaths[page])
   }, [navigateTo])
+
+  useNativeNotificationNavigation(navigateTo)
 
   if (auth.isLoading) return <AuthLoading />
   if (!auth.session) {

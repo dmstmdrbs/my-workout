@@ -32,6 +32,7 @@
 - React Router, TanStack Query
 - Supabase Auth (Google OAuth) + Postgres + RLS
 - PWA (`vite-plugin-pwa`)
+- Capacitor 8 기반 iOS/Android 앱
 - Vitest + Testing Library
 
 프런트엔드 계층과 디자인 시스템의 의존 규칙은
@@ -101,6 +102,20 @@ npx vercel deploy --prod --yes
 ```
 
 배포 전에는 위 검증 명령을 모두 통과해야 합니다. `service_role` 키, Google OAuth client secret, 사용자 데이터, `.env.local`은 절대 커밋하거나 브라우저 코드에 포함하지 마세요.
+
+## iOS·Android 앱
+
+Capacitor 앱 ID는 `app.trainlog.mobile`입니다. 웹 코드를 변경한 뒤 네이티브
+프로젝트에 반영하려면 다음을 실행합니다.
+
+```bash
+npm run native:sync
+npm run native:ios
+npm run native:android
+```
+
+실기기 서명, Google OAuth 딥링크, 로컬 알림 권한과 자산 생성 절차는
+[네이티브 앱 가이드](docs/native-app.md)를 참고하세요.
 
 ## 작업 이어가기
 

@@ -37,6 +37,7 @@ import type {
   WorkoutSetRecord,
 } from '../../types/domain'
 import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, PreviousExerciseSession, SocialRepository, WorkoutRepository } from '../contracts'
+import { nativeAuthRedirectUrl, openNativeOAuth, usesNativeOAuth } from './nativeOAuth'
 
 type Row = Record<string, unknown>
 
@@ -361,11 +362,19 @@ class SupabaseAuthAdapter implements AuthAdapter {
   }
 
   async signInWithGoogle(options?: { redirectTo?: string }): Promise<AuthSession | null> {
-    const { error } = await this.client.auth.signInWithOAuth({
+    const isNative = usesNativeOAuth()
+    const { data, error } = await this.client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: options?.redirectTo ?? window.location.origin },
+      options: {
+        redirectTo: isNative ? nativeAuthRedirectUrl : options?.redirectTo ?? window.location.origin,
+        skipBrowserRedirect: isNative,
+      },
     })
     if (error) throw toError(error, 'Google 로그인을 시작하지 못했어요.')
+    if (isNative) {
+      if (!data.url) throw new Error('Google 로그인 주소를 받지 못했어요.')
+      await openNativeOAuth(this.client, data.url)
+    }
     // OAuth navigates away in a normal browser. A session is available only after its return redirect.
     return this.getSession()
   }

@@ -9,11 +9,15 @@ export function disableRestAlerts() {
   window.localStorage.removeItem(restAlertsKey)
 }
 
+export function enableRestAlerts() {
+  window.localStorage.setItem(restAlertsKey, 'true')
+}
+
 export async function requestRestAlerts() {
   const NotificationApi = (window as unknown as { Notification?: typeof Notification }).Notification
   if (!NotificationApi) {
     if ('vibrate' in navigator) {
-      localStorage.setItem(restAlertsKey, 'true')
+      enableRestAlerts()
       return true
     }
     return false
@@ -23,7 +27,7 @@ export async function requestRestAlerts() {
     ? await NotificationApi.requestPermission()
     : NotificationApi.permission
   if (permission !== 'granted') return false
-  window.localStorage.setItem(restAlertsKey, 'true')
+  enableRestAlerts()
   return true
 }
 

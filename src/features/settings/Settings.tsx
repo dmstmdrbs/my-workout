@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
 import { dashboardOverviewQueryKey, useAppServices, useSettings, userSettingsQueryKey } from '../../services'
@@ -125,7 +126,9 @@ export function Settings({ additionalSections }: { additionalSections?: ReactNod
         <div className="settings-toggle-list">
           <SettingToggle
             label="운동 중 화면 켜 두기"
-            description="휴식 알림은 화면이 켜져 있을 때만 울려요. 웹에서는 화면이 꺼진 뒤의 알림을 예약할 방법이 없습니다."
+            description={Capacitor.isNativePlatform()
+              ? '화면을 꺼도 휴식 종료 알림은 받을 수 있어요. 이 설정은 운동 화면이 앞에 있을 때 화면 잠금을 막습니다.'
+              : '휴식 알림은 화면이 켜져 있을 때만 울려요. 웹에서는 화면이 꺼진 뒤의 알림을 예약할 방법이 없습니다.'}
             checked={settings.keepScreenAwake}
             onChange={(keepScreenAwake) => settingsMutation.mutate({ keepScreenAwake })}
           />

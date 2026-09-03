@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getEffectivePausedSeconds } from '../../../lib/duration'
 import { playRestFinishedAlert, primeRestAlert } from '../../../lib/restAlert'
-import { disableRestAlerts, notifyRestComplete, readRestAlertsEnabled, requestRestAlerts } from '../../../lib/restAlerts'
+import { disableRestAlerts, enableRestAlerts, notifyRestComplete, readRestAlertsEnabled, requestRestAlerts } from '../../../lib/restAlerts'
 import { requestScreenWakeLock } from '../../../lib/wakeLock'
 import {
   clearStoredWorkoutDraft,
@@ -10,6 +10,7 @@ import {
   type WorkoutDraft,
   writeStoredWorkoutDraft,
 } from '../../../entities/workout'
+import { requestNativeRestNotificationPermission, syncNativeRestNotification, usesNativeRestNotifications } from './restNotifications'
 
 interface UseWorkoutRuntimeOptions {
   keepScreenAwake: boolean
@@ -37,11 +38,23 @@ export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange }: UseWo
     const targetEnd = restEndsAt
     const timeout = window.setTimeout(() => {
       setClock(Date.now())
-      if (document.visibilityState === 'visible') playRestFinishedAlert()
+      if (usesNativeRestNotifications()) {
+        // 네이티브 알림을 켰다면 포그라운드도 OS가 소리를 낸다.
+        // 권한을 끄면 화면이 열려 있을 때만 기존 알림을 유지한다.
+        if (!restAlertsEnabled && document.visibilityState === 'visible') playRestFinishedAlert()
+      } else if (document.visibilityState === 'visible') playRestFinishedAlert()
       else if (restAlertsEnabled) void notifyRestComplete()
       setRestEndsAt((current) => current === targetEnd ? null : current)
     }, Math.max(0, restEndsAt - Date.now()))
     return () => window.clearTimeout(timeout)
+  }, [draft, restAlertsEnabled, restEndsAt])
+
+  useEffect(() => {
+    if (!usesNativeRestNotifications()) return
+    void syncNativeRestNotification(draft && restAlertsEnabled ? restEndsAt : null, restAlertsEnabled)
+      .catch(() => {
+        // OS 알림 예약이 실패해도 운동 기록과 타이머는 계속 동작해야 한다.
+      })
   }, [draft, restAlertsEnabled, restEndsAt])
 
   // 운동 중에는 화면을 켜 둔다. 웹에는 백그라운드 알림을 예약할 방법이 없어,
@@ -126,7 +139,11 @@ export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange }: UseWo
       setRestAlertsEnabled(false)
       return
     }
-    setRestAlertsEnabled(await requestRestAlerts())
+    const enabled = usesNativeRestNotifications()
+      ? await requestNativeRestNotificationPermission()
+      : await requestRestAlerts()
+    if (enabled) enableRestAlerts()
+    setRestAlertsEnabled(enabled)
   }
 
   const getFinalPausedSeconds = () => draft
