@@ -25,6 +25,20 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="trainlog" android:host="auth" android:pathPrefix="/callback" />
             </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="trainlog" android:host="friends" android:pathPrefix="/invite/" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="trainlog-psi.vercel.app" android:pathPrefix="/friends/invite/" />
+            </intent-filter>
         </activity>
 
         <provider

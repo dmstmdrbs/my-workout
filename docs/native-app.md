@@ -79,6 +79,15 @@ Dynamic Island와 상태 표시줄 아래에 배치하고, 하단 탭의 콘텐�
 - 웹: 기존 Notification API와 포그라운드 소리를 유지한다.
 - iOS/Android: 휴식 종료 시각을 OS에 예약한다.
 - Android 상태 표시줄에는 `ic_stat_trainlog` 단색 심볼을 사용한다.
+
+## 친구 초대 링크
+
+- 네이티브 컨테이너의 `localhost` 주소를 공유하지 않고 `VITE_PUBLIC_APP_URL`의
+  공개 HTTPS 주소를 사용한다.
+- 설치된 앱은 공개 도메인 또는 `trainlog://friends/invite/:token`으로 들어온
+  초대 링크를 `/friends/invite/:token` 화면으로 연결한다.
+- iOS Universal Link 자동 연결과 Android App Link 검증에는 출시 Team ID와
+  릴리스 인증서 SHA-256 지문을 사용한 도메인 association 파일이 추가로 필요하다.
 - 시간 조정, 타이머 중단, 운동 종료 시 같은 ID의 예약을 취소한다.
 - 알림을 누르면 `/workout`으로 이동한다.
 - Android 12 이상은 정확한 시각 알림을 위해 `알람 및 리마인더` 설정을

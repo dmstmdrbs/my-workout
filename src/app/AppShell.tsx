@@ -7,6 +7,7 @@ import { useSettings } from '../services'
 import { AppRoutes } from './AppRoutes'
 import { getActivePage, pagePaths, type PageId } from './model/navigation'
 import { useAuthSession } from './model/useAuthSession'
+import { useNativeAppLinks } from './model/useNativeAppLinks'
 import { useNavigationGuard } from './model/useNavigationGuard'
 import { useNativeNotificationNavigation } from './model/useNativeNotificationNavigation'
 import { ActiveWorkoutToast } from './ui/ActiveWorkoutToast'
@@ -75,6 +76,7 @@ export function AppShell() {
   }, [navigateTo])
 
   useNativeNotificationNavigation(navigateTo)
+  useNativeAppLinks(navigateTo)
 
   if (auth.isLoading) return <AuthLoading />
   if (!auth.session) {

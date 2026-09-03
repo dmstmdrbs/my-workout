@@ -51,6 +51,7 @@ npm run dev
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_PUBLISHABLE_KEY=
+VITE_PUBLIC_APP_URL=https://trainlog-psi.vercel.app
 ```
 
 두 값이 없으면 앱은 `localStorage` 기반 mock adapter로 실행됩니다. 이 모드는 UI 개발과 사용자 플로우 테스트에만 사용합니다.
@@ -96,6 +97,7 @@ Vercel 프로젝트에 아래 환경 변수를 **Production**으로 설정한 �
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_PUBLIC_APP_URL` (네이티브 앱에서 공유할 공개 HTTPS 주소)
 
 ```bash
 npx vercel deploy --prod --yes
