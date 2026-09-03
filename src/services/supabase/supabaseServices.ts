@@ -1018,6 +1018,27 @@ class SupabaseSocialRepository implements SocialRepository {
     if (error) throw toError(error, '친구 요청 수를 확인하지 못했어요.')
     return count ?? 0
   }
+
+  async registerPushDevice(input: { token: string; platform: 'ios' | 'android' }): Promise<void> {
+    await this.requireUser()
+    const { error } = await this.client.rpc('register_push_device', {
+      p_token: input.token,
+      p_platform: input.platform,
+    })
+    if (error) throw toError(error, '푸시 알림 기기를 등록하지 못했어요.')
+  }
+
+  async unregisterPushDevice(token: string): Promise<void> {
+    await this.requireUser()
+    const { error } = await this.client.rpc('unregister_push_device', { p_token: token })
+    if (error) throw toError(error, '푸시 알림 기기를 해제하지 못했어요.')
+  }
+
+  async announceWorkoutStarted(startedAt: string): Promise<void> {
+    await this.requireUser()
+    const { error } = await this.client.rpc('announce_workout_started', { p_started_at: startedAt })
+    if (error) throw toError(error, '운동 시작 소식을 보내지 못했어요.')
+  }
 }
 
 /** Browser-only services: publishable key + RLS protect every request. */

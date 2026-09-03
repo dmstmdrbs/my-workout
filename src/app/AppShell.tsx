@@ -12,6 +12,7 @@ import { useInactivityReminder } from './model/useInactivityReminder'
 import { useNativeKeyboardState } from './model/useNativeKeyboardState'
 import { useNavigationGuard } from './model/useNavigationGuard'
 import { useNativeNotificationNavigation } from './model/useNativeNotificationNavigation'
+import { useNativePushNotifications } from './model/useNativePushNotifications'
 import { ActiveWorkoutToast } from './ui/ActiveWorkoutToast'
 import { AuthLoading, SignInGate } from './ui/AuthGate'
 import { BottomNavigation, SideNavigation, TopBar } from './ui/AppNavigation'
@@ -84,6 +85,7 @@ export function AppShell() {
   }, [navigateTo])
 
   useNativeNotificationNavigation(navigateTo)
+  useNativePushNotifications(Boolean(auth.session), navigateTo)
   useNativeAppLinks(navigateTo)
 
   if (auth.isLoading) return <AuthLoading />

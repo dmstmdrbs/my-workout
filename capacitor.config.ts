@@ -1,4 +1,5 @@
 /// <reference types="@capacitor/local-notifications" />
+/// <reference types="@capacitor/push-notifications" />
 
 import type { CapacitorConfig } from '@capacitor/cli'
 import { KeyboardResize } from '@capacitor/keyboard'
@@ -20,6 +21,9 @@ const config: CapacitorConfig = {
       resize: KeyboardResize.Native,
       resizeOnFullScreen: true,
       autoBackdropColor: 'dom',
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'banner', 'list'],
     },
   },
 }

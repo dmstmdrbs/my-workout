@@ -10,6 +10,12 @@ import {
   updateInactivityReminderSettings,
   useInactivityReminderSettings,
 } from '../../lib/inactivityReminder'
+import {
+  requestFriendActivityNotificationPermission,
+  setFriendActivityNotificationsEnabled,
+  unregisterCurrentPushDevice,
+  useFriendActivityNotificationsEnabled,
+} from '../../lib/friendActivityNotifications'
 import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../../entities/workout'
 import type { Theme, UserProfile, UserSettings } from '../../types/domain'
 import './Settings.css'
@@ -155,8 +161,11 @@ export function Settings({ additionalSections }: { additionalSections?: ReactNod
 }
 
 function InactivityReminderSection({ onError }: { onError: (message: string | null) => void }) {
+  const { socialRepository } = useAppServices()
   const settings = useInactivityReminderSettings()
+  const friendActivityEnabled = useFriendActivityNotificationsEnabled()
   const [isRequesting, setIsRequesting] = useState(false)
+  const [isFriendRequesting, setIsFriendRequesting] = useState(false)
 
   const toggle = async (enabled: boolean) => {
     onError(null)
@@ -175,11 +184,29 @@ function InactivityReminderSection({ onError }: { onError: (message: string | nu
     updateInactivityReminderSettings({ enabled: true })
   }
 
+  const toggleFriendActivity = async (enabled: boolean) => {
+    onError(null)
+    if (!enabled) {
+      setFriendActivityNotificationsEnabled(false)
+      await unregisterCurrentPushDevice(socialRepository)
+      return
+    }
+
+    setIsFriendRequesting(true)
+    const granted = await requestFriendActivityNotificationPermission()
+    setIsFriendRequesting(false)
+    if (!granted) {
+      onError('친구 운동 알림을 켜려면 기기 설정에서 알림 권한을 허용해 주세요.')
+      return
+    }
+    setFriendActivityNotificationsEnabled(true)
+  }
+
   return (
     <section className="settings-card" aria-labelledby="settings-reminder-title">
       <div className="settings-card-heading">
         <span className="settings-icon"><BellRing size={18} aria-hidden="true" /></span>
-        <div><h2 id="settings-reminder-title">운동 리마인더</h2><p>이 기기에만 저장되는 네이티브 알림 설정입니다.</p></div>
+        <div><h2 id="settings-reminder-title">알림</h2><p>이 기기에만 저장되는 네이티브 알림 설정입니다.</p></div>
       </div>
       <SettingToggle
         label="운동 공백 알림"
@@ -200,6 +227,14 @@ function InactivityReminderSection({ onError }: { onError: (message: string | nu
           <option value="7">7일</option>
         </select>
       </label>
+      <div className="settings-toggle-list">
+        <SettingToggle
+          label="친구 운동 시작 알림"
+          description="친구가 새 운동을 시작하면 알려드려요. 같은 친구의 반복 시작은 30분 동안 한 번만 전송합니다."
+          checked={friendActivityEnabled}
+          onChange={(enabled) => { if (!isFriendRequesting) void toggleFriendActivity(enabled) }}
+        />
+      </div>
     </section>
   )
 }
@@ -259,7 +294,7 @@ function RestSecondsField({ value, onCommit }: { value: number; onCommit: (secon
  * signs in on this device.
  */
 function SignOutSection() {
-  const { auth } = useAppServices()
+  const { auth, socialRepository } = useAppServices()
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
 
@@ -271,6 +306,8 @@ function SignOutSection() {
     if (!await confirmAction({ title: '로그아웃', message, okButtonTitle: '로그아웃' })) return
 
     try {
+      setFriendActivityNotificationsEnabled(false)
+      await unregisterCurrentPushDevice(socialRepository)
       await auth.signOut()
       clearStoredWorkoutDraft()
       // The theme mirror is a device-level localStorage key, so it survives

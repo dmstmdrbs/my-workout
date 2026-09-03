@@ -15,7 +15,7 @@ import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration
 import { confirmAction } from '../../lib/dialog'
 import { signalSetCompleted } from '../../lib/haptics'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
-import { useSettings } from '../../services'
+import { useAppServices, useSettings } from '../../services'
 import type { Exercise, WorkoutSetRecord } from '../../types/domain'
 import type { StoredWorkoutDraft, WorkoutDraft } from '../../entities/workout'
 import { applyInitialWorkingWeights, getInitialWorkingWeightItems } from './initialWorkingWeights'
@@ -65,6 +65,7 @@ type ExercisePickerIntent =
   | null
 
 export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialProgramRunDayId = null, onSelectProgramDay, onOpenExerciseManagement }: WorkoutRunnerProps) {
+  const { socialRepository } = useAppServices()
   const settingsQuery = useSettings()
   const keepScreenAwake = settingsQuery.data?.keepScreenAwake ?? false
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null)
@@ -86,7 +87,15 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     stopRest,
     toggleRestAlerts,
     getFinalPausedSeconds,
-  } = useWorkoutRuntime({ keepScreenAwake, onDraftStateChange })
+  } = useWorkoutRuntime({
+    keepScreenAwake,
+    onDraftStateChange,
+    onWorkoutStarted: (startedAt) => {
+      void socialRepository.announceWorkoutStarted(startedAt).catch(() => {
+        // 친구 알림 실패가 운동 시작을 막아서는 안 된다.
+      })
+    },
+  })
   const loadPreviousExerciseSessions = usePreviousExerciseSessionLoader()
   const [pickerIntent, setPickerIntent] = useState<ExercisePickerIntent>(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)

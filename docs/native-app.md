@@ -12,9 +12,9 @@ Trainlog는 기존 React/Vite PWA를 유지하면서 Capacitor로 iOS와 Android
 - iOS 최저 버전: iOS 15
 - Android 최저 버전: API 24(Android 7)
 
-현재 네이티브 범위는 앱 쉘, Google OAuth 딥링크, 휴식 종료 로컬 알림이다.
-친구 운동 시작과 미운동 리마인더처럼 서버에서 보내는 원격 푸시는 후속
-범위다.
+현재 네이티브 범위는 앱 쉘, Google OAuth 딥링크, 로컬 알림, 기기 push 토큰
+등록과 친구 운동 시작 outbox까지다. APNs/FCM 운영 자격증명을 사용하는 실제
+outbox 발송기는 앱 코드와 분리한다.
 
 네이티브 WebView의 `navigator.onLine` 값은 실제 연결 상태와 다를 수 있다.
 앱에서는 `@capacitor/network` 결과를 TanStack Query의 온라인 상태로 사용하며,
@@ -143,6 +143,33 @@ best-effort로 처리한다.
   예약한다. 이미 기준일이 지났다면 갑자기 울리지 않고 다음 오전 9시에 예약한다.
 - 운동을 새로 완료하거나 주기를 바꾸거나 로그아웃하면 기존 ID의 예약을 취소한 뒤
   다시 계산한다. 웹에는 신뢰할 수 있는 예약 API가 없어 이 설정을 노출하지 않는다.
+
+## 친구 운동 시작 push
+
+- 네이티브 설정에서 사용자가 직접 켠 경우에만 Push Notifications 권한을 요청한다.
+  등록된 APNs/FCM token은 `register_push_device` RPC로 현재 계정에 귀속하며,
+  설정 해제와 로그아웃 시 서버·OS 등록을 함께 해제한다.
+- 새 운동 초안을 시작하면 웹과 앱 모두 `announce_workout_started` RPC를 호출한다.
+  복원된 초안은 새 시작으로 알리지 않으며 서버에서 사용자별 30분에 한 번으로 제한한다.
+- DB trigger는 수락된 친구이면서 양방향 차단이 없고 등록 token이 있는 사용자만
+  `push_notification_outbox`에 넣는다. 세 테이블은 RLS를 켜고 publishable client의
+  직접 접근 권한을 제거했다.
+- 알림을 누르면 허용된 `/friends` 경로만 앱 내부로 전달한다. Android는
+  `friend-activity` 채널과 단색 아이콘을 사용한다.
+
+출시 전 다음 운영 설정이 추가로 필요하다.
+
+1. Android 앱 ID `app.trainlog.mobile`을 Firebase에 등록하고
+   `android/app/google-services.json`을 빌드 환경에 제공한다.
+2. Apple Developer의 App ID에서 Push Notifications를 활성화하고, 배포 서명과
+   일치하는 APNs 키·Team ID·Key ID를 발송 환경에 제공한다.
+3. service role로 `push_notification_outbox`와 `push_device_tokens`를 읽는 별도
+   발송기에서 iOS는 APNs, Android는 FCM HTTP v1로 전송한다. 성공 시
+   `processed_at`, 실패 시 `attempt_count`·`last_error`를 갱신하고 만료 token을 삭제한다.
+
+APNs 키, Firebase 서비스 계정, Supabase service role은 앱 번들·Vercel 프런트 환경
+변수·Git에 넣지 않는다. 이 값들이 없는 로컬/시뮬레이터에서는 등록 실패가 운동
+시작을 막지 않는다.
 
 ## 브랜드 자산 갱신
 

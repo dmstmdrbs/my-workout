@@ -19,9 +19,10 @@ import {
 interface UseWorkoutRuntimeOptions {
   keepScreenAwake: boolean
   onDraftStateChange?: (draft: StoredWorkoutDraft | null) => void
+  onWorkoutStarted?: (startedAt: string) => void
 }
 
-export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange }: UseWorkoutRuntimeOptions) {
+export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange, onWorkoutStarted }: UseWorkoutRuntimeOptions) {
   const [restoredDraft] = useState<StoredWorkoutDraft | null>(() => readStoredWorkoutDraft())
   const [draft, setDraft] = useState<WorkoutDraft | null>(restoredDraft?.draft ?? null)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(restoredDraft?.activeExerciseId ?? null)
@@ -80,6 +81,7 @@ export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange }: UseWo
   const beginDraft = (nextDraft: WorkoutDraft) => {
     setDraft(nextDraft)
     setActiveExerciseId(nextDraft.exercises[0]?.id ?? null)
+    onWorkoutStarted?.(nextDraft.startedAt)
   }
 
   // 시작 화면이 열려 있는 동안 다른 탭이 만든 초안이 생길 수 있다. 시작

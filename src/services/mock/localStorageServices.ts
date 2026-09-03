@@ -665,6 +665,10 @@ class LocalStorageSocialRepository implements SocialRepository {
     const currentUserId = store.profile.id
     return store.friendships.filter((item) => item.status === 'pending' && item.addresseeId === currentUserId && !isBlocked(store, currentUserId, item.requesterId)).length
   }
+
+  async registerPushDevice(): Promise<void> {}
+  async unregisterPushDevice(): Promise<void> {}
+  async announceWorkoutStarted(): Promise<void> {}
 }
 
 /** Default development services. Swap this factory for Supabase implementations at app composition only. */
