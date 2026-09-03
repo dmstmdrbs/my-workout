@@ -1,6 +1,7 @@
 /// <reference types="@capacitor/local-notifications" />
 
 import type { CapacitorConfig } from '@capacitor/cli'
+import { KeyboardResize } from '@capacitor/keyboard'
 
 const config: CapacitorConfig = {
   appId: 'app.trainlog.mobile',
@@ -14,6 +15,11 @@ const config: CapacitorConfig = {
       smallIcon: 'ic_stat_trainlog',
       iconColor: '#3b82f6',
       presentationOptions: ['badge', 'sound', 'banner', 'list'],
+    },
+    Keyboard: {
+      resize: KeyboardResize.Native,
+      resizeOnFullScreen: true,
+      autoBackdropColor: 'dom',
     },
   },
 }

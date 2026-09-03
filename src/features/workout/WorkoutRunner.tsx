@@ -12,6 +12,7 @@ import {
 import { CreateExerciseDialog, ExercisePickerSheet } from '../../entities/exercise'
 import { Overlay } from '../../shared/ui'
 import { formatElapsedTime, getEffectivePausedSeconds } from '../../lib/duration'
+import { confirmAction } from '../../lib/dialog'
 import { signalSetCompleted } from '../../lib/haptics'
 import { completedSetCount, getSessionVolume } from '../../lib/volume'
 import { useSettings } from '../../services'
@@ -332,12 +333,16 @@ export function WorkoutRunner({ onFinish, onCancel, onDraftStateChange, initialP
     setDraggingExerciseId(null)
   }
 
-  const cancelWorkout = () => {
+  const cancelWorkout = async () => {
     if (!draft) {
       onCancel()
       return
     }
-    const shouldCancel = window.confirm('진행 중인 운동을 취소할까요? 임시로 저장된 초안이 삭제되고 완료 기록에는 남지 않습니다.')
+    const shouldCancel = await confirmAction({
+      title: '운동 취소',
+      message: '진행 중인 운동을 취소할까요? 임시로 저장된 초안이 삭제되고 완료 기록에는 남지 않습니다.',
+      okButtonTitle: '운동 취소',
+    })
     if (!shouldCancel) return
     clearDraft()
     onCancel()

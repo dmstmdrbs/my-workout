@@ -8,6 +8,7 @@ import { AppRoutes } from './AppRoutes'
 import { getActivePage, pagePaths, type PageId } from './model/navigation'
 import { useAuthSession } from './model/useAuthSession'
 import { useNativeAppLinks } from './model/useNativeAppLinks'
+import { useNativeKeyboardState } from './model/useNativeKeyboardState'
 import { useNavigationGuard } from './model/useNavigationGuard'
 import { useNativeNotificationNavigation } from './model/useNativeNotificationNavigation'
 import { ActiveWorkoutToast } from './ui/ActiveWorkoutToast'
@@ -22,6 +23,7 @@ export function AppShell() {
   const auth = useAuthSession()
   const navigationMenu = useNavigationMenu()
   const { closeMenus } = navigationMenu
+  const isNativeKeyboardOpen = useNativeKeyboardState()
   const activeWorkout = useActiveWorkoutDraft(location.pathname !== pagePaths.workout)
   const [hasUnsavedRecordEdit, setHasUnsavedRecordEdit] = useState(false)
   const [hasUnsavedRoutineEdit, setHasUnsavedRoutineEdit] = useState(false)
@@ -35,6 +37,10 @@ export function AppShell() {
   }, [settingsQuery.data])
 
   const incomingFriendRequestCount = useIncomingFriendRequestCount(Boolean(auth.session))
+
+  useEffect(() => {
+    if (isNativeKeyboardOpen) closeMenus()
+  }, [closeMenus, isNativeKeyboardOpen])
 
   const confirmNavigation = useCallback((to?: string) => {
     if (activePage === 'workout' && to !== pagePaths.workout && activeWorkout.draft) {
@@ -90,7 +96,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${isNativeKeyboardOpen ? 'is-native-keyboard-open' : ''}`}>
       <SideNavigation {...navigationProps} isOpen={navigationMenu.isMobileMenuOpen} />
 
       <div className="app-content">

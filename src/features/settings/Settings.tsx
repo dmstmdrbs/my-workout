@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
 import { dashboardOverviewQueryKey, useAppServices, useSettings, userSettingsQueryKey } from '../../services'
 import { applyTheme } from '../../lib/theme'
+import { confirmAction } from '../../lib/dialog'
 import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../../entities/workout'
 import type { Theme, UserProfile, UserSettings } from '../../types/domain'
 import './Settings.css'
@@ -210,7 +211,7 @@ function SignOutSection() {
     const message = draft
       ? '로그아웃할까요? 진행 중인 운동 초안이 이 기기에서 삭제됩니다.'
       : '로그아웃할까요?'
-    if (!window.confirm(message)) return
+    if (!await confirmAction({ title: '로그아웃', message, okButtonTitle: '로그아웃' })) return
 
     try {
       await auth.signOut()

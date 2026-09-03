@@ -80,6 +80,9 @@
   }
   .sync-indicator { display: none; }
   .active-workout-toast { right: 12px; bottom: calc(var(--mobile-bottom-nav-height) + 10px); left: 12px; min-width: 0; }
+  .app-shell.is-native-keyboard-open .app-content { padding-bottom: 12px; }
+  .app-shell.is-native-keyboard-open .bottom-nav,
+  .app-shell.is-native-keyboard-open .active-workout-toast { display: none; }
 }
 
 @media (max-width: 480px) {
