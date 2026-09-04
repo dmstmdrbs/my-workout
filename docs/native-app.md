@@ -13,8 +13,8 @@ Trainlog는 기존 React/Vite PWA를 유지하면서 Capacitor로 iOS와 Android
 - Android 최저 버전: API 24(Android 7)
 
 현재 네이티브 범위는 앱 쉘, Google OAuth 딥링크, 로컬 알림, 기기 push 토큰
-등록과 친구 운동 시작 outbox까지다. APNs/FCM 운영 자격증명을 사용하는 실제
-outbox 발송기는 앱 코드와 분리한다.
+등록, 친구 운동 시작 outbox, APNs/FCM Edge Function 발송기까지다. 운영
+자격정보는 앱 코드와 분리해 Supabase Function Secrets에만 저장한다.
 
 네이티브 WebView의 `navigator.onLine` 값은 실제 연결 상태와 다를 수 있다.
 앱에서는 `@capacitor/network` 결과를 TanStack Query의 온라인 상태로 사용하며,
@@ -152,24 +152,94 @@ best-effort로 처리한다.
 - 새 운동 초안을 시작하면 웹과 앱 모두 `announce_workout_started` RPC를 호출한다.
   복원된 초안은 새 시작으로 알리지 않으며 서버에서 사용자별 30분에 한 번으로 제한한다.
 - DB trigger는 수락된 친구이면서 양방향 차단이 없고 등록 token이 있는 사용자만
-  `push_notification_outbox`에 넣는다. 세 테이블은 RLS를 켜고 publishable client의
-  직접 접근 권한을 제거했다.
+  `push_notification_outbox`에 기기별로 넣는다. 세 테이블은 RLS를 켜고 publishable
+  client의 직접 접근 권한을 제거했다.
 - 알림을 누르면 허용된 `/friends` 경로만 앱 내부로 전달한다. Android는
   `friend-activity` 채널과 단색 아이콘을 사용한다.
+- `send-friend-activity-push` Edge Function은 service role 전용 RPC로 최대 100개를
+  5분 lease로 점유한다. 성공은 처리 완료, 429·5xx는 지수 backoff 재시도,
+  영구 오류는 폐기, APNs/FCM이 무효하다고 판정한 token은 즉시 삭제한다.
 
-출시 전 다음 운영 설정이 추가로 필요하다.
+출시 전 다음 운영 설정을 적용한다.
 
 1. Android 앱 ID `app.trainlog.mobile`을 Firebase에 등록하고
    `android/app/google-services.json`을 빌드 환경에 제공한다.
 2. Apple Developer의 App ID에서 Push Notifications를 활성화하고, 배포 서명과
    일치하는 APNs 키·Team ID·Key ID를 발송 환경에 제공한다.
-3. service role로 `push_notification_outbox`와 `push_device_tokens`를 읽는 별도
-   발송기에서 iOS는 APNs, Android는 FCM HTTP v1로 전송한다. 성공 시
-   `processed_at`, 실패 시 `attempt_count`·`last_error`를 갱신하고 만료 token을 삭제한다.
+3. Firebase Console > Project settings > Service accounts에서 발송용 JSON 키를
+   발급하고 FCM HTTP v1 API를 활성화한다.
+
+### Edge Function secrets·배포
+
+로컬 파일에 아래 값을 준비하되 Git에는 추가하지 않는다.
+
+```env
+PUSH_DISPATCH_SECRET=<32자 이상 무작위 값>
+FIREBASE_SERVICE_ACCOUNT_JSON=<Firebase service account JSON 전체>
+APNS_KEY_ID=<Apple Key ID>
+APNS_TEAM_ID=<Apple Team ID>
+APNS_PRIVATE_KEY=<AuthKey_*.p8 전체>
+APNS_TOPIC=app.trainlog.mobile
+APNS_ENVIRONMENT=development
+```
+
+Debug 실기기는 `development`, TestFlight·App Store 배포는 `production`을 사용한다.
+Android만 먼저 운영하려면 APNs 세 개 자격정보를 생략할 수 있고, iOS만
+운영하려면 Firebase JSON을 생략할 수 있다. 설정되지 않은 플랫폼의 outbox는
+점유하지 않고 그대로 보존한다.
+
+```bash
+npx supabase db push
+npx supabase secrets set --env-file <Git 밖의 push-secrets.env>
+npx supabase functions deploy send-friend-activity-push
+```
+
+Function은 Supabase gateway JWT 검증 대신 `x-trainlog-dispatch-secret` 헤더를 상수 시간으로
+검사한다. `PUSH_DISPATCH_SECRET`이 없거나 32자 미만이면 작업을 시작하지 않는다.
+
+### 1분 scheduler
+
+Supabase Vault에 Function URL과 같은 dispatch secret을 저장한 뒤 `pg_cron` +
+`pg_net`으로 1분마다 호출한다. `<...>` 부분은 운영 값으로 바꾼다.
+
+```sql
+select vault.create_secret(
+  'https://<project-ref>.supabase.co',
+  'trainlog_project_url'
+);
+select vault.create_secret(
+  '<PUSH_DISPATCH_SECRET과 같은 값>',
+  'trainlog_push_dispatch_secret'
+);
+
+select cron.schedule(
+  'trainlog-friend-activity-push',
+  '* * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets
+            where name = 'trainlog_project_url')
+           || '/functions/v1/send-friend-activity-push',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-trainlog-dispatch-secret',
+      (select decrypted_secret from vault.decrypted_secrets
+       where name = 'trainlog_push_dispatch_secret')
+    ),
+    body := '{"limit": 50}'::jsonb
+  );
+  $$
+);
+```
+
+재시도 5회를 모두 소진한 행은 `discarded_at`과 `last_error`를 확인해 원인을
+조치한다. Cron·Vault 생성과 운영 secret 등록은 원격 상태를 바꾸므로 별도
+승인 후 수행한다.
 
 APNs 키, Firebase 서비스 계정, Supabase service role은 앱 번들·Vercel 프런트 환경
-변수·Git에 넣지 않는다. 이 값들이 없는 로컬/시뮬레이터에서는 등록 실패가 운동
-시작을 막지 않는다.
+변수·Git에 넣지 않는다. Edge Function은 Supabase의 server-side secret만 사용하며
+publishable client에서 claim·complete RPC를 실행할 수 없다. 이 값들이 없는
+로컬/시뮬레이터에서는 push 등록 실패가 운동 시작을 막지 않는다.
 
 ## 브랜드 자산 갱신
 

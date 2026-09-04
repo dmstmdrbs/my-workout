@@ -382,6 +382,11 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+[functions.send-friend-activity-push]
+# Cron authenticates with a dedicated high-entropy header inside the function.
+# This avoids exposing a Supabase secret key in the scheduler request.
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

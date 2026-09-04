@@ -21,7 +21,7 @@
 - 기록 화면 무한 스크롤 페이지네이션(커서 기반, 20개 단위)
 - URL 기반 화면 이동과 브라우저 뒤로가기 지원
 - 프로필, 링크 초대, 친구 요청·수락·삭제·차단
-- 네이티브 운동 공백 리마인더와 친구 운동 시작 push 기반
+- 네이티브 운동 공백 리마인더와 APNs·FCM 친구 운동 시작 push
 - 테마·기본 휴식 시간·기본 목표 RIR·표시 이름 설정과 로그아웃
 - 체중·골격근량·체지방률 신체 측정 기록
 
@@ -70,7 +70,7 @@ npm run build
 
 ## 데이터베이스와 인증
 
-스키마와 RLS 정책은 `supabase/migrations/`에 순서대로 관리합니다. 프로그램 회차와 고정 일정은 `20260823154022_training_program_runs.sql`, 친구·초대·차단 데이터와 공개 프로필 경계는 `20260829165016_add_friend_system.sql`, 친구 운동 시작 push token·활동·outbox는 `20260903100000_add_friend_activity_push.sql`에 정의되어 있습니다. 기본 운동 종목은 `20260830032223_assign_default_exercises_to_users.sql`에서 공용 템플릿을 사용자별 편집 가능한 카탈로그로 복제하며, 새 프로필에도 자동 할당합니다.
+스키마와 RLS 정책은 `supabase/migrations/`에 순서대로 관리합니다. 프로그램 회차와 고정 일정은 `20260823154022_training_program_runs.sql`, 친구·초대·차단 데이터와 공개 프로필 경계는 `20260829165016_add_friend_system.sql`, 친구 운동 시작 push token·활동·outbox는 `20260903100000_add_friend_activity_push.sql`, 기기별 outbox·lease·재시도 계약은 `20260905100000_add_push_outbox_dispatch.sql`에 정의되어 있습니다. 기본 운동 종목은 `20260830032223_assign_default_exercises_to_users.sql`에서 공용 템플릿을 사용자별 편집 가능한 카탈로그로 복제하며, 새 프로필에도 자동 할당합니다.
 
 새 Supabase 프로젝트에 적용할 때는 CLI로 로그인·연결 후 migration을 적용합니다. 운영 프로젝트나 기존 사용자 데이터에 영향을 주는 명령은 실행 전 반드시 백업 범위를 확인하세요.
 

@@ -542,8 +542,9 @@
 기대 결과:
 
 - 새 초안 시작은 서버 활동 이벤트와 친구별 outbox를 만들지만 초안 복원은 만들지 않는다. **(훅·migration 단위 테스트 검증)**
-- 수락된 친구이면서 양방향 차단이 없고 등록 기기가 있는 수신자만 outbox에 포함된다. **(migration 단위 테스트 검증)**
+- 수락된 친구이면서 양방향 차단이 없고 등록 기기가 있는 수신자만 기기별 outbox에 포함된다. **(migration 단위 테스트 검증)**
 - 같은 사용자의 반복 시작은 30분 동안 한 번으로 제한된다. **(migration 단위 테스트 검증)**
 - 알림 payload의 `/friends`만 앱 내부 이동으로 허용되고 외부 URL은 무시된다. **(단위 테스트 검증)**
 - 설정 해제와 로그아웃은 서버 token과 OS push 등록을 정리한다. **(단위 테스트 검증)**
-- APNs/FCM 발송 실기기 검증은 운영 자격증명과 별도 outbox 발송기 배포 후 수행한다.
+- 동시 dispatcher는 `skip locked` lease로 같은 outbox를 중복 점유하지 않고, 429·5xx는 재시도하며 무효 token은 삭제한다. **(migration·provider 단위 테스트 검증)**
+- Android 실기기에서 FCM HTTP v1, iOS Debug에서 APNs sandbox, TestFlight에서 APNs production 발송을 각각 검증한다. **(운영 자격정보·Edge Function·Cron 배포 후 수동 검증)**
