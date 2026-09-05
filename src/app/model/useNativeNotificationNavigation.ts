@@ -1,10 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
 
 type NavigateCommand = (path: string) => void
 
 export function useNativeNotificationNavigation(onNavigate: NavigateCommand) {
+  const navigateRef = useRef(onNavigate)
+  navigateRef.current = onNavigate
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
 
@@ -13,7 +16,7 @@ export function useNativeNotificationNavigation(onNavigate: NavigateCommand) {
 
     void LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
       const path = getNotificationPath(action)
-      if (path) onNavigate(path)
+      if (isActive && path) navigateRef.current(path)
     }).then((handle) => {
       if (!isActive) void handle.remove()
       else removeListener = () => handle.remove()
@@ -25,7 +28,7 @@ export function useNativeNotificationNavigation(onNavigate: NavigateCommand) {
       isActive = false
       if (removeListener) void removeListener()
     }
-  }, [onNavigate])
+  }, [])
 }
 
 export function getNotificationPath(action: { notification: { extra?: { path?: unknown } } }) {

@@ -104,6 +104,41 @@ Deno.test("FCM removes an unregistered token instead of retrying it", async () =
   assertEquals(result.outcome, "invalid_token");
 });
 
+Deno.test("FCM keeps a token when a code-less 404 may be a project configuration error", async () => {
+  const privateKey = await createPrivateKeyPem({
+    name: "RSASSA-PKCS1-v1_5",
+    modulusLength: 2048,
+    publicExponent: new Uint8Array([1, 0, 1]),
+    hash: "SHA-256",
+  });
+  let requestCount = 0;
+  const fetcher: typeof fetch = () => {
+    requestCount += 1;
+    if (requestCount === 1) {
+      return Promise.resolve(
+        Response.json({ access_token: "access-token", expires_in: 3600 }),
+      );
+    }
+    return Promise.resolve(Response.json({
+      error: { message: "Requested entity was not found." },
+    }, { status: 404 }));
+  };
+  const sender = createFcmSender({
+    project_id: "wrong-project",
+    client_email: "push@trainlog.iam.gserviceaccount.com",
+    private_key: privateKey,
+  }, fetcher);
+
+  const result = await sender({
+    token: "valid-token",
+    title: "title",
+    body: "body",
+    path: "/friends",
+  });
+
+  assertEquals(result.outcome, "permanent");
+});
+
 Deno.test("APNs uses the selected environment and alert payload", async () => {
   const privateKey = await createPrivateKeyPem({
     name: "ECDSA",

@@ -39,7 +39,7 @@ export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange, onWorko
   }, [hasDraft])
 
   useEffect(() => {
-    if (!draft || restEndsAt === null) return
+    if (!hasDraft || restEndsAt === null) return
     const targetEnd = restEndsAt
     const timeout = window.setTimeout(() => {
       setClock(Date.now())
@@ -49,14 +49,14 @@ export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange, onWorko
       setRestEndsAt((current) => current === targetEnd ? null : current)
     }, Math.max(0, restEndsAt - Date.now()))
     return () => window.clearTimeout(timeout)
-  }, [draft, restAlertsEnabled, restEndsAt])
+  }, [hasDraft, restAlertsEnabled, restEndsAt])
 
   useEffect(() => {
-    void syncRestNotification(draft && restAlertsEnabled ? restEndsAt : null, restAlertsEnabled)
+    void syncRestNotification(hasDraft && restAlertsEnabled ? restEndsAt : null, restAlertsEnabled)
       .catch(() => {
         // OS 알림 예약이 실패해도 운동 기록과 타이머는 계속 동작해야 한다.
       })
-  }, [draft, restAlertsEnabled, restEndsAt])
+  }, [hasDraft, restAlertsEnabled, restEndsAt])
 
   // 운동 중에는 화면을 켜 둔다. 웹에는 백그라운드 알림을 예약할 방법이 없어,
   // 휴식 알림이 들리려면 화면이 앞에 떠 있어야 한다.

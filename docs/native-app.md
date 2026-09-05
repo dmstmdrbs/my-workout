@@ -64,6 +64,9 @@ trainlog://auth/callback
 Google Cloud Console의 OAuth 콜백은 기존 Supabase Auth 콜백
 `https://<project-ref>.supabase.co/auth/v1/callback`을 그대로 유지한다. Google이 앱
 커스텀 스킴으로 직접 돌아오는 구조가 아니다.
+Supabase client는 PKCE flow를 사용하고 커스텀 스킴에서는 `code`만
+교환한다. 인증 도중 앱이 종료되어도 다음 냉간 시작에서 launch URL을
+한 번 확인해 로컬 code verifier로 세션을 복원한다.
 
 ## iOS 안전 영역
 
@@ -78,6 +81,8 @@ Dynamic Island와 상태 표시줄 아래에 배치하고, 하단 탭의 콘텐�
   구현을 선택한다. 플랫폼 API를 운동 상태 훅에서 직접 분기하지 않는다.
 - 웹: 기존 Notification API와 포그라운드 소리를 유지한다.
 - iOS/Android: 휴식 종료 시각을 OS에 예약한다.
+- 앱이 열려 있으면 JS timer가 소리·햅틱을 보장하고, OS 알림은
+  백그라운드 전달을 담당한다.
 - Android 상태 표시줄에는 `ic_stat_trainlog` 단색 심볼을 사용한다.
 - 시간 조정, 타이머 중단, 운동 종료 시 같은 ID의 예약을 취소한다.
 - 알림을 누르면 `/workout`으로 이동한다.
@@ -102,6 +107,8 @@ best-effort로 처리한다.
   Capacitor Preferences와 localStorage 미러에 함께 저장한다.
 - 앱 시작 시 Preferences를 먼저 복원하며, 기존 앱에서 처음 업그레이드한 경우에는
   남아 있는 localStorage 값을 Preferences로 이관한다.
+- 두 mirror에 revision과 삭제 tombstone을 남겨, 앱 종료 직전의 느린
+  Preferences 쓰기가 최신 운동 초안을 되돌리거나 삭제한 초안을 복원하지 않는다.
 - iOS의 `PrivacyInfo.xcprivacy`에는 UserDefaults 사용 사유 `CA92.1`을 선언한다.
 
 ## 앱 복귀와 데이터 갱신
@@ -149,6 +156,7 @@ best-effort로 처리한다.
 - 네이티브 설정에서 사용자가 직접 켠 경우에만 Push Notifications 권한을 요청한다.
   등록된 APNs/FCM token은 `register_push_device` RPC로 현재 계정에 귀속하며,
   설정 해제와 로그아웃 시 서버·OS 등록을 함께 해제한다.
+  같은 계정의 token 재등록은 기존 행 ID를 유지하고, 계정당 최대 5개까지 보존한다.
 - 새 운동 초안을 시작하면 웹과 앱 모두 `announce_workout_started` RPC를 호출한다.
   복원된 초안은 새 시작으로 알리지 않으며 서버에서 사용자별 30분에 한 번으로 제한한다.
 - DB trigger는 수락된 친구이면서 양방향 차단이 없고 등록 token이 있는 사용자만
@@ -159,6 +167,8 @@ best-effort로 처리한다.
 - `send-friend-activity-push` Edge Function은 service role 전용 RPC로 최대 100개를
   5분 lease로 점유한다. 성공은 처리 완료, 429·5xx는 지수 backoff 재시도,
   영구 오류는 폐기, APNs/FCM이 무효하다고 판정한 token은 즉시 삭제한다.
+- 대기열 점유 직전에 이번 발송 후보의 현재 친구·차단 관계를 다시 확인해,
+  이미 친구를 삭제했거나 차단한 상대에게는 재시도 알림도 보내지 않는다.
 
 출시 전 다음 운영 설정을 적용한다.
 

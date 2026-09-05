@@ -131,7 +131,7 @@ export function createFcmSender(
     const error = `FCM ${response.status}${errorCode ? ` ${errorCode}` : ""}: ${
       describeProviderError(data)
     }`;
-    if (response.status === 404 || errorCode === "UNREGISTERED") {
+    if (errorCode === "UNREGISTERED") {
       return { outcome: "invalid_token", error };
     }
     // The payload is fixed and validated by this sender, so INVALID_ARGUMENT

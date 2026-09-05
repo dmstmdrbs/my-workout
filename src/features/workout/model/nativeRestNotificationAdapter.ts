@@ -37,7 +37,9 @@ export const nativeRestNotificationAdapter: RestNotificationAdapter = {
               allowWhileIdle: true,
             },
             sound: 'default',
-            foreground: true,
+            // 앱이 열려 있을 때는 JS timer가 소리·햅틱을 담당한다.
+            // OS 표시는 백그라운드에서만 사용해 중복 신호를 피한다.
+            foreground: false,
             autoCancel: true,
             isExactNotification: true,
             extra: { path: restCompleteNotificationPath },
@@ -48,8 +50,9 @@ export const nativeRestNotificationAdapter: RestNotificationAdapter = {
     return notificationQueue
   },
 
-  async notifyTimerFinished(enabled) {
-    // 알림 권한을 사용하지 않더라도 앱이 열려 있으면 기존 소리와 진동은 유지한다.
-    if (!enabled && document.visibilityState === 'visible') playRestFinishedAlert()
+  async notifyTimerFinished(_enabled) {
+    // OS 예약 취소와 timer callback의 경쟁에 의존하지 않고,
+    // 앱이 열려 있을 때는 항상 앱이 완료 신호를 보장한다.
+    if (document.visibilityState === 'visible') playRestFinishedAlert()
   },
 }

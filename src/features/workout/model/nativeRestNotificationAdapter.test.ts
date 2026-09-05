@@ -85,11 +85,11 @@ describe('네이티브 휴식 알림 어댑터', () => {
     expect(playRestFinishedAlert).toHaveBeenCalledOnce()
   })
 
-  test('OS 알림이 켜졌으면 포그라운드 앱 알림을 중복 재생하지 않는다', async () => {
+  test('OS 알림이 켜져도 포그라운드에서는 앱이 완료 신호를 보장한다', async () => {
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
 
     await nativeRestNotificationAdapter.notifyTimerFinished(true)
 
-    expect(playRestFinishedAlert).not.toHaveBeenCalled()
+    expect(playRestFinishedAlert).toHaveBeenCalledOnce()
   })
 })

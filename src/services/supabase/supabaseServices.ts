@@ -37,7 +37,12 @@ import type {
   WorkoutSetRecord,
 } from '../../types/domain'
 import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, PreviousExerciseSession, SocialRepository, WorkoutRepository } from '../contracts'
-import { nativeAuthRedirectUrl, openNativeOAuth, usesNativeOAuth } from './nativeOAuth'
+import {
+  completeNativeOAuthFromLaunchUrl,
+  nativeAuthRedirectUrl,
+  openNativeOAuth,
+  usesNativeOAuth,
+} from './nativeOAuth'
 
 type Row = Record<string, unknown>
 
@@ -356,6 +361,7 @@ class SupabaseAuthAdapter implements AuthAdapter {
   }
 
   async getSession(): Promise<AuthSession | null> {
+    await completeNativeOAuthFromLaunchUrl(this.client)
     const { data, error } = await this.client.auth.getSession()
     if (error) throw toError(error, '로그인 세션을 확인하지 못했어요.')
     return data.session ? { user: mapUser(data.session.user), accessToken: data.session.access_token } : null

@@ -5,6 +5,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const nativeAuthRedirectUrl = 'trainlog://auth/callback'
 
+let launchOAuthCompletion: Promise<void> | null = null
+let launchOAuthChecked = false
+
 export function usesNativeOAuth() {
   return Capacitor.isNativePlatform()
 }
@@ -21,15 +24,29 @@ export async function completeNativeOAuth(client: SupabaseClient, callbackUrl: s
     return
   }
 
-  const accessToken = params.get('access_token')
-  const refreshToken = params.get('refresh_token')
-  if (!accessToken || !refreshToken) throw new Error('로그인 콜백에 세션 정보가 없어요.')
+  // Custom schemes can be opened by another app. Only a PKCE authorization
+  // code, verified against the locally stored code verifier, may create a session.
+  throw new Error('로그인 콜백에 인증 code가 없어요.')
+}
 
-  const { error: sessionError } = await client.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  })
-  if (sessionError) throw sessionError
+/**
+ * OAuth 도중 OS가 앱을 종료했다면 appUrlOpen listener가 없다.
+ * 인증 snapshot을 읽기 전 launch URL을 한 번 소비해 냉간 시작도 완료한다.
+ */
+export function completeNativeOAuthFromLaunchUrl(client: SupabaseClient) {
+  if (!usesNativeOAuth()) return Promise.resolve()
+  if (launchOAuthChecked) return Promise.resolve()
+  launchOAuthCompletion ??= App.getLaunchUrl()
+    .then(async (launch) => {
+      if (launch?.url && isNativeAuthCallback(launch.url)) {
+        await completeNativeOAuth(client, launch.url)
+      }
+      launchOAuthChecked = true
+    })
+    .finally(() => {
+      launchOAuthCompletion = null
+    })
+  return launchOAuthCompletion
 }
 
 export async function openNativeOAuth(client: SupabaseClient, authorizationUrl: string) {

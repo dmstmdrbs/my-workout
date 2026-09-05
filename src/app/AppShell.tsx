@@ -85,7 +85,11 @@ export function AppShell() {
   }, [navigateTo])
 
   useNativeNotificationNavigation(navigateTo)
-  useNativePushNotifications(Boolean(auth.session), navigateTo)
+  useNativePushNotifications({
+    authenticated: Boolean(auth.session),
+    authResolved: !auth.isLoading && auth.error === null,
+    onNavigate: navigateTo,
+  })
   useNativeAppLinks(navigateTo)
 
   if (auth.isLoading) return <AuthLoading />

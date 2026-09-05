@@ -32,11 +32,14 @@
 1. iOS/Android 앱의 로그인 화면에서 Google 로그인을 시작한다.
 2. 시스템 브라우저에서 인증을 마친다.
 3. `trainlog://auth/callback` 딥링크로 앱에 복귀한다.
+4. 별도 실행에서 인증 중 앱을 OS에서 종료한 뒤 Google 콜백으로 냉간 시작한다.
 
 기대 결과:
 
 - 인증 중 앱 WebView 안에 Google 로그인을 띄우지 않는다.
 - 성공 콜백은 세션을 복원하고 브라우저를 닫은 뒤 앱 화면으로 돌아온다.
+- 냉간 시작은 launch URL의 OAuth code를 인증 snapshot 조회 전에 세션으로 교환한다. **(단위 테스트 검증)**
+- 커스텀 스킴의 implicit access/refresh token은 세션으로 받지 않고 PKCE code만 허용한다. **(단위 테스트 검증)**
 - 취소나 OAuth 오류는 기존 세션을 위조하지 않고 로그인 화면에서 다시 시도할 수 있다.
 - 웹 로그인은 기존 HTTPS redirect 흐름을 유지한다.
 
@@ -544,6 +547,8 @@
 - 새 초안 시작은 서버 활동 이벤트와 친구별 outbox를 만들지만 초안 복원은 만들지 않는다. **(훅·migration 단위 테스트 검증)**
 - 수락된 친구이면서 양방향 차단이 없고 등록 기기가 있는 수신자만 기기별 outbox에 포함된다. **(migration 단위 테스트 검증)**
 - 같은 사용자의 반복 시작은 30분 동안 한 번으로 제한된다. **(migration 단위 테스트 검증)**
+- 같은 token을 재등록해도 기존 기기의 대기 outbox가 삭제되지 않고, 계정당 token은 5개로 제한된다. **(DB 시나리오 검증)**
+- outbox 생성 후에 친구를 삭제하거나 차단하면 발송 직전 폐기된다. **(DB 시나리오 검증)**
 - 알림 payload의 `/friends`만 앱 내부 이동으로 허용되고 외부 URL은 무시된다. **(단위 테스트 검증)**
 - 설정 해제와 로그아웃은 서버 token과 OS push 등록을 정리한다. **(단위 테스트 검증)**
 - 동시 dispatcher는 `skip locked` lease로 같은 outbox를 중복 점유하지 않고, 429·5xx는 재시도하며 무효 token은 삭제한다. **(migration·provider 단위 테스트 검증)**

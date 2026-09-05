@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { App } from '@capacitor/app'
 import { Capacitor } from '@capacitor/core'
 import { env } from '../../lib/env'
@@ -6,6 +6,9 @@ import { env } from '../../lib/env'
 type NavigateCommand = (path: string) => void
 
 export function useNativeAppLinks(onNavigate: NavigateCommand) {
+  const navigateRef = useRef(onNavigate)
+  navigateRef.current = onNavigate
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
 
@@ -16,7 +19,7 @@ export function useNativeAppLinks(onNavigate: NavigateCommand) {
 
     const open = (candidate: string) => {
       const path = getNativeAppPath(candidate)
-      if (isActive && path) onNavigate(path)
+      if (isActive && path) navigateRef.current(path)
     }
 
     void App.addListener('appUrlOpen', ({ url }) => {
@@ -38,7 +41,7 @@ export function useNativeAppLinks(onNavigate: NavigateCommand) {
       isActive = false
       if (removeListener) void removeListener()
     }
-  }, [onNavigate])
+  }, [])
 }
 
 export function getNativeAppPath(candidate: string, publicAppUrl = env.publicAppUrl) {

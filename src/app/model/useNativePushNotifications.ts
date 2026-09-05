@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Capacitor } from '@capacitor/core'
 import {
   PushNotifications,
@@ -16,12 +16,24 @@ import {
 
 type NavigateCommand = (path: string) => void
 
-export function useNativePushNotifications(authenticated: boolean, onNavigate: NavigateCommand) {
+interface NativePushNotificationOptions {
+  authenticated: boolean
+  authResolved: boolean
+  onNavigate: NavigateCommand
+}
+
+export function useNativePushNotifications({
+  authenticated,
+  authResolved,
+  onNavigate,
+}: NativePushNotificationOptions) {
   const { socialRepository } = useAppServices()
   const enabled = useFriendActivityNotificationsEnabled()
+  const navigateRef = useRef(onNavigate)
+  navigateRef.current = onNavigate
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return
+    if (!Capacitor.isNativePlatform() || !authResolved) return
     let disposed = false
     const handles: PluginListenerHandle[] = []
 
@@ -52,7 +64,7 @@ export function useNativePushNotifications(authenticated: boolean, onNavigate: N
       }))
       await retain(PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
         const path = getPushNotificationPath(action.notification.data)
-        if (!disposed && path) onNavigate(path)
+        if (!disposed && path) navigateRef.current(path)
       }))
 
       try {
@@ -78,7 +90,7 @@ export function useNativePushNotifications(authenticated: boolean, onNavigate: N
       disposed = true
       handles.forEach((handle) => { void handle.remove().catch(() => undefined) })
     }
-  }, [authenticated, enabled, onNavigate, socialRepository])
+  }, [authResolved, authenticated, enabled, socialRepository])
 }
 
 export function getPushNotificationPath(data: unknown) {
