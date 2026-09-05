@@ -1,6 +1,6 @@
-import { render } from '@testing-library/react'
+import { act, render, renderHook } from '@testing-library/react'
 import { useLayoutEffect } from 'react'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { readStoredWorkoutDraft, writeStoredWorkoutDraft, type StoredWorkoutDraft } from '../../../entities/workout'
 import { useWorkoutRuntime } from './useWorkoutRuntime'
 
@@ -40,5 +40,14 @@ describe('useWorkoutRuntime persistence lifecycle', () => {
     render(<RuntimeRaceHarness />)
 
     expect(readStoredWorkoutDraft()).toEqual(externalDraft)
+  })
+
+  test('새 운동을 시작할 때만 친구 활동 callback을 호출한다', () => {
+    const onWorkoutStarted = vi.fn()
+    const { result } = renderHook(() => useWorkoutRuntime({ keepScreenAwake: false, onWorkoutStarted }))
+
+    act(() => result.current.beginDraft(externalDraft.draft))
+
+    expect(onWorkoutStarted).toHaveBeenCalledWith(externalDraft.draft.startedAt)
   })
 })

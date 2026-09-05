@@ -7,7 +7,12 @@ import { useSettings } from '../services'
 import { AppRoutes } from './AppRoutes'
 import { getActivePage, pagePaths, type PageId } from './model/navigation'
 import { useAuthSession } from './model/useAuthSession'
+import { useNativeAppLinks } from './model/useNativeAppLinks'
+import { useInactivityReminder } from './model/useInactivityReminder'
+import { useNativeKeyboardState } from './model/useNativeKeyboardState'
 import { useNavigationGuard } from './model/useNavigationGuard'
+import { useNativeNotificationNavigation } from './model/useNativeNotificationNavigation'
+import { useNativePushNotifications } from './model/useNativePushNotifications'
 import { ActiveWorkoutToast } from './ui/ActiveWorkoutToast'
 import { AuthLoading, SignInGate } from './ui/AuthGate'
 import { BottomNavigation, SideNavigation, TopBar } from './ui/AppNavigation'
@@ -20,6 +25,7 @@ export function AppShell() {
   const auth = useAuthSession()
   const navigationMenu = useNavigationMenu()
   const { closeMenus } = navigationMenu
+  const isNativeKeyboardOpen = useNativeKeyboardState()
   const activeWorkout = useActiveWorkoutDraft(location.pathname !== pagePaths.workout)
   const [hasUnsavedRecordEdit, setHasUnsavedRecordEdit] = useState(false)
   const [hasUnsavedRoutineEdit, setHasUnsavedRoutineEdit] = useState(false)
@@ -33,6 +39,11 @@ export function AppShell() {
   }, [settingsQuery.data])
 
   const incomingFriendRequestCount = useIncomingFriendRequestCount(Boolean(auth.session))
+  useInactivityReminder(Boolean(auth.session))
+
+  useEffect(() => {
+    if (isNativeKeyboardOpen) closeMenus()
+  }, [closeMenus, isNativeKeyboardOpen])
 
   const confirmNavigation = useCallback((to?: string) => {
     if (activePage === 'workout' && to !== pagePaths.workout && activeWorkout.draft) {
@@ -73,6 +84,14 @@ export function AppShell() {
     navigateTo(pagePaths[page])
   }, [navigateTo])
 
+  useNativeNotificationNavigation(navigateTo)
+  useNativePushNotifications({
+    authenticated: Boolean(auth.session),
+    authResolved: !auth.isLoading && auth.error === null,
+    onNavigate: navigateTo,
+  })
+  useNativeAppLinks(navigateTo)
+
   if (auth.isLoading) return <AuthLoading />
   if (!auth.session) {
     return <SignInGate error={auth.error} onSignIn={() => void auth.startGoogleSignIn()} />
@@ -85,7 +104,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${isNativeKeyboardOpen ? 'is-native-keyboard-open' : ''}`}>
       <SideNavigation {...navigationProps} isOpen={navigationMenu.isMobileMenuOpen} />
 
       <div className="app-content">

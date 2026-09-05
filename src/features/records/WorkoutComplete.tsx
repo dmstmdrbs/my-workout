@@ -11,7 +11,8 @@ import {
   formatWorkoutSet,
 } from './workoutShareFormat'
 import { WorkoutShareCard } from './WorkoutShareCard'
-import { downloadWorkoutCard, makeWorkoutCardPng, workoutCardFile } from './workoutShareImage'
+import { makeWorkoutCardPng } from './workoutShareImage'
+import { saveWorkoutCard, shareWorkoutCard } from './workoutShareDelivery'
 import './Records.css'
 import './WorkoutComplete.css'
 
@@ -56,33 +57,18 @@ export function WorkoutComplete({ sessionId, onViewRecord, onGoHome, onClose, va
   async function shareWorkout() {
     setExportState('sharing')
     setExportMessage('공유 이미지를 준비하는 중이에요.')
-    let dataUrl: string | null = null
     try {
-      dataUrl = await createPng()
-      const file = await workoutCardFile(dataUrl, session)
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${session.routineName ?? '운동'} 운동 기록` })
-        setExportState('success')
-        setExportMessage('공유를 완료했어요.')
-        return
-      }
-      downloadWorkoutCard(dataUrl, session)
-      setExportState('success')
-      setExportMessage('이 기기에서는 공유 이미지가 PNG로 저장됐어요.')
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      const result = await shareWorkoutCard(await createPng(), session)
+      if (result === 'canceled') {
         setExportState('idle')
         setExportMessage('공유를 취소했어요.')
         return
       }
-      if (dataUrl) {
-        downloadWorkoutCard(dataUrl, session)
-        setExportState('success')
-        setExportMessage('공유창을 열지 못해 PNG 파일로 저장했어요.')
-        return
-      }
+      setExportState('success')
+      setExportMessage(result === 'shared' ? '공유를 완료했어요.' : '공유 이미지가 PNG로 저장됐어요.')
+    } catch {
       setExportState('error')
-      setExportMessage('공유 이미지를 만들지 못했어요. 다시 시도해 주세요.')
+      setExportMessage('공유 이미지를 보내지 못했어요. 다시 시도해 주세요.')
     }
   }
 
@@ -90,12 +76,17 @@ export function WorkoutComplete({ sessionId, onViewRecord, onGoHome, onClose, va
     setExportState('exporting')
     setExportMessage('공유 이미지를 만드는 중이에요.')
     try {
-      downloadWorkoutCard(await createPng(), session)
+      const result = await saveWorkoutCard(await createPng(), session)
+      if (result === 'canceled') {
+        setExportState('idle')
+        setExportMessage('저장을 취소했어요.')
+        return
+      }
       setExportState('success')
-      setExportMessage('PNG 이미지를 저장했어요.')
+      setExportMessage(result === 'shared' ? '선택한 앱으로 이미지를 보냈어요.' : 'PNG 이미지를 저장했어요.')
     } catch {
       setExportState('error')
-      setExportMessage('이미지를 만들지 못했어요. 다시 시도해 주세요.')
+      setExportMessage('이미지를 저장하지 못했어요. 다시 시도해 주세요.')
     }
   }
 

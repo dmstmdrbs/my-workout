@@ -1,8 +1,21 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
+import { BellRing, LogOut, Moon, Palette, Sun, Timer, User2, MonitorSmartphone } from 'lucide-react'
 import { dashboardOverviewQueryKey, useAppServices, useSettings, userSettingsQueryKey } from '../../services'
 import { applyTheme } from '../../lib/theme'
+import { confirmAction } from '../../lib/dialog'
+import {
+  requestInactivityReminderPermission,
+  updateInactivityReminderSettings,
+  useInactivityReminderSettings,
+} from '../../lib/inactivityReminder'
+import {
+  requestFriendActivityNotificationPermission,
+  setFriendActivityNotificationsEnabled,
+  unregisterCurrentPushDevice,
+  useFriendActivityNotificationsEnabled,
+} from '../../lib/friendActivityNotifications'
 import { clearStoredWorkoutDraft, readStoredWorkoutDraft } from '../../entities/workout'
 import type { Theme, UserProfile, UserSettings } from '../../types/domain'
 import './Settings.css'
@@ -70,6 +83,8 @@ export function Settings({ additionalSections }: { additionalSections?: ReactNod
 
       <ProfileSection profile={profileQuery.data} onError={setError} />
 
+      {Capacitor.isNativePlatform() && <InactivityReminderSection onError={setError} />}
+
       {additionalSections}
 
       <section className="settings-card" aria-labelledby="settings-theme-title">
@@ -125,7 +140,9 @@ export function Settings({ additionalSections }: { additionalSections?: ReactNod
         <div className="settings-toggle-list">
           <SettingToggle
             label="운동 중 화면 켜 두기"
-            description="휴식 알림은 화면이 켜져 있을 때만 울려요. 웹에서는 화면이 꺼진 뒤의 알림을 예약할 방법이 없습니다."
+            description={Capacitor.isNativePlatform()
+              ? '화면을 꺼도 휴식 종료 알림은 받을 수 있어요. 이 설정은 운동 화면이 앞에 있을 때 화면 잠금을 막습니다.'
+              : '휴식 알림은 화면이 켜져 있을 때만 울려요. 웹에서는 화면이 꺼진 뒤의 알림을 예약할 방법이 없습니다.'}
             checked={settings.keepScreenAwake}
             onChange={(keepScreenAwake) => settingsMutation.mutate({ keepScreenAwake })}
           />
@@ -140,6 +157,85 @@ export function Settings({ additionalSections }: { additionalSections?: ReactNod
 
       <SignOutSection />
     </main>
+  )
+}
+
+function InactivityReminderSection({ onError }: { onError: (message: string | null) => void }) {
+  const { socialRepository } = useAppServices()
+  const settings = useInactivityReminderSettings()
+  const friendActivityEnabled = useFriendActivityNotificationsEnabled()
+  const [isRequesting, setIsRequesting] = useState(false)
+  const [isFriendRequesting, setIsFriendRequesting] = useState(false)
+
+  const toggle = async (enabled: boolean) => {
+    onError(null)
+    if (!enabled) {
+      updateInactivityReminderSettings({ enabled: false })
+      return
+    }
+
+    setIsRequesting(true)
+    const granted = await requestInactivityReminderPermission()
+    setIsRequesting(false)
+    if (!granted) {
+      onError('운동 리마인더를 켜려면 기기 설정에서 알림 권한을 허용해 주세요.')
+      return
+    }
+    updateInactivityReminderSettings({ enabled: true })
+  }
+
+  const toggleFriendActivity = async (enabled: boolean) => {
+    onError(null)
+    if (!enabled) {
+      setFriendActivityNotificationsEnabled(false)
+      await unregisterCurrentPushDevice(socialRepository)
+      return
+    }
+
+    setIsFriendRequesting(true)
+    const granted = await requestFriendActivityNotificationPermission()
+    setIsFriendRequesting(false)
+    if (!granted) {
+      onError('친구 운동 알림을 켜려면 기기 설정에서 알림 권한을 허용해 주세요.')
+      return
+    }
+    setFriendActivityNotificationsEnabled(true)
+  }
+
+  return (
+    <section className="settings-card" aria-labelledby="settings-reminder-title">
+      <div className="settings-card-heading">
+        <span className="settings-icon"><BellRing size={18} aria-hidden="true" /></span>
+        <div><h2 id="settings-reminder-title">알림</h2><p>이 기기에만 저장되는 네이티브 알림 설정입니다.</p></div>
+      </div>
+      <SettingToggle
+        label="운동 공백 알림"
+        description={`마지막 운동 후 ${settings.days}일이 지나면 다시 시작하도록 알려드려요.`}
+        checked={settings.enabled}
+        onChange={(enabled) => { if (!isRequesting) void toggle(enabled) }}
+      />
+      <label className="settings-field">
+        <span>알림을 보낼 운동 공백</span>
+        <select
+          aria-label="운동 공백 알림 주기"
+          value={settings.days}
+          disabled={!settings.enabled || isRequesting}
+          onChange={(event) => updateInactivityReminderSettings({ days: Number(event.target.value) as 3 | 5 | 7 })}
+        >
+          <option value="3">3일</option>
+          <option value="5">5일</option>
+          <option value="7">7일</option>
+        </select>
+      </label>
+      <div className="settings-toggle-list">
+        <SettingToggle
+          label="친구 운동 시작 알림"
+          description="친구가 새 운동을 시작하면 알려드려요. 같은 친구의 반복 시작은 30분 동안 한 번만 전송합니다."
+          checked={friendActivityEnabled}
+          onChange={(enabled) => { if (!isFriendRequesting) void toggleFriendActivity(enabled) }}
+        />
+      </div>
+    </section>
   )
 }
 
@@ -198,7 +294,7 @@ function RestSecondsField({ value, onCommit }: { value: number; onCommit: (secon
  * signs in on this device.
  */
 function SignOutSection() {
-  const { auth } = useAppServices()
+  const { auth, socialRepository } = useAppServices()
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
 
@@ -207,9 +303,11 @@ function SignOutSection() {
     const message = draft
       ? '로그아웃할까요? 진행 중인 운동 초안이 이 기기에서 삭제됩니다.'
       : '로그아웃할까요?'
-    if (!window.confirm(message)) return
+    if (!await confirmAction({ title: '로그아웃', message, okButtonTitle: '로그아웃' })) return
 
     try {
+      setFriendActivityNotificationsEnabled(false)
+      await unregisterCurrentPushDevice(socialRepository)
       await auth.signOut()
       clearStoredWorkoutDraft()
       // The theme mirror is a device-level localStorage key, so it survives

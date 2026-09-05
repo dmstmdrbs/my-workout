@@ -9,7 +9,7 @@
  * 필요: rsvg-convert (brew install librsvg)
  */
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -63,8 +63,10 @@ function writePng(publicDir, svg, size, name) {
 // 실행됐을 때만 호출한다. 그래야 import만 해도 부수효과가 도는 것을 막는다.
 function main() {
   const publicDir = fileURLToPath(new URL('../public/', import.meta.url))
+  const resourcesDir = fileURLToPath(new URL('../resources/', import.meta.url))
 
   requireRsvg()
+  mkdirSync(resourcesDir, { recursive: true })
   console.log('브랜드 자산 생성:')
 
   // favicon 은 브라우저 탭에서 각진 사각형으로 보이므로 모서리를 둥글린다.
@@ -77,6 +79,11 @@ function main() {
   // maskable 은 OS 가 자기 모양으로 자른다. 모서리를 둥글리지 않고 꽉 채우되,
   // 심볼은 안전 영역(80%) 안으로 넣는다.
   writePng(publicDir, symbolSvg({ inset: 0.1, radius: 0 }), 512, 'icon-maskable-512.png')
+
+  // Capacitor native launcher icon and splash source. The platform-specific
+  // sizes are generated from these committed source assets.
+  writePng(resourcesDir, symbolSvg({ inset: 0.1, radius: 0 }), 1024, 'icon.png')
+  writePng(resourcesDir, symbolSvg({ inset: 0.3, radius: 0 }), 2732, 'splash.png')
 
   console.log('완료. 산출물을 커밋하세요.')
 }

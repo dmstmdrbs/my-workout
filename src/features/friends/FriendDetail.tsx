@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ProfileAvatar } from '../../entities/profile'
 import { blockedUsersQueryKey, friendOverviewQueryKey, incomingCountQueryKey, socialProfileQueryKey } from '../../entities/social'
 import { useAppServices } from '../../services'
+import { confirmAction } from '../../lib/dialog'
 import './FriendDetail.css'
 
 export function FriendDetail() {
@@ -28,6 +29,22 @@ export function FriendDetail() {
   if (friendQuery.isError || !friendQuery.data) return <FriendNotFound onBack={() => navigate('/friends')} />
   const friend = friendQuery.data
   const busy = removeMutation.isPending || blockMutation.isPending
+  const removeFriend = async () => {
+    const confirmed = await confirmAction({
+      title: '친구 삭제',
+      message: `${friend.profile.displayName}님을 친구 목록에서 삭제할까요?`,
+      okButtonTitle: '삭제',
+    })
+    if (confirmed) removeMutation.mutate()
+  }
+  const blockFriend = async () => {
+    const confirmed = await confirmAction({
+      title: '사용자 차단',
+      message: `${friend.profile.displayName}님을 차단할까요? 친구 관계도 함께 삭제됩니다.`,
+      okButtonTitle: '차단',
+    })
+    if (confirmed) blockMutation.mutate()
+  }
 
   return <main className="friend-detail-page" aria-labelledby="friend-detail-title">
     <button type="button" className="friend-back-button" onClick={() => navigate('/friends')}><ArrowLeft size={17} aria-hidden="true" /> 친구 목록</button>
@@ -38,8 +55,8 @@ export function FriendDetail() {
       <p className="friend-detail-date">{formatDate(friend.friendsSince)}부터 친구</p>
       {error && <p className="friend-detail-error" role="alert">{error}</p>}
       <div className="friend-detail-actions">
-        <button type="button" className="secondary-button" disabled={busy} onClick={() => { if (window.confirm(`${friend.profile.displayName}님을 친구 목록에서 삭제할까요?`)) removeMutation.mutate() }}><UserMinus size={17} aria-hidden="true" /> 친구 삭제</button>
-        <button type="button" className="danger-button" disabled={busy} onClick={() => { if (window.confirm(`${friend.profile.displayName}님을 차단할까요? 친구 관계도 함께 삭제됩니다.`)) blockMutation.mutate() }}><Ban size={17} aria-hidden="true" /> 차단</button>
+        <button type="button" className="secondary-button" disabled={busy} onClick={() => void removeFriend()}><UserMinus size={17} aria-hidden="true" /> 친구 삭제</button>
+        <button type="button" className="danger-button" disabled={busy} onClick={() => void blockFriend()}><Ban size={17} aria-hidden="true" /> 차단</button>
       </div>
     </section>
   </main>

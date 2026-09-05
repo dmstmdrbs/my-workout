@@ -1,19 +1,27 @@
+import { readPersistentValue, removePersistentValue, writePersistentValue } from './persistentStorage'
+
 const restAlertsKey = 'trainlog:rest-alerts-enabled:v1'
+
+export { restAlertsKey }
 
 export function readRestAlertsEnabled() {
   if (typeof window === 'undefined') return false
-  return window.localStorage.getItem(restAlertsKey) === 'true'
+  return readPersistentValue(restAlertsKey) === 'true'
 }
 
 export function disableRestAlerts() {
-  window.localStorage.removeItem(restAlertsKey)
+  removePersistentValue(restAlertsKey)
+}
+
+export function enableRestAlerts() {
+  writePersistentValue(restAlertsKey, 'true')
 }
 
 export async function requestRestAlerts() {
   const NotificationApi = (window as unknown as { Notification?: typeof Notification }).Notification
   if (!NotificationApi) {
     if ('vibrate' in navigator) {
-      localStorage.setItem(restAlertsKey, 'true')
+      enableRestAlerts()
       return true
     }
     return false
@@ -23,7 +31,7 @@ export async function requestRestAlerts() {
     ? await NotificationApi.requestPermission()
     : NotificationApi.permission
   if (permission !== 'granted') return false
-  window.localStorage.setItem(restAlertsKey, 'true')
+  enableRestAlerts()
   return true
 }
 

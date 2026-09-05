@@ -135,6 +135,9 @@ export interface SocialRepository {
   blockUser(userId: Id): Promise<void>
   unblockUser(userId: Id): Promise<void>
   getIncomingRequestCount(): Promise<number>
+  registerPushDevice(input: { token: string; platform: 'ios' | 'android' }): Promise<void>
+  unregisterPushDevice(token: string): Promise<void>
+  announceWorkoutStarted(startedAt: IsoDateTime): Promise<void>
 }
 
 export interface AppServices {

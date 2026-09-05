@@ -35,6 +35,7 @@ export const exerciseProgressQueryKeyAll = ['exercise-progress'] as const
 export const previousExerciseSessionQueryKey = (exerciseId: string) => ['previous-exercise-session', exerciseId] as const
 export const previousExerciseSessionQueryKeyAll = ['previous-exercise-session'] as const
 export const routineLastPerformedQueryKey = ['routine-last-performed'] as const
+export const inactivityReminderLatestSessionQueryKey = ['inactivity-reminder-latest-session'] as const
 
 /** 프로그램 회차 목록. active-program-run은 production consumer가 없는 legacy key다. */
 export const programRunsQueryKey = ['program-runs'] as const
@@ -61,6 +62,7 @@ const workoutSessionDependentQueryKeys = [
   exerciseProgressQueryKeyAll,
   previousExerciseSessionQueryKeyAll,
   routineLastPerformedQueryKey,
+  inactivityReminderLatestSessionQueryKey,
   programRunsQueryKey,
   routineManagerQueryKey,
   workoutSetupQueryKey.all,

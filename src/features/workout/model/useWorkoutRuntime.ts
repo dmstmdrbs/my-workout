@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getEffectivePausedSeconds } from '../../../lib/duration'
-import { playRestFinishedAlert, primeRestAlert } from '../../../lib/restAlert'
-import { disableRestAlerts, notifyRestComplete, readRestAlertsEnabled, requestRestAlerts } from '../../../lib/restAlerts'
+import { primeRestAlert } from '../../../lib/restAlert'
+import { disableRestAlerts, enableRestAlerts, readRestAlertsEnabled } from '../../../lib/restAlerts'
 import { requestScreenWakeLock } from '../../../lib/wakeLock'
 import {
   clearStoredWorkoutDraft,
@@ -10,13 +10,19 @@ import {
   type WorkoutDraft,
   writeStoredWorkoutDraft,
 } from '../../../entities/workout'
+import {
+  notifyRestTimerFinished,
+  requestRestNotificationPermission,
+  syncRestNotification,
+} from './restNotifications'
 
 interface UseWorkoutRuntimeOptions {
   keepScreenAwake: boolean
   onDraftStateChange?: (draft: StoredWorkoutDraft | null) => void
+  onWorkoutStarted?: (startedAt: string) => void
 }
 
-export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange }: UseWorkoutRuntimeOptions) {
+export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange, onWorkoutStarted }: UseWorkoutRuntimeOptions) {
   const [restoredDraft] = useState<StoredWorkoutDraft | null>(() => readStoredWorkoutDraft())
   const [draft, setDraft] = useState<WorkoutDraft | null>(restoredDraft?.draft ?? null)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(restoredDraft?.activeExerciseId ?? null)
@@ -33,16 +39,24 @@ export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange }: UseWo
   }, [hasDraft])
 
   useEffect(() => {
-    if (!draft || restEndsAt === null) return
+    if (!hasDraft || restEndsAt === null) return
     const targetEnd = restEndsAt
     const timeout = window.setTimeout(() => {
       setClock(Date.now())
-      if (document.visibilityState === 'visible') playRestFinishedAlert()
-      else if (restAlertsEnabled) void notifyRestComplete()
+      void notifyRestTimerFinished(restAlertsEnabled).catch(() => {
+        // 알림 실패가 타이머 종료와 운동 기록을 막아서는 안 된다.
+      })
       setRestEndsAt((current) => current === targetEnd ? null : current)
     }, Math.max(0, restEndsAt - Date.now()))
     return () => window.clearTimeout(timeout)
-  }, [draft, restAlertsEnabled, restEndsAt])
+  }, [hasDraft, restAlertsEnabled, restEndsAt])
+
+  useEffect(() => {
+    void syncRestNotification(hasDraft && restAlertsEnabled ? restEndsAt : null, restAlertsEnabled)
+      .catch(() => {
+        // OS 알림 예약이 실패해도 운동 기록과 타이머는 계속 동작해야 한다.
+      })
+  }, [hasDraft, restAlertsEnabled, restEndsAt])
 
   // 운동 중에는 화면을 켜 둔다. 웹에는 백그라운드 알림을 예약할 방법이 없어,
   // 휴식 알림이 들리려면 화면이 앞에 떠 있어야 한다.
@@ -67,6 +81,7 @@ export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange }: UseWo
   const beginDraft = (nextDraft: WorkoutDraft) => {
     setDraft(nextDraft)
     setActiveExerciseId(nextDraft.exercises[0]?.id ?? null)
+    onWorkoutStarted?.(nextDraft.startedAt)
   }
 
   // 시작 화면이 열려 있는 동안 다른 탭이 만든 초안이 생길 수 있다. 시작
@@ -126,7 +141,9 @@ export function useWorkoutRuntime({ keepScreenAwake, onDraftStateChange }: UseWo
       setRestAlertsEnabled(false)
       return
     }
-    setRestAlertsEnabled(await requestRestAlerts())
+    const enabled = await requestRestNotificationPermission()
+    if (enabled) enableRestAlerts()
+    setRestAlertsEnabled(enabled)
   }
 
   const getFinalPausedSeconds = () => draft

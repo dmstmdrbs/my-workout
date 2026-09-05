@@ -3,7 +3,6 @@ import {
   clearStoredWorkoutDraft,
   getStoredWorkoutDraftSnapshot,
   subscribeStoredWorkoutDraft,
-  writeStoredWorkoutDraft,
   type StoredWorkoutDraft,
 } from '../../../entities/workout'
 
@@ -32,15 +31,9 @@ export function useActiveWorkoutDraft(shouldTick: boolean) {
     return () => window.clearInterval(interval)
   }, [draft, shouldTick])
 
-  const updateDraft = useCallback((nextDraft: StoredWorkoutDraft | null) => {
-    if (nextDraft) {
-      // WorkoutRunner already persists the value before notifying its shell.
-      // Keeping this callback on the same store boundary also covers callers
-      // that only know about the app-level draft callback.
-      writeStoredWorkoutDraft(nextDraft)
-    } else {
-      clearStoredWorkoutDraft()
-    }
+  const updateDraft = useCallback((_nextDraft: StoredWorkoutDraft | null) => {
+    // WorkoutRunner owns persistence. The shell callback only refreshes display
+    // time, avoiding a second Preferences write for every reps/weight edit.
     setClock(Date.now())
   }, [])
 

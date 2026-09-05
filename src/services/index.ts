@@ -10,6 +10,7 @@ export {
   exerciseProgressQueryKeyAll,
   invalidateProgramRunQueries,
   invalidateWorkoutSessionQueries,
+  inactivityReminderLatestSessionQueryKey,
   previousExerciseSessionQueryKey,
   previousExerciseSessionQueryKeyAll,
   programPersonalizationQueryKey,

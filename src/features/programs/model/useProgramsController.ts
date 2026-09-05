@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { confirmAction } from '../../../lib/dialog'
 import { daysBetween, getDateInTimeZone } from '../../../lib/localDate'
 import { invalidateProgramRunQueries, programPersonalizationQueryKey, programRunsQueryKey, useAppServices, useSettings } from '../../../services'
 import type { Exercise, ExerciseOneRepMax, ProgramRun } from '../../../types/domain'
@@ -135,16 +136,22 @@ export function useProgramsController() {
     startMutation.mutate(personalizationQuery.data.maxes)
   }
 
-  const endRun = (run: ProgramRun, outcome: 'completed' | 'withdrawn') => {
+  const endRun = async (run: ProgramRun, outcome: 'completed' | 'withdrawn') => {
     const message = outcome === 'completed'
       ? '이 프로그램 회차를 완료할까요? 저장된 운동 기록은 그대로 유지됩니다.'
       : '프로그램을 중도 하차할까요? 지금까지 저장한 운동 기록은 유지되며, 다시 시작하면 새로운 회차의 Day 1부터 시작합니다.'
-    if (window.confirm(message)) endMutation.mutate({ run, outcome })
+    const confirmed = await confirmAction({
+      title: outcome === 'completed' ? '프로그램 완료' : '프로그램 중도 하차',
+      message,
+      okButtonTitle: outcome === 'completed' ? '완료' : '중도 하차',
+    })
+    if (confirmed) endMutation.mutate({ run, outcome })
   }
 
-  const refreshActiveRun = () => {
+  const refreshActiveRun = async () => {
     const message = `오늘(${formatDate(today)})부터 아직 완료하지 않았고 운동 기록도 연결되지 않은 Day만 최신 처방으로 바꿉니다. 이전 날짜와 완료·기록된 Day는 그대로 유지됩니다. 적용할까요?`
-    if (window.confirm(message)) refreshRunMutation.mutate()
+    const confirmed = await confirmAction({ title: '최신 처방 적용', message, okButtonTitle: '적용' })
+    if (confirmed) refreshRunMutation.mutate()
   }
 
   return {

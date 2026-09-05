@@ -80,6 +80,20 @@ entities/
   props로 받습니다.
 - 앱 서비스 접근은 계속 `useAppServices()` 경계를 사용합니다.
 
+## 네이티브 런타임 경계
+
+Capacitor 연동도 화면 컴포넌트에서 직접 호출하지 않고 목적별 경계로 분리합니다.
+
+- 휴식 종료 예약은 `features/workout/model/restNotifications.ts`가 소유합니다.
+- 알림 탭에 따른 라우팅은 `app/model/useNativeNotificationNavigation.ts`가 소유합니다.
+- Supabase Google 로그인 딥링크는 `services/supabase/nativeOAuth.ts`가 소유합니다.
+- 브라우저에서는 기존 Web Notification과 OAuth redirect 동작을 유지합니다.
+
+네이티브 호출은 운동 기록과 인증 상태 전이를 보조하는 효과입니다. 권한 거부나
+플러그인 오류 때문에 운동 초안 저장이 실패하거나 웹 실행이 깨져서는 안 됩니다.
+OS가 백그라운드에 있는 앱의 JavaScript 타이머를 중지할 수 있으므로, 네이티브
+휴식 알림은 남은 초가 아니라 절대 종료 시각(`restEndsAt`)으로 예약합니다.
+
 ## 현재 구조에서의 점진적 이관 순서
 
 1. `shared/ui`와 토큰을 먼저 사용해 화면 간 기본 동작을 통일합니다.

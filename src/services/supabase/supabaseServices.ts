@@ -37,6 +37,12 @@ import type {
   WorkoutSetRecord,
 } from '../../types/domain'
 import type { AppServices, AuthAdapter, AuthSession, AuthStateListener, ExerciseProgressEntry, PreviousExerciseSession, SocialRepository, WorkoutRepository } from '../contracts'
+import {
+  completeNativeOAuthFromLaunchUrl,
+  nativeAuthRedirectUrl,
+  openNativeOAuth,
+  usesNativeOAuth,
+} from './nativeOAuth'
 
 type Row = Record<string, unknown>
 
@@ -355,17 +361,26 @@ class SupabaseAuthAdapter implements AuthAdapter {
   }
 
   async getSession(): Promise<AuthSession | null> {
+    await completeNativeOAuthFromLaunchUrl(this.client)
     const { data, error } = await this.client.auth.getSession()
     if (error) throw toError(error, '로그인 세션을 확인하지 못했어요.')
     return data.session ? { user: mapUser(data.session.user), accessToken: data.session.access_token } : null
   }
 
   async signInWithGoogle(options?: { redirectTo?: string }): Promise<AuthSession | null> {
-    const { error } = await this.client.auth.signInWithOAuth({
+    const isNative = usesNativeOAuth()
+    const { data, error } = await this.client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: options?.redirectTo ?? window.location.origin },
+      options: {
+        redirectTo: isNative ? nativeAuthRedirectUrl : options?.redirectTo ?? window.location.origin,
+        skipBrowserRedirect: isNative,
+      },
     })
     if (error) throw toError(error, 'Google 로그인을 시작하지 못했어요.')
+    if (isNative) {
+      if (!data.url) throw new Error('Google 로그인 주소를 받지 못했어요.')
+      await openNativeOAuth(this.client, data.url)
+    }
     // OAuth navigates away in a normal browser. A session is available only after its return redirect.
     return this.getSession()
   }
@@ -1008,6 +1023,27 @@ class SupabaseSocialRepository implements SocialRepository {
       .eq('status', 'pending')
     if (error) throw toError(error, '친구 요청 수를 확인하지 못했어요.')
     return count ?? 0
+  }
+
+  async registerPushDevice(input: { token: string; platform: 'ios' | 'android' }): Promise<void> {
+    await this.requireUser()
+    const { error } = await this.client.rpc('register_push_device', {
+      p_token: input.token,
+      p_platform: input.platform,
+    })
+    if (error) throw toError(error, '푸시 알림 기기를 등록하지 못했어요.')
+  }
+
+  async unregisterPushDevice(token: string): Promise<void> {
+    await this.requireUser()
+    const { error } = await this.client.rpc('unregister_push_device', { p_token: token })
+    if (error) throw toError(error, '푸시 알림 기기를 해제하지 못했어요.')
+  }
+
+  async announceWorkoutStarted(startedAt: string): Promise<void> {
+    await this.requireUser()
+    const { error } = await this.client.rpc('announce_workout_started', { p_started_at: startedAt })
+    if (error) throw toError(error, '운동 시작 소식을 보내지 못했어요.')
   }
 }
 
